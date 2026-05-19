@@ -14,6 +14,14 @@
    - `k3d image import consumeriq-backend:local -c consumeriq-local`
 6) Deploy backend API + worker:
    - `kubectl apply -k infra/k8s/backend`
+7) Build and load the frontend image:
+   - `docker build -t consumeriq-frontend:local -f frontend/Dockerfile frontend`
+   - `k3d image import consumeriq-frontend:local -c consumeriq-local`
+8) Deploy frontend:
+   - `kubectl apply -k infra/k8s/frontend`
+9) Deploy nginx gateway:
+   - `kubectl apply -k infra/k8s/nginx`
 
-## API access
-- NodePort: `http://localhost:30080`
+## Access
+- Frontend: `http://localhost:30080`
+- API: `http://localhost:30080/api`

@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumeriq-frontend
+  namespace: consumeriq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumeriq-frontend
+  template:
+    metadata:
+      labels:
+        app: consumeriq-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: consumeriq-frontend:local
+          ports:
+            - containerPort: 4173

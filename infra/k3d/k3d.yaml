@@ -9,6 +9,9 @@ kubeAPI:
   hostIP: "127.0.0.1"
 ports:
   # Expose common ports; adjust as needed when services are added.
+  - port: 30080:30080
+    nodeFilters:
+      - loadbalancer
   - port: 5432:5432
     nodeFilters:
       - server:0
