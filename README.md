@@ -25,3 +25,16 @@
 ## Access
 - Frontend: `http://localhost:30080`
 - API: `http://localhost:30080/api`
+
+
+## How to stop
+1) Stop just the workloads (keep cluster):
+   - `kubectl delete -k infra/k8s/frontend`
+   - `kubectl delete -k infra/k8s/backend`
+   - `kubectl delete -k infra/k8s/redis`
+   - `kubectl delete -k infra/k8s/postgres`
+   - `kubectl delete -k infra/k8s/nginx`
+2) Stop the whole cluster:
+   - `k3d cluster stop consumeriq-local`
+3) Delete the whole cluster:
+   - `k3d cluster delete consumeriq-local`
