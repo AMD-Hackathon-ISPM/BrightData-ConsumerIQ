@@ -30,3 +30,82 @@ CREATE TABLE categoryInsights (
     gtmIntelligence JSONB,       
     financeIntelligence JSONB,   
     securityCompliance JSONB);
+
+CREATE TABLE founderProfiles (
+    id SERIAL PRIMARY KEY,
+    workspaceName VARCHAR(255) NOT NULL,
+    launchType VARCHAR(50) NOT NULL, -- 'physical', 'digital', 'service'
+    launchCategory VARCHAR(100) NOT NULL,
+    targetRegion VARCHAR(100),
+    targetCountry VARCHAR(100),
+    targetDemographics JSONB,
+    salesChannel VARCHAR(50), -- 'offline', 'online', 'omnichannel'
+    problemsToSolve TEXT,
+    productName VARCHAR(255),
+    productDescription TEXT,
+    uniqueSellingPoint TEXT,
+    keyFeatures TEXT,
+    competitiveAdvantage TEXT,
+    priceMin DECIMAL(10, 2),
+    pricePrimary DECIMAL(10, 2),
+    priceMax DECIMAL(10, 2),
+    researchGoals JSONB,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+CREATE TABLE searchIntent (
+    id SERIAL PRIMARY KEY,
+    keyword VARCHAR(255) NOT NULL,
+    region VARCHAR(100),
+    country VARCHAR(100),
+    intentType VARCHAR(50), -- 'informational', 'transactional', etc.
+    volume INT,
+    growthRate DECIMAL(6, 2),
+    intentDate DATE DEFAULT CURRENT_DATE);
+
+CREATE INDEX ON searchIntent (keyword);
+
+CREATE TABLE salesMetrics (
+    id SERIAL PRIMARY KEY,
+    category VARCHAR(100) NOT NULL,
+    region VARCHAR(100),
+    country VARCHAR(100),
+    revenue DECIMAL(14, 2),
+    unitsSold INT,
+    growthRate DECIMAL(6, 2),
+    metricDate DATE DEFAULT CURRENT_DATE);
+
+CREATE INDEX ON salesMetrics (category);
+
+CREATE TABLE competitors (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    region VARCHAR(100),
+    country VARCHAR(100),
+    priceMin DECIMAL(10, 2),
+    priceMax DECIMAL(10, 2),
+    strengths JSONB,
+    weaknesses JSONB,
+    sources JSONB,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+CREATE INDEX ON competitors (category);
+
+CREATE TABLE trendVelocity (
+    id SERIAL PRIMARY KEY,
+    category VARCHAR(100) NOT NULL,
+    region VARCHAR(100),
+    country VARCHAR(100),
+    velocityScore DECIMAL(8, 2),
+    velocityDate DATE DEFAULT CURRENT_DATE);
+
+CREATE INDEX ON trendVelocity (category);
+
+CREATE TABLE insightRuns (
+    id SERIAL PRIMARY KEY,
+    category VARCHAR(100) NOT NULL,
+    founderProfileId INT REFERENCES founderProfiles(id) ON DELETE SET NULL,
+    status VARCHAR(50) DEFAULT 'processing',
+    inputs JSONB,
+    outputs JSONB,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP);

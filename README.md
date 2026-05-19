@@ -26,7 +26,6 @@
 - Frontend: `http://localhost:30080`
 - API: `http://localhost:30080/api`
 
-
 ## How to stop
 1) Stop just the workloads (keep cluster):
    - `kubectl delete -k infra/k8s/frontend`
