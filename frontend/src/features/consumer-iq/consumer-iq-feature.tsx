@@ -83,32 +83,78 @@ type DashboardSection = (typeof navItems)[number]['id']
 
 export function ConsumerIQExperience() {
   const [isOnboarded, setIsOnboarded] = useState(false)
+  const chatPanelRef = useRef<PanelImperativeHandle>(null)
+  const [isChatOpen, setIsChatOpen] = useState(true)
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
+
+  const handleToggleChat = useCallback(() => {
+    if (isChatOpen) {
+      chatPanelRef.current?.collapse()
+      setIsChatOpen(false)
+      return
+    }
+
+    chatPanelRef.current?.expand()
+    setIsChatOpen(true)
+  }, [isChatOpen])
 
   if (!isOnboarded) {
     return <ConsumerIQOnboarding onComplete={() => setIsOnboarded(true)} />
   }
 
+  if (!isDesktop) {
+    return (
+      <main className="h-screen overflow-hidden bg-background text-foreground">
+        <ConsumerIQDashboard className="h-screen" />
+      </main>
+    )
+  }
+
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="h-screen overflow-hidden bg-background text-foreground">
       <ResizablePanelGroup
-        className="hidden min-h-screen lg:flex"
+        className="h-screen min-h-0"
         orientation="horizontal"
       >
-        <ResizablePanel defaultSize="68%" minSize="50%">
-          <ConsumerIQDashboard />
+        <ResizablePanel className="min-w-0" defaultSize="68%" minSize="46%">
+          <ConsumerIQDashboard className="h-screen" />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize="32%" maxSize="46%" minSize="28%">
-          <FounderChat />
+        <ResizablePanel
+          className="min-w-0"
+          collapsedSize="4%"
+          collapsible
+          defaultSize="32%"
+          maxSize="42%"
+          minSize="26%"
+          onResize={(panelSize) => {
+            setIsChatOpen(panelSize.asPercentage > 6)
+          }}
+          panelRef={chatPanelRef}
+        >
+          <FounderChat isOpen={isChatOpen} onToggle={handleToggleChat} />
         </ResizablePanel>
       </ResizablePanelGroup>
-
-      <div className="grid min-h-screen lg:hidden">
-        <ConsumerIQDashboard />
-        <FounderChat className="min-h-[720px] border-t" />
-      </div>
     </main>
   )
+}
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(() =>
+    typeof window === 'undefined' ? false : window.matchMedia(query).matches,
+  )
+
+  useEffect(() => {
+    const media = window.matchMedia(query)
+    const handleChange = () => setMatches(media.matches)
+
+    handleChange()
+    media.addEventListener('change', handleChange)
+
+    return () => media.removeEventListener('change', handleChange)
+  }, [query])
+
+  return matches
 }
 
 export function ConsumerIQOnboarding({
@@ -146,16 +192,18 @@ export function ConsumerIQOnboarding({
 
 export function ConsumerIQDashboard({ className }: { className?: string }) {
   const [active, setActive] = useState<DashboardSection>('dashboard')
+  const isNavDesktop = useMediaQuery('(min-width: 768px)')
   const ActiveIcon = navItems.find((item) => item.id === active)?.icon ?? Search
 
   return (
     <section
       className={cn(
-        'flex min-h-screen bg-background text-foreground',
+        'flex h-full min-h-0 overflow-hidden bg-background text-foreground',
         className,
       )}
     >
-      <aside className="hidden w-64 shrink-0 border-r bg-sidebar px-5 py-6 text-sidebar-foreground md:flex md:flex-col">
+      {isNavDesktop ? (
+      <aside className="flex h-full w-64 shrink-0 flex-col border-r bg-sidebar px-5 py-6 text-sidebar-foreground">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">ConsumerIQ</h1>
           <p className="mt-0.5 text-xs uppercase tracking-[0.16em] text-muted-foreground">
@@ -194,8 +242,9 @@ export function ConsumerIQDashboard({ className }: { className?: string }) {
           </Button>
         </div>
       </aside>
+      ) : null}
 
-      <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-14 items-center justify-between border-b px-5">
           <div className="relative w-full max-w-md">
             <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
@@ -221,8 +270,13 @@ export function ConsumerIQDashboard({ className }: { className?: string }) {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl px-5 py-8">
-          <div className="mb-7 flex items-start justify-between gap-5">
+        {!isNavDesktop ? (
+          <MobileSectionNav active={active} onChange={setActive} />
+        ) : null}
+
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="mx-auto w-full max-w-6xl px-5 py-8">
+          <div className="mb-7 flex flex-wrap items-start justify-between gap-5">
             <div>
               <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
                 Analysis <ChevronRight className="size-3" />
@@ -237,7 +291,7 @@ export function ConsumerIQDashboard({ className }: { className?: string }) {
                 {getSectionLabel(active)}
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
               <Button variant="outline">
                 <CalendarDays className="size-4" />
                 Last 30 Days
@@ -249,23 +303,35 @@ export function ConsumerIQDashboard({ className }: { className?: string }) {
             </div>
           </div>
 
-          {active === 'dashboard' && <MarketOverview />}
-          {active === 'pulse' && <DemandPulse />}
-          {active === 'persona' && <PersonaDecode />}
-          {active === 'competitor' && <CompetitorMirror />}
-          {active === 'compass' && <LaunchCompass />}
-          {active === 'settings' && <DataSettings />}
+          <div
+            className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-200"
+            key={active}
+          >
+            {active === 'dashboard' && <MarketOverview />}
+            {active === 'pulse' && <DemandPulse />}
+            {active === 'persona' && <PersonaDecode />}
+            {active === 'competitor' && <CompetitorMirror />}
+            {active === 'compass' && <LaunchCompass />}
+            {active === 'settings' && <DataSettings />}
+          </div>
+          </div>
         </main>
       </div>
     </section>
   )
 }
 
-function FounderChat({ className }: { className?: string }) {
-  const sidebarPanelRef = useRef<PanelImperativeHandle>(null)
+function FounderChat({
+  className,
+  isOpen,
+  onToggle,
+}: {
+  className?: string
+  isOpen: boolean
+  onToggle: () => void
+}) {
   const streamAbortRef = useRef(false)
   const pendingResponseTimeoutRef = useRef<number | null>(null)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [text, setText] = useState('')
   const [status, setStatus] = useState<ChatStatus>('ready')
   const [messages, setMessages] = useState<MessageType[]>(initialMessages)
@@ -417,17 +483,6 @@ function FounderChat({ className }: { className?: string }) {
     toast.info('Response stopped')
   }, [])
 
-  const handleToggleSidebar = useCallback(() => {
-    if (isSidebarOpen) {
-      sidebarPanelRef.current?.collapse()
-      setIsSidebarOpen(false)
-      return
-    }
-
-    sidebarPanelRef.current?.expand()
-    setIsSidebarOpen(true)
-  }, [isSidebarOpen])
-
   useEffect(
     () => () => {
       streamAbortRef.current = true
@@ -440,11 +495,11 @@ function FounderChat({ className }: { className?: string }) {
   )
 
   return (
-    <div className={cn('h-full min-h-screen bg-background', className)}>
+    <div className={cn('h-full min-h-0 bg-background', className)}>
       <ChatPanel
-        className="h-full min-h-screen"
-        isOpen={isSidebarOpen}
-        onToggle={handleToggleSidebar}
+        className="!h-full !min-h-0 transition-[width] duration-200 ease-out"
+        isOpen={isOpen}
+        onToggle={onToggle}
       >
         <div className="relative flex size-full min-h-0 flex-col divide-y overflow-hidden">
           <ChatConversation messages={messages} />
@@ -466,6 +521,42 @@ function FounderChat({ className }: { className?: string }) {
           </div>
         </div>
       </ChatPanel>
+    </div>
+  )
+}
+
+function MobileSectionNav({
+  active,
+  onChange,
+}: {
+  active: DashboardSection
+  onChange: (section: DashboardSection) => void
+}) {
+  return (
+    <div className="shrink-0 overflow-x-auto border-b bg-background px-4 py-3 md:hidden">
+      <div className="flex min-w-max gap-2">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = active === item.id
+
+          return (
+            <button
+              className={cn(
+                'inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors duration-150',
+                isActive
+                  ? 'bg-accent text-accent-foreground'
+                  : 'bg-card text-muted-foreground',
+              )}
+              key={item.id}
+              onClick={() => onChange(item.id)}
+              type="button"
+            >
+              <Icon className="size-4" />
+              {item.label}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -723,7 +814,7 @@ function GeneratingStep({ onComplete }: { onComplete: () => void }) {
 function MarketOverview() {
   return (
     <div className="grid gap-6">
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-4">
         <MetricCard
           label="Trend Velocity"
           status="+12% from last month"
@@ -739,7 +830,7 @@ function MarketOverview() {
         <MetricCard label="Market Gaps" status="High potential entry" title="3 Found" tone="danger" />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.55fr_1fr]">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] gap-6">
         <Panel title="Marketplace Pulse" subtitle="Real-time SKU tracking across platforms">
           <div className="mb-4 flex gap-2">
             {['Shopee', 'Lazada', 'TikTok'].map((item, index) => (
@@ -805,7 +896,7 @@ function MarketOverview() {
 
 function DemandPulse() {
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.55fr_0.75fr]">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,23rem),1fr))] gap-6">
       <Panel title="Trend Velocity Index" subtitle="Global aggregate interest momentum">
         <LineGraph />
         <div className="mt-8 flex items-end justify-between border-t pt-6">
@@ -887,7 +978,7 @@ function DemandPulse() {
 
 function PersonaDecode() {
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,23rem),1fr))] gap-6">
       <div className="rounded-xl bg-foreground p-8 text-background">
         <div className="flex items-center gap-2">
           <span className="rounded bg-background/15 px-2 py-1 text-[10px] font-semibold uppercase">
@@ -954,7 +1045,7 @@ function PersonaDecode() {
 function CompetitorMirror() {
   return (
     <div className="grid gap-6">
-      <div className="grid gap-6 xl:grid-cols-[1.6fr_0.8fr]">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,23rem),1fr))] gap-6">
         <Panel title="Search Share of Voice (SOV)">
           <SovGraph />
           <div className="mt-8 grid gap-4 sm:grid-cols-4">
@@ -1018,9 +1109,9 @@ function CompetitorMirror() {
 function LaunchCompass() {
   return (
     <div className="grid gap-6">
-      <div className="grid gap-6 xl:grid-cols-[1.45fr_0.7fr]">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,23rem),1fr))] gap-6">
         <Panel>
-          <div className="grid gap-8 md:grid-cols-[1fr_0.8fr]">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-8">
             <div>
               <span className="rounded bg-foreground px-2 py-1 text-[10px] font-semibold uppercase text-background">
                 AI Recommended Decision
@@ -1086,7 +1177,7 @@ function LaunchCompass() {
       </div>
 
       <Panel title="Channel Rollout Sequence" subtitle="Prioritized phases based on CAC efficiency">
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-4">
           {[
             ['1', 'Shopee Beta', 'Top 500 wishlist users'],
             ['2', 'Organic Search', 'SEO keyword injection'],
@@ -1111,7 +1202,7 @@ function LaunchCompass() {
         </div>
       </Panel>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_0.75fr]">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,23rem),1fr))] gap-6">
         <Panel title="Strategic Moat Analysis">
           <div className="grid gap-3">
             <MoatRow icon={<Lock />} label="Data Propriety" value="High" />
@@ -1141,7 +1232,7 @@ function LaunchCompass() {
 function DataSettings() {
   return (
     <div className="grid gap-6">
-      <div className="grid gap-6 xl:grid-cols-[0.65fr_1.4fr]">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,23rem),1fr))] gap-6">
         <Panel title="Network Health">
           <div className="grid gap-4 text-sm">
             <HealthRow label="Bright Data" value="99.9% Uptime" />
