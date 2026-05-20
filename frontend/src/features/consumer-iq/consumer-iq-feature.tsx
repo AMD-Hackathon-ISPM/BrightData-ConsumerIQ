@@ -6,13 +6,13 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
-  Circle,
   Compass,
   Database,
   Download,
   FileText,
   Globe2,
   LayoutDashboard,
+  LoaderCircle,
   Lock,
   MessageSquare,
   Search,
@@ -157,6 +157,43 @@ function useMediaQuery(query: string) {
   return matches
 }
 
+function AnimatedPage({
+  children,
+  className,
+  transitionKey,
+}: {
+  children: ReactNode
+  className?: string
+  transitionKey: string | number
+}) {
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    setIsVisible(false)
+
+    const firstFrame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => setIsVisible(true))
+    })
+
+    return () => window.cancelAnimationFrame(firstFrame)
+  }, [transitionKey])
+
+  return (
+    <div
+      className={cn(
+        'will-change-transform transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
+        isVisible
+          ? 'translate-y-0 scale-100 opacity-100 blur-0'
+          : 'translate-y-4 scale-[0.985] opacity-0 blur-[1px]',
+        className,
+      )}
+      key={transitionKey}
+    >
+      {children}
+    </div>
+  )
+}
+
 export function ConsumerIQOnboarding({
   onComplete,
 }: {
@@ -164,27 +201,20 @@ export function ConsumerIQOnboarding({
 }) {
   const [step, setStep] = useState(1)
 
-  useEffect(() => {
-    if (step !== 4) {
-      return
-    }
-
-    const timer = window.setTimeout(onComplete, 1800)
-    return () => window.clearTimeout(timer)
-  }, [onComplete, step])
-
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-6 py-10">
-        {step === 1 ? (
-          <SignupStep onNext={() => setStep(2)} />
-        ) : step === 2 ? (
-          <AnalysisStep onBack={() => setStep(1)} onNext={() => setStep(3)} />
-        ) : step === 3 ? (
-          <WhiteSpaceStep onBack={() => setStep(2)} onNext={() => setStep(4)} />
-        ) : (
-          <GeneratingStep onComplete={onComplete} />
-        )}
+        <AnimatedPage className="flex w-full justify-center" transitionKey={step}>
+          {step === 1 ? (
+            <SignupStep onNext={() => setStep(2)} />
+          ) : step === 2 ? (
+            <AnalysisStep onBack={() => setStep(1)} onNext={() => setStep(3)} />
+          ) : step === 3 ? (
+            <WhiteSpaceStep onBack={() => setStep(2)} onNext={() => setStep(4)} />
+          ) : (
+            <GeneratingStep onComplete={onComplete} />
+          )}
+        </AnimatedPage>
       </div>
     </main>
   )
@@ -219,7 +249,7 @@ export function ConsumerIQDashboard({ className }: { className?: string }) {
             return (
               <button
                 className={cn(
-                  'flex h-10 items-center gap-3 rounded-lg px-3 text-left text-sm transition-colors',
+                  'flex h-10 items-center gap-3 rounded-lg px-3 text-left text-sm transition-colors duration-200 ease-out',
                   isActive
                     ? 'bg-accent text-accent-foreground'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -303,17 +333,14 @@ export function ConsumerIQDashboard({ className }: { className?: string }) {
             </div>
           </div>
 
-          <div
-            className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-200"
-            key={active}
-          >
+          <AnimatedPage transitionKey={active}>
             {active === 'dashboard' && <MarketOverview />}
             {active === 'pulse' && <DemandPulse />}
             {active === 'persona' && <PersonaDecode />}
             {active === 'competitor' && <CompetitorMirror />}
             {active === 'compass' && <LaunchCompass />}
             {active === 'settings' && <DataSettings />}
-          </div>
+          </AnimatedPage>
           </div>
         </main>
       </div>
@@ -745,61 +772,158 @@ function WhiteSpaceStep({
 }
 
 function GeneratingStep({ onComplete }: { onComplete: () => void }) {
+  const [progress, setProgress] = useState(18)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    const firstFrame = window.requestAnimationFrame(() => setIsVisible(true))
+    const progressTimer = window.setInterval(() => {
+      setProgress((current) => {
+        if (current >= 93) {
+          window.clearInterval(progressTimer)
+          return 93
+        }
+
+        return Math.min(93, current + 5)
+      })
+    }, 180)
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame)
+      window.clearInterval(progressTimer)
+    }
+  }, [])
+
+  const processRows = [
+    'Establishing secure connection',
+    'Connecting API infrastructure',
+    'Syncing historical market data',
+    'Optimizing predictive algorithms',
+    'Running Bright Data synthesis',
+  ]
+  const activeIndex = Math.min(
+    processRows.length - 1,
+    Math.floor((progress / 100) * processRows.length),
+  )
+  const ringAngle = progress * 3.6
+
   return (
     <div className="w-full max-w-3xl text-center">
-      <ProgressBar value={100} />
-      <h1 className="mt-12 text-3xl font-semibold tracking-tight">
+      <ProgressBar value={progress} />
+      <h1
+        className={cn(
+          'mt-12 text-3xl font-semibold tracking-tight transition-all duration-500 ease-out',
+          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
+        )}
+      >
         Building your Intelligence Engine...
       </h1>
-      <p className="mx-auto mt-4 max-w-sm text-muted-foreground">
+      <p
+        className={cn(
+          'mx-auto mt-4 max-w-sm text-muted-foreground transition-all delay-100 duration-500 ease-out',
+          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
+        )}
+      >
         We're synthesizing your custom market parameters into a live,
         predictive data model.
       </p>
 
-      <div className="mx-auto mt-12 grid size-44 place-items-center rounded-full border-[18px] border-foreground border-l-muted">
-        <span className="text-3xl font-semibold">93%</span>
+      <div
+        className={cn(
+          'relative mx-auto mt-12 grid size-44 place-items-center transition-all delay-150 duration-700 ease-out will-change-transform',
+          isVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0',
+        )}
+      >
+        <div
+          className="absolute inset-0 rounded-full transition-all duration-500 ease-out"
+          style={{
+            background: `conic-gradient(var(--foreground) ${ringAngle}deg, var(--muted) ${ringAngle}deg 360deg)`,
+          }}
+        />
+        <div className="absolute inset-[18px] rounded-full bg-background" />
+        <div
+          className="absolute -inset-2 rounded-full border border-transparent border-t-foreground/80"
+          style={{ animation: 'spin 1.6s linear infinite' }}
+        />
+        <div
+          className="absolute inset-5 rounded-full border border-border/70"
+          style={{ animation: 'pulse 1.8s ease-in-out infinite' }}
+        />
+        <span className="relative text-3xl font-semibold">93%</span>
       </div>
 
-      <div className="mx-auto mt-10 max-w-xl rounded-xl border bg-card p-5 text-left">
+      <div
+        className={cn(
+          'mx-auto mt-10 max-w-xl rounded-xl border bg-card p-5 text-left transition-all delay-200 duration-500 ease-out',
+          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0',
+        )}
+      >
         <div className="mb-5 flex items-center justify-between">
           <p className="text-xs font-medium uppercase tracking-[0.22em]">
             System Processes
           </p>
-          <p className="font-mono text-xs">4/5 Active</p>
+          <p className="font-mono text-xs">{activeIndex + 1}/5 Active</p>
         </div>
-        {[
-          ['Establishing secure connection', 'DONE'],
-          ['Connecting API infrastructure', 'DONE'],
-          ['Syncing historical market data', 'DONE'],
-          ['Optimizing predictive algorithms', 'DONE'],
-          ['Running Bright Data synthesis', 'QUEUED'],
-        ].map(([label, status]) => (
+        {processRows.map((label, index) => {
+          const status =
+            progress >= 93 || index < activeIndex
+              ? 'DONE'
+              : index === activeIndex
+                ? 'RUNNING'
+                : 'QUEUED'
+
+          return (
           <div
-            className="flex items-center justify-between py-2 text-sm"
+            className={cn(
+              'flex items-center justify-between py-2 text-sm transition-all duration-500 ease-out',
+              isVisible ? 'translate-x-0 opacity-100' : '-translate-x-3 opacity-0',
+            )}
             key={label}
+            style={{ transitionDelay: `${250 + index * 90}ms` }}
           >
             <span className="flex items-center gap-3">
               {status === 'DONE' ? (
                 <CheckCircle2 className="size-4" />
               ) : (
-                <Circle className="size-4" />
+                <LoaderCircle
+                  className="size-4"
+                  style={{ animation: 'spin 1s linear infinite' }}
+                />
               )}
               {label}
             </span>
-            <span className="rounded bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">
+            <span
+              className={cn(
+                'rounded bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground',
+              )}
+              style={
+                status !== 'DONE'
+                  ? { animation: 'pulse 1.4s ease-in-out infinite' }
+                  : undefined
+              }
+            >
               {status}
             </span>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <Button
-        className="mt-9 h-12 min-w-56 bg-foreground text-background hover:bg-foreground/90"
+        className={cn(
+          'mt-9 h-12 min-w-56 bg-foreground text-background transition-all duration-300 hover:scale-[1.02] hover:bg-foreground/90 active:scale-[0.99]',
+          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
+        )}
         onClick={onComplete}
       >
         Launch Dashboard
       </Button>
-      <div className="mx-auto mt-7 grid max-w-xl gap-4 sm:grid-cols-2">
+      <div
+        className={cn(
+          'mx-auto mt-7 grid max-w-xl gap-4 transition-all delay-300 duration-500 ease-out sm:grid-cols-2',
+          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+        )}
+      >
         <MiniMetric icon={<Zap className="size-5" />} label="Speed" value="0.4s Latency" />
         <MiniMetric
           icon={<Database className="size-5" />}
@@ -1363,9 +1487,9 @@ function OnboardingShell({
 
 function ProgressBar({ value }: { value: number }) {
   return (
-    <div className="h-1 rounded-full bg-muted">
+    <div className="h-1 overflow-hidden rounded-full bg-muted">
       <div
-        className="h-full rounded-full bg-foreground"
+        className="h-full rounded-full bg-foreground transition-all duration-700 ease-out"
         style={{ width: `${value}%` }}
       />
     </div>
