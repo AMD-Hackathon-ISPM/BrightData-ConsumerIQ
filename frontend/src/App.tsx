@@ -1,7 +1,7 @@
-import { LlmChatFeature } from '@/features/llm-chat'
+import { ConsumerIQExperience } from '@/features/consumer-iq/consumer-iq-feature'
 
 function App() {
-  return <LlmChatFeature />
+  return <ConsumerIQExperience />
 }
 
 export default App
