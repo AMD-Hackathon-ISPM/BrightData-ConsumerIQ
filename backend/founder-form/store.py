@@ -1,17 +1,26 @@
 import json
 import os
 from typing import List, Optional
+from urllib.parse import urlparse
 import psycopg2
-from .models import FounderFormRecord
+from models import FounderFormRecord
 
 class FounderFormStore:
     def __init__(self) -> None:
         self.dbHost = os.getenv('POSTGRES_HOST', 'postgres')
-        self.dbPort = int(os.getenv('POSTGRES_PORT', '5432'))
+        self.dbPort = self.parsePort(os.getenv('POSTGRES_PORT', '5432'))
         self.dbName = os.getenv('POSTGRES_DB', 'consumeriq')
         self.dbUser = os.getenv('POSTGRES_USER', 'consumeriq')
         self.dbPassword = os.getenv('POSTGRES_PASSWORD', 'consumeriq')
         self.ensureSchema()
+
+    def parsePort(self, value: str) -> int:
+        if value.isdigit():
+            return int(value)
+        parsed = urlparse(value)
+        if parsed.port:
+            return parsed.port
+        return 5432
 
     def getConnection(self):
         return psycopg2.connect(

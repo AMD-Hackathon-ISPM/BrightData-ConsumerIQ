@@ -1,7 +1,14 @@
+import sys
+from pathlib import Path as FsPath
 from fastapi import APIRouter, HTTPException, Path
-from .models import FounderFormPayload, FounderFormRecord, FounderFormResponse
-from .service import FounderFormService
-from .store import FounderFormStore
+
+basePath = FsPath(__file__).parent
+if str(basePath) not in sys.path:
+    sys.path.insert(0, str(basePath))
+
+from models import FounderFormPayload, FounderFormRecord, FounderFormResponse
+from service import FounderFormService
+from store import FounderFormStore
 
 store = FounderFormStore()
 service = FounderFormService(store)

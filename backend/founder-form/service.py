@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
-from .models import FounderFormPayload, FounderFormRecord
-from .store import FounderFormStore
+from models import FounderFormPayload, FounderFormRecord
+from store import FounderFormStore
 
 class FounderFormService:
     def __init__(self, store: FounderFormStore) -> None:

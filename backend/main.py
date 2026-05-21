@@ -1,4 +1,6 @@
 import importlib.util
+import sys
+import types
 from pathlib import Path as FsPath
 from fastapi import FastAPI, Path
 from celery.result import AsyncResult
@@ -8,9 +10,17 @@ app = FastAPI(title='ConsumerIQ API')
 
 def loadFounderFormRouter():
     modulePath = FsPath(__file__).parent / 'founder-form' / 'router.py'
-    spec = importlib.util.spec_from_file_location('founderFormRouter', modulePath)
+    packageName = 'founderForm'
+    moduleName = f'{packageName}.router'
+    if packageName not in sys.modules:
+        packageModule = types.ModuleType(packageName)
+        packageModule.__path__ = [str(modulePath.parent)]
+        sys.modules[packageName] = packageModule
+    spec = importlib.util.spec_from_file_location(moduleName, modulePath)
     module = importlib.util.module_from_spec(spec)
+    module.__package__ = packageName
     if spec and spec.loader:
+        sys.modules[moduleName] = module
         spec.loader.exec_module(module)
         return module.router
     raise RuntimeError('Unable to load founder form router')
