@@ -328,7 +328,7 @@ function SectionFade({
   return (
     <div
       className={cn(
-        "transition-all duration-300 ease-out",
+        "min-w-0 transition-all duration-300 ease-out",
         isVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
         className
       )}
@@ -429,6 +429,31 @@ export function ConsumerIQDashboard({
             "geo distribution",
           ],
         },
+        {
+          label: "AI Recommendation",
+          keywords: [
+            "ai recommendation",
+            "amazon",
+            "temu",
+            "channel recommendation",
+            "best channel",
+            "ad placement",
+            "sponsored products",
+            "coupon feed",
+          ],
+        },
+        {
+          label: "Product Opportunity Matrix",
+          keywords: [
+            "product opportunity",
+            "opportunity matrix",
+            "tinted sunscreen",
+            "acne spot gel",
+            "peptide lip treatment",
+            "demand index",
+            "competitor saturation",
+          ],
+        },
       ],
     },
     {
@@ -447,7 +472,16 @@ export function ConsumerIQDashboard({
         },
         {
           label: "AI Recommendation",
-          keywords: ["recommendation", "channel", "advertising", "ads"],
+          keywords: [
+            "recommendation",
+            "channel",
+            "advertising",
+            "ads",
+            "serp",
+            "short video",
+            "micro segmentation",
+            "q4 ad spend",
+          ],
         },
         {
           label: "Marketplace Share",
@@ -469,6 +503,17 @@ export function ConsumerIQDashboard({
             "intent analysis",
           ],
         },
+        {
+          label: "Top Rising Formats",
+          keywords: [
+            "top rising formats",
+            "hydrating serum",
+            "ceramide barrier",
+            "sensitive skin spf",
+            "reach",
+            "penetration",
+          ],
+        },
       ],
     },
     {
@@ -476,28 +521,52 @@ export function ConsumerIQDashboard({
       suggestions: [
         {
           label: "Persona Decode",
-          keywords: ["persona", "customer", "audience", "segment", "profile"],
-        },
-        {
-          label: "Pain Point Clusters",
-          keywords: ["pain point", "clusters", "friction"],
-        },
-        {
-          label: "Willingness-to-Pay Range",
           keywords: [
-            "willingness-to-pay",
-            "wtp",
-            "price elasticity",
-            "elasticity",
+            "persona",
+            "customer",
+            "audience",
+            "segment",
+            "profile",
+            "market persona",
+            "stressed young professional",
+            "budget-conscious trend seeker",
+            "family care gatekeeper",
           ],
         },
         {
-          label: "Demographic Mix",
+          label: "STP",
           keywords: [
-            "demographic mix",
-            "demographics",
-            "age median",
-            "primary region",
+            "stp",
+            "segmentation",
+            "targeting",
+            "positioning",
+            "geographic",
+            "demographic",
+            "psychographic",
+            "behavioral",
+          ],
+        },
+        {
+          label: "TAM / SAM / SOM",
+          keywords: [
+            "tam",
+            "sam",
+            "som",
+            "market sizing",
+            "total addressable market",
+            "serviceable available market",
+            "serviceable obtainable market",
+          ],
+        },
+        {
+          label: "AI Recommendation",
+          keywords: [
+            "ai recommendation",
+            "main channel",
+            "core message",
+            "kpi focus",
+            "repeat purchase",
+            "urban gen z",
           ],
         },
       ],
@@ -507,19 +576,75 @@ export function ConsumerIQDashboard({
       suggestions: [
         {
           label: "Competitor Mirror",
-          keywords: ["competitor", "benchmark", "mirror", "matrix"],
+          keywords: [
+            "competitor",
+            "benchmark",
+            "mirror",
+            "matrix",
+            "amazon",
+            "temu",
+            "cerave",
+            "cosrx",
+            "the ordinary",
+          ],
         },
         {
-          label: "Price Alerts",
-          keywords: ["price", "price alert", "alert", "pricing"],
+          label: "AI Recommendation",
+          keywords: [
+            "ai recommendation",
+            "trust gap",
+            "amazon",
+            "temu",
+            "clinical proof",
+            "bundle value",
+            "export strategy",
+          ],
         },
         {
-          label: "Search Share of Voice (SOV)",
-          keywords: ["sov", "share of voice", "search share of voice"],
+          label: "Key Advantage",
+          keywords: [
+            "key advantage",
+            "proof-led",
+            "barrier repair",
+            "positioning",
+            "clinical proof",
+            "bundle value",
+          ],
         },
         {
-          label: "Competitor Matrix",
-          keywords: ["competitor matrix", "matrix", "benchmark grid"],
+          label: "Pricing Advice",
+          keywords: [
+            "pricing advice",
+            "price",
+            "pricing",
+            "amazon core sku",
+            "starter bundles",
+            "under 15",
+          ],
+        },
+        {
+          label: "Top Competitor Matrix",
+          keywords: [
+            "top competitor matrix",
+            "competitor matrix",
+            "matrix",
+            "benchmark grid",
+            "hero sku",
+            "avg price",
+            "promo intensity",
+            "monthly sales",
+            "rating reviews",
+          ],
+        },
+        {
+          label: "Avg Sales Movement",
+          keywords: [
+            "avg sales movement",
+            "sales movement",
+            "amazon avg",
+            "temu avg",
+            "sales chart",
+          ],
         },
       ],
     },
@@ -534,23 +659,73 @@ export function ConsumerIQDashboard({
             "product-market fit",
             "pmf",
             "expansion",
+            "amazon",
+            "temu",
+            "los angeles",
+            "dallas",
+            "phoenix",
           ],
         },
         {
-          label: "Pricing Strategy",
-          keywords: ["pricing", "price strategy", "strategy"],
+          label: "Interactive Heatmap",
+          keywords: [
+            "interactive heatmap",
+            "heatmap",
+            "demand area",
+            "opportunity expansion",
+            "sales weighted demand",
+            "competitor position",
+            "scatter",
+          ],
         },
         {
-          label: "Channel Rollout Sequence",
-          keywords: ["channel rollout", "rollout sequence", "cac", "sequence"],
+          label: "City Sales Signals",
+          keywords: [
+            "city sales signals",
+            "city sales",
+            "sales signals",
+            "amazon",
+            "temu",
+            "los angeles",
+            "new york",
+            "dallas",
+            "phoenix",
+          ],
         },
         {
-          label: "Strategic Moat Analysis",
-          keywords: ["moat analysis", "strategic moat", "moat"],
+          label: "AI Recommendation",
+          keywords: [
+            "ai recommendation",
+            "los angeles",
+            "amazon",
+            "temu",
+            "dallas",
+            "phoenix",
+            "sponsored products",
+            "creator review",
+            "coupon bundles",
+          ],
         },
         {
-          label: "Intelligence Feed",
-          keywords: ["intelligence feed", "signals", "market signals"],
+          label: "Amazon GTM",
+          keywords: [
+            "amazon gtm",
+            "gtm",
+            "amazon ads",
+            "marketplace agency",
+            "maya chen",
+            "retail media",
+          ],
+        },
+        {
+          label: "Temu Expansion",
+          keywords: [
+            "temu expansion",
+            "creator commerce",
+            "coupon placement",
+            "ethan brooks",
+            "marketplace ops",
+          ],
         },
       ],
     },
@@ -594,6 +769,7 @@ export function ConsumerIQDashboard({
     entry.suggestions.map((suggestion) => ({
       section: entry.section,
       label: suggestion.label,
+      description: undefined,
       keywords: suggestion.keywords,
     }))
   );
@@ -607,9 +783,36 @@ export function ConsumerIQDashboard({
     })
   );
   const filteredSuggestions = queryTokens.length
-    ? searchSuggestions.filter((entry) =>
-        queryTokens.every((token) => entry.searchText.includes(token))
-      )
+    ? searchSuggestions
+        .map((entry) => {
+          const labelText = entry.label.toLowerCase();
+          const sectionText =
+            navItems
+              .find((item) => item.id === entry.section)
+              ?.label.toLowerCase() ?? "";
+          const score = queryTokens.reduce((total, token) => {
+            if (labelText === token) {
+              return total + 10;
+            }
+            if (labelText.startsWith(token)) {
+              return total + 8;
+            }
+            if (labelText.includes(token)) {
+              return total + 6;
+            }
+            if (sectionText.includes(token)) {
+              return total + 4;
+            }
+            if (entry.searchText.includes(token)) {
+              return total + 2;
+            }
+            return total;
+          }, 0);
+
+          return { ...entry, score };
+        })
+        .filter((entry) => entry.score > 0)
+        .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
     : [];
 
   const handleSearchSubmit = (event?: React.FormEvent<HTMLFormElement>) => {
@@ -628,7 +831,8 @@ export function ConsumerIQDashboard({
     }
 
     toast.info("No matching section found", {
-      description: "Try keywords like “persona”, “competitor”, or “launch”.",
+      description:
+        "Try keywords like persona, competitor, launch, Amazon, Temu, or heatmap.",
     });
   };
 
@@ -731,20 +935,23 @@ export function ConsumerIQDashboard({
                   {filteredSuggestions.length > 0 ? (
                     filteredSuggestions.slice(0, 6).map((entry) => (
                       <button
-                        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left hover:bg-muted"
+                        className="flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-left hover:bg-muted"
                         key={`${entry.section}-${entry.label}`}
                         onClick={() =>
                           handleSearchSelect(entry.section, entry.label)
                         }
                         type="button"
                       >
-                        <span>
-                          {
-                            navItems.find((item) => item.id === entry.section)
-                              ?.label
-                          }
-                          {" > "}
-                          {entry.label}
+                        <span className="min-w-0 truncate">
+                          <span className="text-muted-foreground">
+                            {
+                              navItems.find(
+                                (item) => item.id === entry.section
+                              )?.label
+                            }
+                            {" > "}
+                          </span>
+                          <span>{entry.label}</span>
                         </span>
                       </button>
                     ))
@@ -774,19 +981,19 @@ export function ConsumerIQDashboard({
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="w-full px-3 py-3 sm:px-4 lg:px-4 xl:px-5">
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-              <div>
+          <div className="min-w-0 w-full px-3 py-3 sm:px-4 lg:px-4 xl:px-5">
+            <div className="mb-4 flex min-w-0 flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
                 <p className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
                   Analysis <ChevronRight className="size-3" />
                   <span className="font-medium text-foreground">
                     {navItems.find((item) => item.id === active)?.label}
                   </span>
                 </p>
-                <h2 className="text-2xl font-semibold tracking-tight">
+                <h2 className="break-words text-2xl font-semibold tracking-tight">
                   {getSectionTitle(active)}
                 </h2>
-                <p className="mt-1.5 max-w-3xl text-sm text-muted-foreground">
+                <p className="mt-1.5 max-w-3xl break-words text-sm text-muted-foreground">
                   {getSectionLabel(active)}
                 </p>
               </div>
@@ -2248,7 +2455,7 @@ function ProductOpportunityMatrix() {
   ];
 
   return (
-    <section className="rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
+    <section className="min-w-0 overflow-hidden rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold">Product Opportunity Matrix</h3>
@@ -2566,11 +2773,73 @@ function CompetitorMirror() {
   };
 
   return (
-    <div className="grid gap-3">
+    <div className="grid min-w-0 gap-3">
       <CompetitorAiRecommendation />
 
       <Panel title="Top Competitor Matrix">
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="grid gap-3 md:hidden">
+          {competitorRows.map((row) => (
+            <article
+              className="min-w-0 rounded-lg border bg-muted/25 p-3"
+              key={row.sku}
+            >
+              <div className="min-w-0">
+                <p className="font-semibold">{row.brand}</p>
+                <p className="break-words text-xs text-muted-foreground">
+                  {row.sku}
+                </p>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-md border bg-card p-2">
+                  <p className="text-xs text-muted-foreground">Avg Price</p>
+                  <p className="font-semibold">{row.avgPrice}</p>
+                  <p
+                    className={cn(
+                      "text-xs",
+                      row.priceDelta.startsWith("+")
+                        ? "text-chart-4"
+                        : "text-destructive"
+                    )}
+                  >
+                    {row.priceDelta}
+                  </p>
+                </div>
+                <div className="rounded-md border bg-card p-2">
+                  <p className="text-xs text-muted-foreground">Sales</p>
+                  <p className="font-semibold">{row.monthlySales}</p>
+                  <p
+                    className={cn(
+                      "text-xs",
+                      row.salesDelta.startsWith("+")
+                        ? "text-chart-4"
+                        : "text-destructive"
+                    )}
+                  >
+                    {row.salesDelta}
+                  </p>
+                </div>
+                <div className="rounded-md border bg-card p-2">
+                  <p className="text-xs text-muted-foreground">Promo</p>
+                  <div className="mt-2 h-2 rounded-full bg-muted">
+                    <span
+                      className={cn(
+                        "block h-full rounded-full",
+                        promoBarClasses[row.promoLevel] ?? "w-1/2 bg-foreground"
+                      )}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs">{row.promoIntensity}</p>
+                </div>
+                <div className="rounded-md border bg-card p-2">
+                  <p className="text-xs text-muted-foreground">Rating</p>
+                  <p className="font-semibold">{row.rating}</p>
+                  <p className="text-xs text-muted-foreground">{row.reviews}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto rounded-lg border md:block">
           <div className="min-w-[52rem]">
             <div className="grid grid-cols-[1.5fr_0.8fr_0.8fr_0.9fr_0.9fr] border-b bg-muted/40 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               <span>Brand / Hero SKU</span>
@@ -2690,14 +2959,14 @@ function CompetitorAiRecommendation() {
           <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-chart-5/10 text-chart-5">
             <Sparkles className="size-5" />
           </span>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               AI Recommendation
             </p>
-            <h3 className="mt-2 text-lg font-semibold">
+            <h3 className="mt-2 break-words text-lg font-semibold">
               Win by owning the trust gap between Amazon and Temu.
             </h3>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+            <p className="mt-3 max-w-3xl break-words text-sm leading-6 text-muted-foreground">
               Competitors are either credible but expensive on Amazon, or cheap
               but low-trust on Temu. Position the product as a clinically clear,
               affordable barrier-repair routine with enough proof for Amazon and
@@ -2705,7 +2974,7 @@ function CompetitorAiRecommendation() {
             </p>
           </div>
         </div>
-        <Button className="shrink-0 bg-foreground text-background hover:bg-foreground/90">
+        <Button className="h-auto w-full shrink-0 justify-center whitespace-normal bg-foreground px-4 py-2 text-center text-background hover:bg-foreground/90 sm:w-auto">
           Export Strategy
           <ArrowRight className="size-4" />
         </Button>
@@ -2713,12 +2982,15 @@ function CompetitorAiRecommendation() {
 
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
         {items.map((item) => (
-          <article className="rounded-lg border bg-muted/25 p-3" key={item.label}>
+          <article
+            className="min-w-0 rounded-lg border bg-muted/25 p-3"
+            key={item.label}
+          >
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {item.label}
             </p>
-            <p className="mt-2 font-semibold">{item.value}</p>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            <p className="mt-2 break-words font-semibold">{item.value}</p>
+            <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">
               {item.detail}
             </p>
           </article>
@@ -2730,8 +3002,8 @@ function CompetitorAiRecommendation() {
 
 function LaunchCompass() {
   return (
-    <div className="grid gap-3">
-      <div className="grid gap-3 xl:grid-cols-[1.5fr_0.9fr]">
+    <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden">
+      <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden xl:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)]">
         <Panel
           title="Interactive Heatmap"
           subtitle="Demand area by sales and expansion opportunity by competitor position"
@@ -2794,34 +3066,42 @@ function LaunchHeatmap() {
   };
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap gap-2 text-xs">
-        <span className="rounded-full border bg-muted/30 px-3 py-1 font-medium">
+    <div className="grid w-full min-w-0 max-w-full gap-4 overflow-x-hidden">
+      <div className="flex min-w-0 flex-wrap gap-2 text-xs">
+        <span className="w-full max-w-full break-words rounded-full border bg-muted/30 px-3 py-1 font-medium sm:w-auto">
           Demand Area: sales-weighted demand
         </span>
-        <span className="rounded-full border bg-chart-5/10 px-3 py-1 font-medium text-chart-5">
+        <span className="w-full max-w-full break-words rounded-full border bg-chart-5/10 px-3 py-1 font-medium text-chart-5 sm:w-auto">
           Opportunity Expansion: lower competitor pressure
         </span>
       </div>
-      <ChartContainer className="h-64 w-full" config={chartConfig}>
-        <ScatterChart margin={{ bottom: 12, left: 0, right: 18, top: 12 }}>
+      <div className="w-full min-w-0 max-w-full overflow-hidden">
+        <ChartContainer
+          className="h-56 w-full min-w-0 max-w-full overflow-hidden sm:h-64"
+          config={chartConfig}
+          initialDimension={{ height: 224, width: 260 }}
+        >
+          <ScatterChart margin={{ bottom: 18, left: -14, right: 4, top: 10 }}>
           <CartesianGrid />
           <XAxis
             dataKey="demand"
+            ticks={[50, 65, 80, 95]}
             name="Demand"
             tickLine={false}
             axisLine={false}
             label={{
               value: "Demand Area",
               position: "insideBottom",
-              offset: -8,
+              offset: -10,
             }}
             type="number"
             domain={[50, 100]}
           />
           <YAxis
             dataKey="expansion"
+            ticks={[50, 65, 80, 100]}
             name="Expansion"
+            width={30}
             tickLine={false}
             axisLine={false}
             type="number"
@@ -2855,8 +3135,9 @@ function LaunchHeatmap() {
             fill="var(--chart-5)"
             name="Temu"
           />
-        </ScatterChart>
-      </ChartContainer>
+          </ScatterChart>
+        </ChartContainer>
+      </div>
     </div>
   );
 }
@@ -2890,24 +3171,27 @@ function LaunchCitySales() {
   ];
 
   return (
-    <div className="grid gap-3">
+    <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden">
       {rows.map((row) => (
-        <div className="rounded-lg border bg-muted/25 p-3" key={row.city}>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-semibold">{row.city}</p>
+        <div
+          className="w-full min-w-0 max-w-full overflow-hidden rounded-lg border bg-muted/25 p-3"
+          key={row.city}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="break-words font-semibold">{row.city}</p>
               <p className="text-xs text-muted-foreground">{row.signal}</p>
             </div>
             <span className="rounded bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]">
               Sales
             </span>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-            <div className="rounded-md border bg-card p-2">
+          <div className="mt-3 grid w-full min-w-0 max-w-full gap-2 text-sm sm:grid-cols-2">
+            <div className="min-w-0 rounded-md border bg-card p-2">
               <p className="text-xs text-muted-foreground">Amazon</p>
               <p className="font-semibold">{row.amazon}</p>
             </div>
-            <div className="rounded-md border bg-card p-2">
+            <div className="min-w-0 rounded-md border bg-card p-2">
               <p className="text-xs text-muted-foreground">Temu</p>
               <p className="font-semibold">{row.temu}</p>
             </div>
@@ -2921,20 +3205,20 @@ function LaunchCitySales() {
 function LaunchAiRecommendation() {
   return (
     <Panel>
-      <div className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
-        <div className="flex items-start gap-3">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[1fr_0.8fr]">
+        <div className="flex min-w-0 items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-chart-5/10 text-chart-5">
             <Sparkles className="size-5" />
           </span>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               AI Recommendation
             </p>
-            <h3 className="mt-2 text-xl font-semibold">
+            <h3 className="mt-2 break-words text-xl font-semibold">
               Start in Los Angeles on Amazon, then expand Temu into Dallas and
               Phoenix.
             </h3>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            <p className="mt-3 break-words text-sm leading-6 text-muted-foreground">
               Los Angeles has the strongest Amazon sales density and enough
               competitor distance to validate premium positioning. Use Amazon
               Sponsored Products and creator review seeding first. Once review
@@ -2957,12 +3241,12 @@ function LaunchAiRecommendation() {
               "Ethan Brooks - Marketplace ops, example.temu@agency.test",
             ],
           ].map(([title, firm, contact]) => (
-            <article className="rounded-lg border bg-muted/25 p-3" key={title}>
+            <article className="min-w-0 rounded-lg border bg-muted/25 p-3" key={title}>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 {title}
               </p>
-              <p className="mt-2 font-semibold">{firm}</p>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              <p className="mt-2 break-words font-semibold">{firm}</p>
+              <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">
                 {contact}
               </p>
             </article>
@@ -3251,10 +3535,12 @@ function Panel({
   return (
     <section className="rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
       {title ? (
-        <div className="mb-3">
-          <h3 className="font-semibold">{title}</h3>
+        <div className="mb-3 min-w-0">
+          <h3 className="break-words font-semibold">{title}</h3>
           {subtitle ? (
-            <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+            <p className="mt-1 break-words text-sm text-muted-foreground">
+              {subtitle}
+            </p>
           ) : null}
         </div>
       ) : null}
