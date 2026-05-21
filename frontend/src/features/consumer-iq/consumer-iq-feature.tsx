@@ -2,8 +2,6 @@ import { nanoid } from 'nanoid'
 import {
   ArrowRight,
   BarChart3,
-  Bell,
-  CalendarDays,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -40,6 +38,11 @@ import { toast } from 'sonner'
 import type { PromptInputMessage } from '@/components/ai-elements/prompt-input'
 import { Button } from '@/components/ui/button'
 import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart'
+import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -69,6 +72,21 @@ import { initialMessages, suggestions } from '@/features/llm-chat/data/chat-cont
 import { buildMockResponse, delay } from '@/features/llm-chat/lib/mock-streaming'
 import type { ChatStatus, MessageType } from '@/features/llm-chat/types'
 import { cn } from '@/lib/utils'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  Scatter,
+  ScatterChart,
+  XAxis,
+  YAxis,
+  ZAxis,
+} from 'recharts'
 
 const STREAM_FRAME_MS = 16
 const STREAM_CHARS_PER_FRAME = 8
@@ -327,7 +345,6 @@ export function ConsumerIQDashboard({
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const ActiveIcon = navItems.find((item) => item.id === active)?.icon ?? Search
 
   const searchIndex: Array<{
     section: DashboardSection
@@ -681,41 +698,31 @@ export function ConsumerIQDashboard({
 
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           <div className="mx-auto w-full max-w-6xl px-5 py-8">
-          <div className="mb-7 flex flex-wrap items-start justify-between gap-5">
-            <div>
-              <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-                Analysis <ChevronRight className="size-3" />
-                <span className="font-medium text-foreground">
-                  {navItems.find((item) => item.id === active)?.label}
-                </span>
-              </p>
-              <h2 className="text-3xl font-semibold tracking-tight">
-                {getSectionTitle(active)}
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                {getSectionLabel(active)}
-              </p>
+            <div className="mb-7 flex flex-wrap items-start justify-between gap-5">
+              <div>
+                <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                  Analysis <ChevronRight className="size-3" />
+                  <span className="font-medium text-foreground">
+                    {navItems.find((item) => item.id === active)?.label}
+                  </span>
+                </p>
+                <h2 className="text-3xl font-semibold tracking-tight">
+                  {getSectionTitle(active)}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                  {getSectionLabel(active)}
+                </p>
+              </div>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <Button variant="outline">
-                <CalendarDays className="size-4" />
-                Last 30 Days
-              </Button>
-              <Button className="bg-foreground text-background hover:bg-foreground/90">
-                <ActiveIcon className="size-4" />
-                Analyze
-              </Button>
-            </div>
-          </div>
 
-          <SectionFade transitionKey={active}>
-            {active === 'dashboard' && <MarketOverview />}
-            {active === 'pulse' && <DemandPulse />}
-            {active === 'persona' && <PersonaDecode />}
-            {active === 'competitor' && <CompetitorMirror />}
-            {active === 'compass' && <LaunchCompass />}
-            {active === 'settings' && <DataSettings />}
-          </SectionFade>
+            <SectionFade transitionKey={active}>
+              {active === 'dashboard' && <MarketOverview />}
+              {active === 'pulse' && <DemandPulse />}
+              {active === 'persona' && <PersonaDecode />}
+              {active === 'competitor' && <CompetitorMirror />}
+              {active === 'compass' && <LaunchCompass />}
+              {active === 'settings' && <DataSettings />}
+            </SectionFade>
           </div>
         </main>
       </div>
@@ -1988,19 +1995,7 @@ function DemandPulse() {
       </Panel>
 
       <Panel title="Marketplace Share" subtitle="Dominance by platform segment">
-        <div className="flex items-center gap-8">
-          <div className="grid size-36 place-items-center rounded-full border-[18px] border-foreground border-l-muted">
-            <div className="text-center">
-              <p className="text-2xl font-semibold">64%</p>
-              <p className="text-[10px] uppercase tracking-[0.16em]">Leader</p>
-            </div>
-          </div>
-          <div className="grid flex-1 gap-3 text-sm">
-            <Legend label="Shopee" value="64.2%" />
-            <Legend label="Tokopedia" value="22.8%" muted />
-            <Legend label="TikTok Shop" value="13.0%" muted />
-          </div>
-        </div>
+        <PlatformShareChart />
       </Panel>
 
       <div className="rounded-xl bg-foreground p-6 text-background">
@@ -2035,65 +2030,208 @@ function DemandPulse() {
 }
 
 function PersonaDecode() {
+  const personaCards = [
+    {
+      name: 'Stressed Young Professional',
+      priority: 'High Priority',
+      description:
+        'Urban Gen Z women aged 18-26 who prioritize reliable daily hair solutions, value affordability, and respond to barrier-repair claims.',
+      tags: ['Age 18-26', 'Urban Indonesia', 'Value Seeking'],
+    },
+    {
+      name: 'Budget-Conscious Trend Seeker',
+      priority: 'Medium Priority',
+      description:
+        'Early adopters who follow social trends and switch brands quickly when price/value feels right.',
+      tags: ['Age 19-27', 'Social-First', 'Deal Hunting'],
+    },
+    {
+      name: 'Family Care Gatekeeper',
+      priority: 'Growth Priority',
+      description:
+        'Household decision makers who prefer gentle daily solutions with proven safety and easy availability.',
+      tags: ['Age 28-40', 'Family Focused', 'Safety First'],
+    },
+  ]
+
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,23rem),1fr))] gap-6">
-      <div className="rounded-xl bg-foreground p-8 text-background">
-        <div className="flex items-center gap-2">
-          <span className="rounded bg-background/15 px-2 py-1 text-[10px] font-semibold uppercase">
-            Target Segment
-          </span>
-          <span className="size-2 rounded-full bg-chart-4" />
-          <span className="text-xs">High Priority</span>
-        </div>
-        <h3 className="mt-8 text-2xl font-semibold">Stressed Young Professional</h3>
-        <p className="mt-4 max-w-xl text-sm leading-7 opacity-90">
-          High-income urban buyers prioritize trustworthy efficacy over lowest
-          price. They react strongly to barrier repair claims and are likely to
-          repurchase premium hydrating products every 6-8 weeks.
-        </p>
-        <div className="mt-24 grid grid-cols-3 gap-5">
-          <SmallStat label="Market Size" value="1.2M" />
-          <SmallStat label="Avg. LTV" value="$4.8K" />
-          <SmallStat label="Churn Risk" value="12.4%" />
-        </div>
+    <div className="grid gap-6">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,1fr)]">
+        <Panel title="User Persona" subtitle="Market Persona">
+          <div className="max-h-[560px] overflow-y-auto pr-2">
+            <div className="grid gap-6">
+              {personaCards.map((persona) => (
+                <div className="grid gap-4 rounded-xl border bg-card p-4" key={persona.name}>
+                  <div className="flex h-40 w-full items-center justify-center rounded-xl border bg-muted/40 text-xs text-muted-foreground">
+                    Image generation optional
+                  </div>
+                  <div className="grid gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h3 className="text-lg font-semibold">{persona.name}</h3>
+                      <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                        {persona.priority}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {persona.description}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                    {persona.tags.map((tag) => (
+                      <span className="rounded-full border px-3 py-1" key={tag}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="STP" subtitle="Segmentation, Targeting, Positioning">
+          <div className="grid gap-4">
+            <div className="rounded-lg border bg-muted/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Segmentation
+              </p>
+              <p className="mt-2 text-sm">
+                Urban Gen Z women in Indonesia seeking affordable daily hair
+                solutions with practical benefits.
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Targeting
+              </p>
+              <p className="mt-2 text-sm">
+                Price-sensitive consumers who buy shampoo frequently and are open
+                to switching brands that feel trustworthy and convenient.
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Positioning
+              </p>
+              <p className="mt-2 text-sm">
+                A reliable, affordable daily shampoo that solves dryness and
+                hair damage without premium price tradeoffs.
+              </p>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3">
+            {[
+              {
+                title: 'Geographic',
+                text:
+                  'Urban Indonesian cities with spillover from metros, high humidity, and pollution exposure.',
+              },
+              {
+                title: 'Demographic',
+                text:
+                  'Women, Gen Z (18-26), students to early-career professionals.',
+              },
+              {
+                title: 'Psychographic',
+                text:
+                  'Practical, budget-conscious, convenience oriented, value reliable daily results.',
+              },
+              {
+                title: 'Behavioral',
+                text:
+                  'High usage frequency, low switching cost, open to social recommendations.',
+              },
+            ].map((item) => (
+              <details
+                className="group rounded-lg border bg-muted/40 p-4 transition-all duration-200 ease-out open:bg-card"
+                key={item.title}
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold">
+                  <span>{item.title}</span>
+                  <span className="text-xs text-muted-foreground transition-transform duration-200 group-open:rotate-180">
+                    ▼
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {item.text}
+                </p>
+              </details>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel title="TAM / SAM / SOM" subtitle="Market Sizing">
+          <div className="grid gap-4">
+            <div className="rounded-lg border bg-muted/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                TAM
+              </p>
+              <p className="mt-2 text-2xl font-semibold">37,032,414</p>
+              <p className="mt-1 text-xs text-muted-foreground">Total addressable market</p>
+            </div>
+            <div className="rounded-lg border bg-muted/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                SAM
+              </p>
+              <p className="mt-2 text-2xl font-semibold">21,775,060</p>
+              <p className="mt-1 text-xs text-muted-foreground">Serviceable available market</p>
+            </div>
+            <div className="rounded-lg border bg-muted/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                SOM
+              </p>
+              <p className="mt-2 text-2xl font-semibold">1,307,407</p>
+              <p className="mt-1 text-xs text-muted-foreground">Serviceable obtainable market</p>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 text-sm text-muted-foreground">
+            <div className="rounded-lg border bg-muted/40 p-4">
+              All Women Gen Z in Indonesia (BPS, 2025)
+            </div>
+            <div className="rounded-lg border bg-muted/40 p-4">
+              Urban Gen Z women in Indonesia
+            </div>
+            <div className="rounded-lg border bg-muted/40 p-4">
+              The new attainable loyal segment for Sunsilk
+            </div>
+            <div className="rounded-lg border bg-muted/40 p-4 text-xs">
+              Sunsilk can tap into an attainable market of 1.3 million urban Gen Z women
+              in Indonesia who seek affordable and flexible solutions for daily hair problems.
+            </div>
+          </div>
+        </Panel>
       </div>
 
-      <Panel title="Pain Point Clusters">
-        <div className="grid gap-4">
-          {[
-            ['AC Dehydration', '88% mention dry office skin by 4 PM', 'Major', 88],
-            ['Barrier Damage', 'Users switch between 4+ actives per week', 'Mid', 67],
-            ['Packaging Leakage', 'High complaint rate in marketplace reviews', 'Low', 42],
-          ].map(([name, desc, severity, width]) => (
-            <div className="rounded-lg border bg-muted/40 p-4" key={name}>
-              <div className="flex items-center justify-between">
-                <p className="font-medium">{name}</p>
-                <span className="rounded bg-card px-2 py-1 text-[10px] font-semibold uppercase">
-                  {severity}
-                </span>
-              </div>
-              <div className="mt-3 h-1.5 rounded-full bg-border">
-                <div
-                  className="h-full rounded-full bg-foreground"
-                  style={{ width: `${width}%` }}
-                />
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">{desc}</p>
-            </div>
-          ))}
+      <Panel subtitle="Primary target market summary">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-muted-foreground" />
+          <h3 className="text-base font-semibold">AI Recommendation</h3>
         </div>
-      </Panel>
-
-      <Panel title="Willingness-to-Pay Range" subtitle="Price elasticity across the segment">
-        <BarGraph />
-      </Panel>
-
-      <Panel title="Demographic Mix">
-        <div className="grid gap-6">
-          <IconStat icon={<Globe2 />} label="Primary Region" value="Jabodetabek (72%)" />
-          <IconStat icon={<CalendarDays />} label="Age Median" value="23 - 30 Years" />
-          <IconStat icon={<MessageSquare />} label="Dominant Platform" value="Shopee & TikTok (84%)" />
-          <Button variant="outline">View Raw Data</Button>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Focus the first wave on urban Gen Z women who prioritize affordable
+          daily hair solutions and respond to clear efficacy claims. Emphasize
+          barrier-repair messaging, push social proof around consistent results,
+          and keep entry pricing accessible to accelerate trial and repeat.
+        </p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border bg-muted/40 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Main Channel
+            </p>
+            <p className="mt-2 text-sm font-semibold">Shopee + TikTok</p>
+          </div>
+          <div className="rounded-lg border bg-muted/40 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Core Message
+            </p>
+            <p className="mt-2 text-sm font-semibold">Daily relief, real results</p>
+          </div>
+          <div className="rounded-lg border bg-muted/40 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              KPI Focus
+            </p>
+            <p className="mt-2 text-sm font-semibold">Repeat purchase rate</p>
+          </div>
         </div>
       </Panel>
     </div>
@@ -2101,63 +2239,135 @@ function PersonaDecode() {
 }
 
 function CompetitorMirror() {
+  const competitorRows = [
+    {
+      brand: 'Somethinc',
+      sku: '5% Niacinamide Sabi Beet',
+      avgPrice: 'Rp 115.000',
+      priceDelta: '-2.1%',
+      promoIntensity: 'High',
+      promoLevel: 'high',
+      monthlySales: '45.2K',
+      salesDelta: '+5.4%',
+      rating: '4.9',
+      reviews: '128K',
+    },
+    {
+      brand: 'Avoskin',
+      sku: 'PHTE Essence 100ml',
+      avgPrice: 'Rp 299.000',
+      priceDelta: '-0.8%',
+      promoIntensity: 'Low',
+      promoLevel: 'low',
+      monthlySales: '18.5K',
+      salesDelta: '-1.2%',
+      rating: '4.8',
+      reviews: '85K',
+    },
+    {
+      brand: 'Skintific',
+      sku: '5X Ceramide Moisture Gel',
+      avgPrice: 'Rp 149.000',
+      priceDelta: '+5.8%',
+      promoIntensity: 'Very High',
+      promoLevel: 'very-high',
+      monthlySales: '82.1K',
+      salesDelta: '+12.4%',
+      rating: '4.9',
+      reviews: '320K',
+    },
+  ]
+
+  const promoBarClasses: Record<string, string> = {
+    low: 'w-1/4 bg-muted-foreground/50',
+    medium: 'w-1/2 bg-muted-foreground/70',
+    high: 'w-3/4 bg-foreground',
+    'very-high': 'w-5/6 bg-foreground',
+  }
+
   return (
     <div className="grid gap-6">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,23rem),1fr))] gap-6">
-        <Panel title="Search Share of Voice (SOV)">
-          <SovGraph />
-          <div className="mt-8 grid gap-4 sm:grid-cols-4">
-            <InfoTile label="Leader" value="Skintific" caption="+12.4%" />
-            <InfoTile label="Growth Leader" value="Somethinc" caption="+28.1%" />
-            <InfoTile label="Keyword Gap" value="420" caption="Opportunities" />
-            <InfoTile label="Ad Spend" value="$12.5k" caption="Daily Avg" />
-          </div>
-        </Panel>
-        <Panel title="Price Alerts">
-          <div className="grid gap-3">
-            {[
-              ['Skintific', 'Mugwort Mask 55g', '$12.90', '-28%'],
-              ['Somethinc', 'Low pH Cleanser 100ml', '$11.20', '-20%'],
-              ['Avoskin', 'Refining Toner', '$15.40', '-30%'],
-            ].map(([brand, sku, price, drop]) => (
-              <div className="rounded-lg border p-4" key={sku}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <span className="rounded bg-muted px-2 py-1 text-[10px]">
-                      {brand}
-                    </span>
-                    <p className="mt-2 text-sm font-semibold">{sku}</p>
-                    <p className="font-semibold">{price}</p>
-                  </div>
-                  <span className="text-xs text-destructive">{drop}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      </div>
-
-      <Panel title="Competitor Matrix">
+      <Panel title="Top Competitor Matrix">
         <div className="overflow-hidden rounded-lg border">
-          {[
-            ['Somethinc', '7.8', 'High Local Affinity', '$4.2M', 'Mainstream Leader'],
-            ['Avoskin', '8.2', 'Clean Formulation', '$3.1M', 'Steady Challenger'],
-            ['Skintific', '9.1', 'Supply Chain Edge', '$6.8M', 'Fast Growth Giant'],
-          ].map((row) => (
+          <div className="grid grid-cols-[1.5fr_0.8fr_0.8fr_0.9fr_0.9fr] border-b bg-muted/40 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            <span>Brand / Hero SKU</span>
+            <span>Avg Price (IDR)</span>
+            <span>Promo Intensity</span>
+            <span>Est. Monthly Sales</span>
+            <span>Rating / Reviews</span>
+          </div>
+          {competitorRows.map((row) => (
             <div
-              className="grid grid-cols-[1.4fr_0.8fr_1.2fr_0.8fr_1fr_0.5fr] items-center border-b px-5 py-4 text-sm last:border-b-0"
-              key={row[0]}
+              className="grid grid-cols-[1.5fr_0.8fr_0.8fr_0.9fr_0.9fr] items-center border-b px-5 py-4 text-sm last:border-b-0"
+              key={row.sku}
             >
-              <p className="font-semibold">{row[0]}</p>
-              <p>{row[1]}</p>
-              <span className="w-fit rounded-full border px-2 py-1 text-xs">
-                {row[2]}
-              </span>
-              <p>{row[3]}</p>
-              <p className="text-chart-4">{row[4]}</p>
-              <Button size="sm" variant="ghost">Analyze</Button>
+              <div>
+                <p className="font-semibold">{row.brand}</p>
+                <p className="text-xs text-muted-foreground">{row.sku}</p>
+              </div>
+              <div>
+                <p className="font-semibold">{row.avgPrice}</p>
+                <p
+                  className={cn(
+                    'text-xs',
+                    row.priceDelta.startsWith('+')
+                      ? 'text-chart-4'
+                      : 'text-destructive',
+                  )}
+                >
+                  {row.priceDelta}
+                </p>
+              </div>
+              <div>
+                <div className="h-2 rounded-full bg-muted">
+                  <span
+                    className={cn(
+                      'block h-full rounded-full',
+                      promoBarClasses[row.promoLevel] ?? 'w-1/2 bg-foreground',
+                    )}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {row.promoIntensity}
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold">{row.monthlySales}</p>
+                <p
+                  className={cn(
+                    'text-xs',
+                    row.salesDelta.startsWith('+')
+                      ? 'text-chart-4'
+                      : 'text-destructive',
+                  )}
+                >
+                  {row.salesDelta}
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold">
+                  {row.rating} <span className="text-xs text-muted-foreground">({row.reviews})</span>
+                </p>
+              </div>
             </div>
           ))}
+        </div>
+      </Panel>
+
+      <Panel title="Avg Movement">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-2">
+            <span className="size-2 rounded-full bg-foreground" /> You
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="size-2 rounded-full bg-chart-4" /> Somethinc
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="size-2 rounded-full bg-destructive" /> Skintific
+          </span>
+        </div>
+        <div className="mt-5 h-40 w-full rounded-lg border bg-muted/30 p-4">
+          <PriceMovementChart />
         </div>
       </Panel>
     </div>
@@ -2192,14 +2402,7 @@ function LaunchCompass() {
             </div>
             <div className="grid place-items-center border-l">
               <div className="text-center">
-                <div className="mx-auto grid size-36 place-items-center rounded-full border-[14px] border-foreground border-r-muted">
-                  <div>
-                    <p className="text-4xl font-semibold">92</p>
-                    <p className="text-[10px] uppercase tracking-[0.18em]">
-                      Score
-                    </p>
-                  </div>
-                </div>
+                <ScoreDonutChart score={92} />
                 <p className="mt-6 font-semibold">Market Gap Score</p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Extreme validation against current competitor saturation.
@@ -2224,9 +2427,7 @@ function LaunchCompass() {
               <span>Elasticity Range</span>
               <span>Rp89K - Rp159K</span>
             </div>
-            <div className="h-1.5 rounded-full bg-muted">
-              <div className="h-full w-2/3 rounded-full bg-foreground" />
-            </div>
+            <PricingElasticityChart />
           </div>
           <Button className="mt-6 w-full" variant="outline">
             Review Profit Models
@@ -2643,158 +2844,283 @@ function SmallStat({
   )
 }
 
-function IconStat({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode
-  label: string
-  value: string
-}) {
-  return (
-    <div className="flex items-center gap-4">
-      <span className="grid size-12 place-items-center rounded-full border">
-        {icon}
-      </span>
-      <div>
-        <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-          {label}
-        </p>
-        <p className="font-semibold">{value}</p>
-      </div>
-    </div>
-  )
-}
-
-function InfoTile({
-  caption,
-  label,
-  value,
-}: {
-  caption: string
-  label: string
-  value: string
-}) {
-  return (
-    <div className="rounded-lg border p-4">
-      <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-2 text-xl font-semibold">{value}</p>
-      <p className="mt-1 text-xs text-chart-4">{caption}</p>
-    </div>
-  )
-}
-
-function Legend({
-  label,
-  muted,
-  value,
-}: {
-  label: string
-  muted?: boolean
-  value: string
-}) {
-  return (
-    <div className="flex items-center justify-between gap-5">
-      <span className="flex items-center gap-2">
-        <span
-          className={cn('size-3 bg-foreground', muted && 'bg-muted-foreground')}
-        />
-        {label}
-      </span>
-      <strong>{value}</strong>
-    </div>
-  )
-}
-
 function MapCard() {
+  const chartData = [
+    { city: 'Jabodetabek', x: 31, y: 46, z: 58.2 },
+    { city: 'Surabaya', x: 62, y: 54, z: 19.4 },
+    { city: 'Bandung', x: 48, y: 66, z: 12.1 },
+  ]
+  const chartConfig = {
+    z: {
+      label: 'Demand',
+      color: 'var(--foreground)',
+    },
+  }
+
   return (
-    <div className="relative mb-6 grid aspect-[1.35] place-items-center rounded-lg border bg-muted/30">
-      <Globe2 className="size-24 text-muted-foreground/15" />
-      <span className="absolute left-[28%] top-[42%] size-4 rounded-full bg-foreground shadow" />
-      <span className="absolute right-[30%] top-[52%] size-3 rounded-full bg-muted-foreground shadow" />
+    <div className="relative mb-6 aspect-[1.35] rounded-lg border bg-muted/30">
+      <Globe2 className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 size-24 text-muted-foreground/15" />
+      <ChartContainer className="absolute inset-0 h-full w-full" config={chartConfig}>
+        <ScatterChart margin={{ bottom: 12, left: 12, right: 12, top: 12 }}>
+          <XAxis dataKey="x" domain={[0, 100]} hide type="number" />
+          <YAxis dataKey="y" domain={[0, 100]} hide type="number" />
+          <ZAxis dataKey="z" range={[70, 240]} type="number" />
+          <ChartTooltip
+            content={<ChartTooltipContent hideLabel nameKey="city" />}
+          />
+          <Scatter data={chartData} fill="var(--color-z)" name="Demand" />
+        </ScatterChart>
+      </ChartContainer>
     </div>
   )
 }
 
 function RegionBars({ rows }: { rows: [string, number][] }) {
+  const chartData = rows.map(([label, value]) => ({ label, value }))
+  const chartConfig = {
+    value: {
+      label: 'Share',
+      color: 'var(--foreground)',
+    },
+  }
+
   return (
-    <div className="grid gap-3">
-      {rows.map(([label, value]) => (
-        <div key={label}>
-          <div className="mb-1 flex justify-between text-xs">
-            <span className="font-medium">{label}</span>
-            <span>{value}%</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-foreground"
-              style={{ width: `${value}%` }}
-            />
-          </div>
+    <ChartContainer className="h-44 w-full" config={chartConfig}>
+      <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 16 }}>
+        <CartesianGrid horizontal={false} />
+        <XAxis hide type="number" />
+        <YAxis
+          dataKey="label"
+          tickLine={false}
+          axisLine={false}
+          type="category"
+          width={90}
+        />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Bar dataKey="value" fill="var(--color-value)" radius={[6, 6, 6, 6]} />
+      </BarChart>
+    </ChartContainer>
+  )
+}
+
+function PlatformShareChart() {
+  const chartData = [
+    { name: 'Shopee', value: 64.2, fill: 'var(--foreground)' },
+    { name: 'Tokopedia', value: 22.8, fill: 'var(--muted-foreground)' },
+    { name: 'TikTok Shop', value: 13, fill: 'var(--chart-5)' },
+  ]
+  const chartConfig = {
+    value: {
+      label: 'Share',
+      color: 'var(--foreground)',
+    },
+  }
+
+  return (
+    <div className="grid items-center gap-6 sm:grid-cols-[10rem_1fr]">
+      <div className="relative size-40">
+        <ChartContainer className="h-full w-full" config={chartConfig}>
+          <PieChart>
+            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+            <Pie
+              data={chartData}
+              dataKey="value"
+              innerRadius={54}
+              nameKey="name"
+              outerRadius={78}
+              paddingAngle={2}
+            >
+              {chartData.map((entry) => (
+                <Cell fill={entry.fill} key={entry.name} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ChartContainer>
+        <div className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 text-center">
+          <p className="text-2xl font-semibold">64%</p>
+          <p className="text-[10px] uppercase tracking-[0.16em]">Leader</p>
         </div>
-      ))}
+      </div>
+      <div className="grid gap-3 text-sm">
+        {chartData.map((item) => (
+          <div className="flex items-center justify-between gap-5" key={item.name}>
+            <span className="flex items-center gap-2">
+              <span
+                className="size-3"
+                style={{ backgroundColor: item.fill }}
+              />
+              {item.name}
+            </span>
+            <strong>{item.value.toFixed(1)}%</strong>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
 function LineGraph() {
+  const chartData = [
+    { week: 'W1', value: 42 },
+    { week: 'W2', value: 46 },
+    { week: 'W3', value: 45 },
+    { week: 'W4', value: 52 },
+    { week: 'W5', value: 49 },
+    { week: 'W6', value: 58 },
+    { week: 'W7', value: 62 },
+    { week: 'W8', value: 68 },
+    { week: 'W9', value: 72 },
+    { week: 'W10', value: 77 },
+  ]
+  const chartConfig = {
+    value: {
+      label: 'Velocity',
+      color: 'var(--foreground)',
+    },
+  }
+
   return (
-    <svg className="h-72 w-full" role="img" viewBox="0 0 640 260">
-      <title>Trend velocity line graph</title>
-      {[40, 90, 140, 190, 240].map((y) => (
-        <line key={y} stroke="currentColor" strokeOpacity="0.08" x1="0" x2="640" y1={y} y2={y} />
-      ))}
-      <polyline
-        fill="none"
-        points="0,210 40,190 80,200 120,175 160,182 200,150 240,160 280,125 320,135 360,100 400,112 440,88 480,104 520,82 560,96 600,65 640,70"
-        stroke="currentColor"
-        strokeWidth="3"
-      />
-      <circle cx="440" cy="88" fill="currentColor" r="4" />
-    </svg>
+    <ChartContainer className="h-72 w-full" config={chartConfig}>
+      <LineChart data={chartData} margin={{ left: 12, right: 12, top: 12 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis dataKey="week" tickLine={false} axisLine={false} tickMargin={8} />
+        <YAxis hide />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Line
+          dataKey="value"
+          stroke="var(--color-value)"
+          strokeWidth={2}
+          dot={false}
+          type="monotone"
+        />
+      </LineChart>
+    </ChartContainer>
   )
 }
 
-function BarGraph() {
+function PriceMovementChart() {
+  const chartData = [
+    { period: 'Jan', you: 52, somethinc: 58, skintific: 44 },
+    { period: 'Feb', you: 54, somethinc: 59, skintific: 43 },
+    { period: 'Mar', you: 56, somethinc: 61, skintific: 42 },
+    { period: 'Apr', you: 58, somethinc: 63, skintific: 41 },
+    { period: 'May', you: 62, somethinc: 66, skintific: 45 },
+    { period: 'Jun', you: 68, somethinc: 70, skintific: 49 },
+  ]
+  const chartConfig = {
+    you: { label: 'You', color: 'var(--foreground)' },
+    somethinc: { label: 'Somethinc', color: 'var(--chart-4)' },
+    skintific: { label: 'Skintific', color: 'var(--destructive)' },
+  }
+
   return (
-    <div className="flex h-72 items-end gap-8 px-3">
-      {[58, 76, 94, 68].map((height, index) => (
-        <div className="flex flex-1 flex-col items-center gap-3" key={height}>
-          <div className="flex h-56 w-full items-end rounded-t bg-muted">
-            <div
-              className="w-full rounded-t bg-foreground"
-              style={{ height: `${height}%` }}
-            />
-          </div>
-          <span className="text-xs text-muted-foreground">
-            L{index + 1} {['Core', 'Pro', 'Expert', 'Org'][index]}
-          </span>
-        </div>
-      ))}
-    </div>
+    <ChartContainer className="h-full w-full" config={chartConfig}>
+      <LineChart data={chartData} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis dataKey="period" hide />
+        <YAxis hide />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Line
+          dataKey="you"
+          stroke="var(--color-you)"
+          strokeWidth={2}
+          dot={false}
+          type="monotone"
+        />
+        <Line
+          dataKey="somethinc"
+          stroke="var(--color-somethinc)"
+          strokeWidth={2}
+          dot={false}
+          strokeDasharray="5 4"
+          type="monotone"
+        />
+        <Line
+          dataKey="skintific"
+          stroke="var(--color-skintific)"
+          strokeWidth={2}
+          dot={false}
+          type="monotone"
+        />
+      </LineChart>
+    </ChartContainer>
   )
 }
 
-function SovGraph() {
+function ScoreDonutChart({ score }: { score: number }) {
+  const chartData = [
+    { name: 'Score', value: score, fill: 'var(--foreground)' },
+    { name: 'Remaining', value: 100 - score, fill: 'var(--muted)' },
+  ]
+  const chartConfig = {
+    value: {
+      label: 'Score',
+      color: 'var(--foreground)',
+    },
+  }
+
   return (
-    <div className="relative h-64 border-b">
-      <div className="absolute inset-x-0 bottom-8 flex items-end gap-10 px-12">
-        {[70, 86, 52, 31].map((height, index) => (
-          <div className="flex flex-1 flex-col items-center gap-3" key={height}>
-            <div
-              className="w-full rounded-t bg-foreground"
-              style={{ height: `${height * 1.8}px` }}
-            />
-            <span className="text-xs text-muted-foreground">
-              {['Skintific', 'Somethinc', 'Avoskin', 'Others'][index]}
-            </span>
-          </div>
-        ))}
+    <div className="relative mx-auto size-36">
+      <ChartContainer className="h-full w-full" config={chartConfig}>
+        <PieChart>
+          <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+          <Pie
+            data={chartData}
+            dataKey="value"
+            innerRadius={48}
+            nameKey="name"
+            outerRadius={68}
+            paddingAngle={2}
+            startAngle={90}
+            endAngle={-270}
+          >
+            {chartData.map((entry) => (
+              <Cell fill={entry.fill} key={entry.name} />
+            ))}
+          </Pie>
+        </PieChart>
+      </ChartContainer>
+      <div className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2">
+        <p className="text-4xl font-semibold">{score}</p>
+        <p className="text-[10px] uppercase tracking-[0.18em]">Score</p>
       </div>
     </div>
+  )
+}
+
+function PricingElasticityChart() {
+  const chartData = [
+    { tier: 'Floor', price: 89 },
+    { tier: 'Target', price: 119 },
+    { tier: 'Ceiling', price: 159 },
+  ]
+  const chartConfig = {
+    price: {
+      label: 'Price',
+      color: 'var(--foreground)',
+    },
+  }
+
+  return (
+    <ChartContainer className="h-24 w-full" config={chartConfig}>
+      <BarChart data={chartData} margin={{ bottom: 0, left: 0, right: 0, top: 8 }}>
+        <XAxis
+          dataKey="tier"
+          tickLine={false}
+          axisLine={false}
+          tickMargin={8}
+        />
+        <YAxis hide domain={[0, 180]} />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              formatter={(value) => `Rp${Number(value).toLocaleString('id-ID')}K`}
+            />
+          }
+        />
+        <Bar dataKey="price" fill="var(--color-price)" radius={[6, 6, 0, 0]} />
+      </BarChart>
+    </ChartContainer>
   )
 }
 
