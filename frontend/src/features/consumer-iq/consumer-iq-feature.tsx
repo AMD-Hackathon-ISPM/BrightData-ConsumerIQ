@@ -251,6 +251,38 @@ function AnimatedPage({
   )
 }
 
+function SectionFade({
+  children,
+  className,
+  transitionKey,
+}: {
+  children: ReactNode
+  className?: string
+  transitionKey: string | number
+}) {
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    setIsVisible(false)
+
+    const frame = window.requestAnimationFrame(() => setIsVisible(true))
+    return () => window.cancelAnimationFrame(frame)
+  }, [transitionKey])
+
+  return (
+    <div
+      className={cn(
+        'transition-all duration-300 ease-out',
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
+        className,
+      )}
+      key={transitionKey}
+    >
+      {children}
+    </div>
+  )
+}
+
 export function ConsumerIQOnboarding({
   onComplete,
 }: {
@@ -293,7 +325,229 @@ export function ConsumerIQDashboard({
   const [active, setActive] = useState<DashboardSection>('dashboard')
   const isNavDesktop = useMediaQuery('(min-width: 768px)')
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const ActiveIcon = navItems.find((item) => item.id === active)?.icon ?? Search
+
+  const searchIndex: Array<{
+    section: DashboardSection
+    suggestions: Array<{ label: string; keywords: string[] }>
+  }> = [
+    {
+      section: 'dashboard',
+      suggestions: [
+        {
+          label: 'Market Overview',
+          keywords: [
+            'market overview',
+            'overview',
+            'dashboard',
+            'market intelligence',
+            'trend velocity',
+            'estimated demand',
+            'est demand',
+            'price target',
+            'market gaps',
+          ],
+        },
+        {
+          label: 'Marketplace Pulse',
+          keywords: [
+            'marketplace',
+            'marketplace pulse',
+            'sku',
+            'marketplaces',
+            'sku tracking',
+            'real-time sku',
+          ],
+        },
+        {
+          label: 'Demand Density',
+          keywords: [
+            'demand density',
+            'geography',
+            'regional interest',
+            'regional distribution',
+            'geo distribution',
+          ],
+        },
+      ],
+    },
+    {
+      section: 'pulse',
+      suggestions: [
+        {
+          label: 'Trend Velocity Index',
+          keywords: [
+            'demand',
+            'trend',
+            'velocity',
+            'trend velocity',
+            'trend velocity index',
+            'pulse',
+          ],
+        },
+        {
+          label: 'Top Rising Formats',
+          keywords: ['rising', 'formats', 'top rising', 'trend formats'],
+        },
+        {
+          label: 'Marketplace Share',
+          keywords: [
+            'marketplace',
+            'marketplace share',
+            'share',
+            'platform mix',
+            'platform share',
+          ],
+        },
+        {
+          label: 'Search Intent Analysis',
+          keywords: [
+            'serp',
+            'search signal',
+            'intent',
+            'search intent',
+            'intent analysis',
+          ],
+        },
+      ],
+    },
+    {
+      section: 'persona',
+      suggestions: [
+        {
+          label: 'Persona Decode',
+          keywords: ['persona', 'customer', 'audience', 'segment', 'profile'],
+        },
+        {
+          label: 'Pain Point Clusters',
+          keywords: ['pain point', 'clusters', 'friction'],
+        },
+        {
+          label: 'Willingness-to-Pay Range',
+          keywords: ['willingness-to-pay', 'wtp', 'price elasticity', 'elasticity'],
+        },
+        {
+          label: 'Demographic Mix',
+          keywords: ['demographic mix', 'demographics', 'age median', 'primary region'],
+        },
+      ],
+    },
+    {
+      section: 'competitor',
+      suggestions: [
+        {
+          label: 'Competitor Mirror',
+          keywords: ['competitor', 'benchmark', 'mirror', 'matrix'],
+        },
+        {
+          label: 'Price Alerts',
+          keywords: ['price', 'price alert', 'alert', 'pricing'],
+        },
+        {
+          label: 'Search Share of Voice (SOV)',
+          keywords: ['sov', 'share of voice', 'search share of voice'],
+        },
+        {
+          label: 'Competitor Matrix',
+          keywords: ['competitor matrix', 'matrix', 'benchmark grid'],
+        },
+      ],
+    },
+    {
+      section: 'compass',
+      suggestions: [
+        {
+          label: 'Launch Compass',
+          keywords: ['launch', 'positioning', 'product-market fit', 'pmf', 'expansion'],
+        },
+        {
+          label: 'Pricing Strategy',
+          keywords: ['pricing', 'price strategy', 'strategy'],
+        },
+        {
+          label: 'Channel Rollout Sequence',
+          keywords: ['channel rollout', 'rollout sequence', 'cac', 'sequence'],
+        },
+        {
+          label: 'Strategic Moat Analysis',
+          keywords: ['moat analysis', 'strategic moat', 'moat'],
+        },
+        {
+          label: 'Intelligence Feed',
+          keywords: ['intelligence feed', 'signals', 'market signals'],
+        },
+      ],
+    },
+    {
+      section: 'settings',
+      suggestions: [
+        {
+          label: 'Data Settings',
+          keywords: ['settings', 'data', 'api', 'integration', 'preferences'],
+        },
+        {
+          label: 'Network Health',
+          keywords: ['network health', 'uptime', 'incident history'],
+        },
+        {
+          label: 'Pipeline Architecture',
+          keywords: ['pipeline architecture', 'architecture', 'pipeline'],
+        },
+        {
+          label: 'Bright Data Integrations',
+          keywords: ['bright data', 'integration', 'connector', 'sources'],
+        },
+      ],
+    },
+  ]
+
+  const normalizedQuery = searchQuery.trim().toLowerCase()
+  const searchSuggestions = searchIndex.flatMap((entry) =>
+    entry.suggestions.map((suggestion) => ({
+      section: entry.section,
+      label: suggestion.label,
+      keywords: suggestion.keywords,
+    })),
+  )
+  const filteredSuggestions = normalizedQuery
+    ? searchSuggestions.filter((entry) =>
+        entry.keywords.some((keyword) =>
+          keyword.toLowerCase().includes(normalizedQuery),
+        ) || entry.label.toLowerCase().includes(normalizedQuery),
+      )
+    : []
+
+  const handleSearchSubmit = (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault()
+
+    if (!normalizedQuery) {
+      return
+    }
+
+    const match = searchSuggestions.find((entry) =>
+      entry.keywords.some((keyword) =>
+        normalizedQuery.includes(keyword.toLowerCase()),
+      ) || entry.label.toLowerCase().includes(normalizedQuery)
+    )
+
+    if (match) {
+      setActive(match.section)
+      setIsSearchOpen(false)
+      return
+    }
+
+    toast.info('No matching section found', {
+      description: 'Try keywords like “persona”, “competitor”, or “launch”.',
+    })
+  }
+
+  const handleSearchSelect = (section: DashboardSection, label: string) => {
+    setSearchQuery(label)
+    setActive(section)
+    setIsSearchOpen(false)
+  }
 
   return (
     <section
@@ -359,13 +613,55 @@ export function ConsumerIQDashboard({
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-14 items-center justify-between border-b px-5">
           <div className="flex w-full max-w-md items-center gap-3">
-            <div className="relative w-full">
-              <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
+            <form className="relative w-full" onSubmit={handleSearchSubmit}>
               <Input
-                className="h-9 border-border bg-muted/40 pl-9"
+                className="h-9 border-border bg-muted/40 pr-10"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onFocus={() => setIsSearchOpen(true)}
+                onBlur={() => {
+                  window.setTimeout(() => setIsSearchOpen(false), 120)
+                }}
                 placeholder="Search insights..."
+                value={searchQuery}
               />
-            </div>
+              <Button
+                aria-label="Search"
+                className="-translate-y-1/2 absolute top-1/2 right-1"
+                size="icon"
+                type="submit"
+                variant="ghost"
+              >
+                <Search className="size-4" />
+              </Button>
+              {isSearchOpen && normalizedQuery ? (
+                <div
+                  className="absolute top-full z-30 mt-2 w-full rounded-lg border bg-popover p-1 text-sm shadow-lg"
+                  onMouseDown={(event) => event.preventDefault()}
+                  role="listbox"
+                >
+                  {filteredSuggestions.length > 0 ? (
+                    filteredSuggestions.slice(0, 6).map((entry) => (
+                      <button
+                        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left hover:bg-muted"
+                        key={`${entry.section}-${entry.label}`}
+                        onClick={() => handleSearchSelect(entry.section, entry.label)}
+                        type="button"
+                      >
+                        <span>
+                          {navItems.find((item) => item.id === entry.section)?.label}
+                          {' > '}
+                          {entry.label}
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">
+                      No matches yet.
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </form>
           </div>
 
           <div className="ml-4 flex items-center gap-3">
@@ -412,14 +708,14 @@ export function ConsumerIQDashboard({
             </div>
           </div>
 
-          <AnimatedPage transitionKey={active}>
+          <SectionFade transitionKey={active}>
             {active === 'dashboard' && <MarketOverview />}
             {active === 'pulse' && <DemandPulse />}
             {active === 'persona' && <PersonaDecode />}
             {active === 'competitor' && <CompetitorMirror />}
             {active === 'compass' && <LaunchCompass />}
             {active === 'settings' && <DataSettings />}
-          </AnimatedPage>
+          </SectionFade>
           </div>
         </main>
       </div>
