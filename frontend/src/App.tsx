@@ -1,4 +1,4 @@
-import { ConsumerIQExperience } from '@/features/consumer-iq/consumer-iq-feature'
+import { ConsumerIQExperience } from '@/consumer-iq-app'
 
 function App() {
   return <ConsumerIQExperience />
