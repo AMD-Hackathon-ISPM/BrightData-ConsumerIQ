@@ -5,6 +5,7 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Compass,
   Database,
@@ -14,6 +15,7 @@ import {
   LayoutDashboard,
   LoaderCircle,
   Lock,
+  Menu,
   MessageSquare,
   Search,
   Settings,
@@ -22,6 +24,7 @@ import {
   Target,
   TrendingUp,
   Users,
+  X,
   Zap,
 } from 'lucide-react'
 import {
@@ -36,6 +39,14 @@ import type { PanelImperativeHandle } from 'react-resizable-panels'
 import { toast } from 'sonner'
 import type { PromptInputMessage } from '@/components/ai-elements/prompt-input'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import {
   ResizableHandle,
@@ -61,6 +72,7 @@ import { cn } from '@/lib/utils'
 
 const STREAM_FRAME_MS = 16
 const STREAM_CHARS_PER_FRAME = 8
+const LONG_TEXT_CHAR_LIMIT = 500
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -81,11 +93,23 @@ const pipelineSteps = [
 
 type DashboardSection = (typeof navItems)[number]['id']
 
+function truncateToCharLimit(value: string, limit: number) {
+  if (value.length <= limit) {
+    return { count: value.length, truncated: false, value }
+  }
+
+  return {
+    count: limit,
+    truncated: true,
+    value: value.slice(0, limit),
+  }
+}
+
 export function ConsumerIQExperience() {
   const [isOnboarded, setIsOnboarded] = useState(false)
   const chatPanelRef = useRef<PanelImperativeHandle>(null)
   const [isChatOpen, setIsChatOpen] = useState(true)
-  const isDesktop = useMediaQuery('(min-width: 1024px)')
+  const isTabletUp = useMediaQuery('(min-width: 768px)')
 
   const handleToggleChat = useCallback(() => {
     if (isChatOpen) {
@@ -102,10 +126,40 @@ export function ConsumerIQExperience() {
     return <ConsumerIQOnboarding onComplete={() => setIsOnboarded(true)} />
   }
 
-  if (!isDesktop) {
+  if (!isTabletUp) {
     return (
       <main className="h-screen overflow-hidden bg-background text-foreground">
-        <ConsumerIQDashboard className="h-screen" />
+        <ResizablePanelGroup
+          className="h-screen min-h-0"
+          orientation="vertical"
+        >
+          <ResizablePanel className="min-h-0" defaultSize="62%" minSize="45%">
+            <ConsumerIQDashboard
+              className="h-full"
+              onToggleChat={handleToggleChat}
+            />
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel
+            className="min-h-0"
+            collapsedSize="8%"
+            collapsible
+            defaultSize="38%"
+            maxSize="55%"
+            minSize="25%"
+            onResize={(panelSize) => {
+              setIsChatOpen(panelSize.asPercentage > 10)
+            }}
+            panelRef={chatPanelRef}
+          >
+            <FounderChat
+              className="border-t border-l-0"
+              isOpen={isChatOpen}
+              onToggle={handleToggleChat}
+              panelClassName="border-l-0 border-t"
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </main>
     )
   }
@@ -117,7 +171,10 @@ export function ConsumerIQExperience() {
         orientation="horizontal"
       >
         <ResizablePanel className="min-w-0" defaultSize="68%" minSize="46%">
-          <ConsumerIQDashboard className="h-screen" />
+          <ConsumerIQDashboard
+            className="h-screen"
+            onToggleChat={handleToggleChat}
+          />
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel
@@ -206,11 +263,17 @@ export function ConsumerIQOnboarding({
       <div className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-6 py-10">
         <AnimatedPage className="flex w-full justify-center" transitionKey={step}>
           {step === 1 ? (
-            <SignupStep onNext={() => setStep(2)} />
+            <BusinessSetupStep onNext={() => setStep(2)} />
           ) : step === 2 ? (
-            <AnalysisStep onBack={() => setStep(1)} onNext={() => setStep(3)} />
+            <ProductContextStep
+              onBack={() => setStep(1)}
+              onNext={() => setStep(3)}
+            />
           ) : step === 3 ? (
-            <WhiteSpaceStep onBack={() => setStep(2)} onNext={() => setStep(4)} />
+            <ResearchGoalsStep
+              onBack={() => setStep(2)}
+              onNext={() => setStep(4)}
+            />
           ) : (
             <GeneratingStep onComplete={onComplete} />
           )}
@@ -220,9 +283,16 @@ export function ConsumerIQOnboarding({
   )
 }
 
-export function ConsumerIQDashboard({ className }: { className?: string }) {
+export function ConsumerIQDashboard({
+  className,
+  onToggleChat,
+}: {
+  className?: string
+  onToggleChat?: () => void
+}) {
   const [active, setActive] = useState<DashboardSection>('dashboard')
   const isNavDesktop = useMediaQuery('(min-width: 768px)')
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const ActiveIcon = navItems.find((item) => item.id === active)?.icon ?? Search
 
   return (
@@ -266,43 +336,52 @@ export function ConsumerIQDashboard({ className }: { className?: string }) {
         </nav>
 
         <div className="mt-auto border-t pt-6">
-          <Button className="w-full bg-foreground text-background hover:bg-foreground/90">
+          <Button
+            className="w-full bg-foreground text-background hover:bg-foreground/90"
+            onClick={onToggleChat}
+            type="button"
+          >
             <MessageSquare className="size-4" />
             Founder Chat
           </Button>
         </div>
       </aside>
-      ) : null}
+      ) : (
+        <MobileSidebarNav
+          active={active}
+          isOpen={isMobileNavOpen}
+          onChange={setActive}
+          onClose={() => setIsMobileNavOpen(false)}
+          onToggleChat={onToggleChat}
+        />
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-14 items-center justify-between border-b px-5">
-          <div className="relative w-full max-w-md">
-            <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
-            <Input
-              className="h-9 border-border bg-muted/40 pl-9"
-              placeholder="Search insights..."
-            />
+          <div className="flex w-full max-w-md items-center gap-3">
+            <div className="relative w-full">
+              <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
+              <Input
+                className="h-9 border-border bg-muted/40 pl-9"
+                placeholder="Search insights..."
+              />
+            </div>
           </div>
 
           <div className="ml-4 flex items-center gap-3">
-            <nav className="hidden items-center gap-5 text-sm text-muted-foreground xl:flex">
-              <span className="font-medium text-foreground">Overview</span>
-              <span>Network</span>
-              <span>Status</span>
-            </nav>
-            <Button className="hidden bg-foreground text-background hover:bg-foreground/90 sm:inline-flex">
-              New Project
-            </Button>
-            <Bell className="size-5 text-muted-foreground" />
-            <div className="grid size-8 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
-              JD
-            </div>
+            {!isNavDesktop ? (
+              <Button
+                aria-label="Open navigation"
+                onClick={() => setIsMobileNavOpen(true)}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <Menu className="size-5" />
+              </Button>
+            ) : null}
           </div>
         </header>
-
-        {!isNavDesktop ? (
-          <MobileSectionNav active={active} onChange={setActive} />
-        ) : null}
 
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           <div className="mx-auto w-full max-w-6xl px-5 py-8">
@@ -352,10 +431,12 @@ function FounderChat({
   className,
   isOpen,
   onToggle,
+  panelClassName,
 }: {
   className?: string
   isOpen: boolean
   onToggle: () => void
+  panelClassName?: string
 }) {
   const streamAbortRef = useRef(false)
   const pendingResponseTimeoutRef = useRef<number | null>(null)
@@ -524,7 +605,10 @@ function FounderChat({
   return (
     <div className={cn('h-full min-h-0 bg-background', className)}>
       <ChatPanel
-        className="!h-full !min-h-0 transition-[width] duration-200 ease-out"
+        className={cn(
+          '!h-full !min-h-0 transition-[width] duration-200 ease-out',
+          panelClassName,
+        )}
         isOpen={isOpen}
         onToggle={onToggle}
       >
@@ -552,220 +636,755 @@ function FounderChat({
   )
 }
 
-function MobileSectionNav({
+function MobileSidebarNav({
   active,
   onChange,
+  onClose,
+  onToggleChat,
+  isOpen,
 }: {
   active: DashboardSection
   onChange: (section: DashboardSection) => void
+  onClose: () => void
+  onToggleChat?: () => void
+  isOpen: boolean
 }) {
+  if (!isOpen) {
+    return null
+  }
+
   return (
-    <div className="shrink-0 overflow-x-auto border-b bg-background px-4 py-3 md:hidden">
-      <div className="flex min-w-max gap-2">
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const isActive = active === item.id
-
-          return (
-            <button
-              className={cn(
-                'inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors duration-150',
-                isActive
-                  ? 'bg-accent text-accent-foreground'
-                  : 'bg-card text-muted-foreground',
-              )}
-              key={item.id}
-              onClick={() => onChange(item.id)}
-              type="button"
-            >
-              <Icon className="size-4" />
-              {item.label}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function SignupStep({ onNext }: { onNext: () => void }) {
-  return (
-    <div className="w-full max-w-md">
-      <div className="rounded-xl border bg-card p-8 shadow-sm">
-        <ProgressBar value={25} />
-        <div className="mt-8 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome to ConsumerIQ
-          </h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            The intelligence layer for your next big launch.
-          </p>
-        </div>
-        <div className="mt-8 grid gap-5">
-          <Field label="Full Name">
-            <Input placeholder="Acme Corp" />
-          </Field>
-          <Field label="Work Email">
-            <Input placeholder="name@company.com" type="email" />
-          </Field>
-          <Field label="Password">
-            <Input placeholder="••••••••" type="password" />
-          </Field>
-          <Button
-            className="h-11 bg-foreground text-background hover:bg-foreground/90"
-            onClick={onNext}
-          >
-            Continue
-          </Button>
-          <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            or continue with
-            <span className="h-px flex-1 bg-border" />
-          </div>
-          <Button className="h-10" variant="outline">
-            <span className="font-semibold text-primary">G</span>
-            Google
-          </Button>
-        </div>
-      </div>
-      <p className="mt-7 text-center text-sm text-muted-foreground">
-        Already have an account?{' '}
-        <span className="font-medium text-foreground underline">Log in</span>
-      </p>
-      <p className="mx-auto mt-4 max-w-xs text-center text-xs text-muted-foreground">
-        By clicking continue, you agree to our Terms of Service and Privacy
-        Policy.
-      </p>
-    </div>
-  )
-}
-
-function AnalysisStep({
-  onBack,
-  onNext,
-}: {
-  onBack: () => void
-  onNext: () => void
-}) {
-  return (
-    <OnboardingShell footer="STEP 02/04" progress={50}>
-      <h1 className="text-3xl font-semibold tracking-tight">
-        What are we analyzing?
-      </h1>
-      <p className="mt-3 text-muted-foreground">
-        Define the industry and region you want to dominate.
-      </p>
-
-      <div className="mt-10 grid gap-7">
-        <Field label="Workspace Name">
-          <Input placeholder="e.g. My Market Research" />
-        </Field>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Industry">
-            <BasicSelect
-              placeholder="Select industry"
-              values={[
-                'Beauty & Personal Care',
-                'Food & Beverage',
-                'Home & Lifestyle',
-                'Fashion & Apparel',
-              ]}
-            />
-          </Field>
-          <Field label="Region">
-            <BasicSelect
-              placeholder="Select region"
-              values={['Indonesia', 'Southeast Asia', 'United States', 'Global']}
-            />
-          </Field>
-        </div>
-        <Field label="Primary Marketplace Focus">
-          <BasicSelect
-            placeholder="Select marketplace"
-            values={['Shopee', 'Tokopedia', 'TikTok Shop', 'Lazada']}
-          />
-        </Field>
-        <div className="flex gap-4 rounded-lg border bg-muted/60 p-5">
-          <Target className="mt-1 size-5 text-foreground" />
+    <div className="fixed inset-0 z-40 flex md:hidden">
+      <button
+        aria-label="Close navigation"
+        className="flex-1 bg-background/70"
+        onClick={onClose}
+        type="button"
+      />
+      <aside className="flex h-full w-60 shrink-0 flex-col border-r bg-sidebar px-4 py-6 text-sidebar-foreground shadow-lg">
+        <div className="flex items-start justify-between">
           <div>
-            <p className="font-medium">Targeting Tip</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Narrowing your region helps our AI models surface localized
-              cultural nuances that broader searches often miss.
+            <h2 className="text-sm font-semibold tracking-tight">ConsumerIQ</h2>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              Mobile Menu
             </p>
           </div>
+          <Button
+            aria-label="Close navigation"
+            onClick={onClose}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <X className="size-4" />
+          </Button>
         </div>
-        <StepActions onBack={onBack} onNext={onNext} />
+
+        <nav className="mt-6 grid gap-2">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const isActive = active === item.id
+
+            return (
+              <button
+                className={cn(
+                  'flex h-10 items-center gap-2 rounded-lg px-3 text-left text-xs font-medium transition-colors duration-150',
+                  isActive
+                    ? 'bg-accent text-accent-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+                key={item.id}
+                onClick={() => {
+                  onChange(item.id)
+                  onClose()
+                }}
+                type="button"
+              >
+                <Icon className="size-4" />
+                <span className="truncate">{item.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+
+        <div className="mt-auto border-t pt-4">
+          <Button
+            className="w-full bg-foreground text-background hover:bg-foreground/90"
+            onClick={() => {
+              onToggleChat?.()
+              onClose()
+            }}
+            type="button"
+          >
+            <MessageSquare className="size-4" />
+            Founder Chat
+          </Button>
+        </div>
+      </aside>
+    </div>
+  )
+}
+
+function BusinessSetupStep({ onNext }: { onNext: () => void }) {
+  const launchOptions = [
+    'Physical product - Beauty & Personal Care',
+    'Physical product - Fashion & Apparel',
+    'Physical product - Food & Beverage',
+    'Physical product - Home & Lifestyle',
+    'Physical product - Electronics & Gadgets',
+    'Digital product / service - Mobile App',
+    'Digital product / service - SaaS / Web product',
+    'Digital product / service - Digital content (courses/bootcamps & ebooks)',
+    'Digital product / service - Game / Entertainment',
+    'Digital product / service - Agency, consulting, etc.',
+  ]
+
+  const regionOptions = [
+    'Asia',
+    'Africa',
+    'Europe',
+    'North America',
+    'South America',
+    'Middle East',
+    'Oceania',
+    'Global',
+  ]
+  const [workspaceName, setWorkspaceName] = useState('')
+  const [launchType, setLaunchType] = useState('')
+  const [region, setRegion] = useState('')
+  const [countryDetail, setCountryDetail] = useState('')
+  const [salesChannel, setSalesChannel] = useState('')
+  const [errors, setErrors] = useState<{
+    workspaceName?: string
+    launchType?: string
+    region?: string
+    countryDetail?: string
+    salesChannel?: string
+  }>({})
+
+  const clearError = (key: keyof typeof errors) => {
+    setErrors((current) => {
+      if (!current[key]) {
+        return current
+      }
+
+      const nextErrors = { ...current }
+      delete nextErrors[key]
+      return nextErrors
+    })
+  }
+
+  const handleNext = () => {
+    const nextErrors: typeof errors = {}
+
+    if (!workspaceName.trim()) {
+      nextErrors.workspaceName = 'Workspace / brand name is required.'
+    }
+    if (!launchType) {
+      nextErrors.launchType = 'Launch type is required.'
+    }
+    if (!region) {
+      nextErrors.region = 'Region is required.'
+    }
+    if (!countryDetail.trim()) {
+      nextErrors.countryDetail = 'Country and demographic details are required.'
+    }
+    if (!salesChannel) {
+      nextErrors.salesChannel = 'Sales channel is required.'
+    }
+
+    setErrors(nextErrors)
+
+    if (Object.keys(nextErrors).length === 0) {
+      onNext()
+    }
+  }
+
+  return (
+    <OnboardingShell footer="STEP 01/04" progress={25}>
+      <h1 className="text-3xl font-semibold tracking-tight">
+        Founder Input | Business Setup
+      </h1>
+      <p className="mt-3 text-muted-foreground">
+        Set your workspace context before the ConsumerIQ engine starts.
+      </p>
+
+      <div className="mt-8 grid gap-6">
+        <Field label="Workspace / Brand Name">
+          <div className="grid gap-2">
+            <Input
+              aria-invalid={errors.workspaceName ? 'true' : undefined}
+              className={cn(
+                errors.workspaceName && 'border-destructive focus-visible:ring-destructive/40',
+              )}
+              onChange={(event) => {
+                setWorkspaceName(event.target.value)
+                clearError('workspaceName')
+              }}
+              placeholder="e.g. Bright Labs"
+              required
+              value={workspaceName}
+            />
+            <FieldError message={errors.workspaceName} />
+          </div>
+        </Field>
+        <Field label="What are you launching? (Retail focus)">
+          <div className="grid gap-2">
+            <BasicSelect
+              isInvalid={Boolean(errors.launchType)}
+              isRequired
+              onValueChange={(value) => {
+                setLaunchType(value)
+                clearError('launchType')
+              }}
+              placeholder="Select launch type"
+              value={launchType}
+              values={launchOptions}
+            />
+            <FieldError message={errors.launchType} />
+          </div>
+        </Field>
+        <Field label="Target Region / Market">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <BasicSelect
+                isInvalid={Boolean(errors.region)}
+                isRequired
+                onValueChange={(value) => {
+                  setRegion(value)
+                  clearError('region')
+                }}
+                placeholder="Region (e.g., Asia, Africa, Europe)"
+                value={region}
+                values={regionOptions}
+              />
+              <FieldError message={errors.region} />
+            </div>
+            <div className="grid gap-2">
+              <Input
+                aria-invalid={errors.countryDetail ? 'true' : undefined}
+                className={cn(
+                  errors.countryDetail &&
+                    'border-destructive focus-visible:ring-destructive/40',
+                )}
+                onChange={(event) => {
+                  setCountryDetail(event.target.value)
+                  clearError('countryDetail')
+                }}
+                placeholder="Country + demographic details from ConsumerIQ"
+                required
+                value={countryDetail}
+              />
+              <FieldError message={errors.countryDetail} />
+            </div>
+          </div>
+        </Field>
+        <Field label="Sales Channel">
+          <div className="grid gap-2">
+            <BasicSelect
+              isInvalid={Boolean(errors.salesChannel)}
+              isRequired
+              onValueChange={(value) => {
+                setSalesChannel(value)
+                clearError('salesChannel')
+              }}
+              placeholder="Select channel"
+              value={salesChannel}
+              values={['Online store / website', 'Omnichannel']}
+            />
+            <FieldError message={errors.salesChannel} />
+          </div>
+        </Field>
+        <StepActions onNext={handleNext} />
       </div>
     </OnboardingShell>
   )
 }
 
-function WhiteSpaceStep({
+function ProductContextStep({
   onBack,
   onNext,
 }: {
   onBack: () => void
   onNext: () => void
 }) {
+  const [problemStatement, setProblemStatement] = useState('')
+  const [productName, setProductName] = useState('')
+  const [productDescription, setProductDescription] = useState('')
+  const [uniqueSellingPoint, setUniqueSellingPoint] = useState('')
+  const [keyFeatures, setKeyFeatures] = useState('')
+  const [competitiveAdvantage, setCompetitiveAdvantage] = useState('')
+  const [lowestPrice, setLowestPrice] = useState('')
+  const [corePrice, setCorePrice] = useState('')
+  const [highestPrice, setHighestPrice] = useState('')
+  const [errors, setErrors] = useState<{
+    problemStatement?: string
+    productName?: string
+    productDescription?: string
+    uniqueSellingPoint?: string
+    keyFeatures?: string
+    competitiveAdvantage?: string
+    lowestPrice?: string
+    corePrice?: string
+    highestPrice?: string
+    priceOrder?: string
+  }>({})
+
+  const clearError = (key: keyof typeof errors) => {
+    setErrors((current) => {
+      if (!current[key]) {
+        return current
+      }
+
+      const nextErrors = { ...current }
+      delete nextErrors[key]
+      return nextErrors
+    })
+  }
+
+  const handleLongTextChange = (
+    nextValue: string,
+    key: 'problemStatement' | 'productDescription' | 'keyFeatures' | 'competitiveAdvantage',
+    setValue: (value: string) => void,
+  ) => {
+    const result = truncateToCharLimit(nextValue, LONG_TEXT_CHAR_LIMIT)
+    setValue(result.value)
+
+    if (result.truncated) {
+      setErrors((current) => ({
+        ...current,
+        [key]: `Limit is ${LONG_TEXT_CHAR_LIMIT} characters.`,
+      }))
+      return
+    }
+
+    clearError(key)
+  }
+
+  const parsePrice = (value: string) => {
+    const normalized = value.trim().replace(/,/g, '')
+    if (!normalized) {
+      return Number.NaN
+    }
+
+    return Number.parseFloat(normalized)
+  }
+
+  const handleNext = () => {
+    const nextErrors: typeof errors = {}
+
+    if (!problemStatement.trim()) {
+      nextErrors.problemStatement = 'Problem statement is required.'
+    } else if (problemStatement.length > LONG_TEXT_CHAR_LIMIT) {
+      nextErrors.problemStatement = `Limit is ${LONG_TEXT_CHAR_LIMIT} characters.`
+    }
+    if (!productName.trim()) {
+      nextErrors.productName = 'Primary product name is required.'
+    }
+    if (!productDescription.trim()) {
+      nextErrors.productDescription = 'Short description is required.'
+    } else if (productDescription.length > LONG_TEXT_CHAR_LIMIT) {
+      nextErrors.productDescription = `Limit is ${LONG_TEXT_CHAR_LIMIT} characters.`
+    }
+    if (!uniqueSellingPoint.trim()) {
+      nextErrors.uniqueSellingPoint = 'Unique selling point is required.'
+    }
+    if (!keyFeatures.trim()) {
+      nextErrors.keyFeatures = 'Key features are required.'
+    } else if (keyFeatures.length > LONG_TEXT_CHAR_LIMIT) {
+      nextErrors.keyFeatures = `Limit is ${LONG_TEXT_CHAR_LIMIT} characters.`
+    }
+    if (!competitiveAdvantage.trim()) {
+      nextErrors.competitiveAdvantage = 'Competitive advantage is required.'
+    } else if (competitiveAdvantage.length > LONG_TEXT_CHAR_LIMIT) {
+      nextErrors.competitiveAdvantage = `Limit is ${LONG_TEXT_CHAR_LIMIT} characters.`
+    }
+
+    const parsedLowest = parsePrice(lowestPrice)
+    const parsedCore = parsePrice(corePrice)
+    const parsedHighest = parsePrice(highestPrice)
+
+    if (!lowestPrice.trim()) {
+      nextErrors.lowestPrice = 'Lowest price is required.'
+    } else if (Number.isNaN(parsedLowest) || parsedLowest < 0) {
+      nextErrors.lowestPrice = 'Enter a valid non-negative price.'
+    }
+
+    if (!corePrice.trim()) {
+      nextErrors.corePrice = 'Core price is required.'
+    } else if (Number.isNaN(parsedCore) || parsedCore < 0) {
+      nextErrors.corePrice = 'Enter a valid non-negative price.'
+    }
+
+    if (!highestPrice.trim()) {
+      nextErrors.highestPrice = 'Highest price is required.'
+    } else if (Number.isNaN(parsedHighest) || parsedHighest < 0) {
+      nextErrors.highestPrice = 'Enter a valid non-negative price.'
+    }
+
+    if (
+      !nextErrors.lowestPrice &&
+      !nextErrors.corePrice &&
+      !nextErrors.highestPrice
+    ) {
+      if (parsedLowest > parsedCore || parsedCore > parsedHighest) {
+        nextErrors.priceOrder =
+          'Price range must be in ascending order (lowest <= core <= highest).'
+      }
+    }
+
+    setErrors(nextErrors)
+
+    if (Object.keys(nextErrors).length === 0) {
+      onNext()
+    }
+  }
+
   return (
-    <OnboardingShell footer="INTELLIGENCE ENGINE V2.4.0" progress={75}>
-      <span className="rounded bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-        STEP 03/04
-      </span>
-      <h1 className="mt-4 text-3xl font-semibold tracking-tight">
-        Targeting the White Space.
+    <OnboardingShell footer="STEP 02/04" progress={50}>
+      <h1 className="text-3xl font-semibold tracking-tight">
+        Founder Input | Product Context
       </h1>
       <p className="mt-3 text-muted-foreground">
-        Help our AI focus on the most relevant signals.
+        Describe the product and the market problem you want to solve.
       </p>
 
       <div className="mt-8 grid gap-6">
-        <Field label="Top 3 Competitors">
+        <Field label="Problems they want to solve">
+          <div className="grid gap-2">
+            <Textarea
+              aria-invalid={errors.problemStatement ? 'true' : undefined}
+              className={cn(
+                'min-h-24',
+                errors.problemStatement &&
+                  'border-destructive focus-visible:ring-destructive/40',
+              )}
+              onChange={(event) => {
+                handleLongTextChange(
+                  event.target.value,
+                  'problemStatement',
+                  setProblemStatement,
+                )
+              }}
+              placeholder="Describe the core pain points and context..."
+              required
+              value={problemStatement}
+            />
+            <FieldError message={errors.problemStatement} />
+            <FieldCounter
+              count={problemStatement.length}
+              limit={LONG_TEXT_CHAR_LIMIT}
+            />
+          </div>
+        </Field>
+        <Field label="Product / Service Description">
           <div className="grid gap-3">
-            <Input placeholder="Primary direct competitor" />
-            <Input placeholder="Secondary market player" />
-            <Input placeholder="Emerging challenger" />
+            <div className="grid gap-2">
+              <Input
+                aria-invalid={errors.productName ? 'true' : undefined}
+                className={cn(
+                  errors.productName &&
+                    'border-destructive focus-visible:ring-destructive/40',
+                )}
+                onChange={(event) => {
+                  setProductName(event.target.value)
+                  clearError('productName')
+                }}
+                placeholder="Primary product name"
+                required
+                value={productName}
+              />
+              <FieldError message={errors.productName} />
+            </div>
+            <div className="grid gap-2">
+              <Textarea
+                aria-invalid={errors.productDescription ? 'true' : undefined}
+                className={cn(
+                  'min-h-20',
+                  errors.productDescription &&
+                    'border-destructive focus-visible:ring-destructive/40',
+                )}
+                onChange={(event) => {
+                  handleLongTextChange(
+                    event.target.value,
+                    'productDescription',
+                    setProductDescription,
+                  )
+                }}
+                placeholder="Short description"
+                required
+                value={productDescription}
+              />
+              <FieldError message={errors.productDescription} />
+              <FieldCounter
+                count={productDescription.length}
+                limit={LONG_TEXT_CHAR_LIMIT}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Input
+                aria-invalid={errors.uniqueSellingPoint ? 'true' : undefined}
+                className={cn(
+                  errors.uniqueSellingPoint &&
+                    'border-destructive focus-visible:ring-destructive/40',
+                )}
+                onChange={(event) => {
+                  setUniqueSellingPoint(event.target.value)
+                  clearError('uniqueSellingPoint')
+                }}
+                placeholder="Unique selling point"
+                required
+                value={uniqueSellingPoint}
+              />
+              <FieldError message={errors.uniqueSellingPoint} />
+            </div>
+            <div className="grid gap-2">
+              <Textarea
+                aria-invalid={errors.keyFeatures ? 'true' : undefined}
+                className={cn(
+                  'min-h-20',
+                  errors.keyFeatures &&
+                    'border-destructive focus-visible:ring-destructive/40',
+                )}
+                onChange={(event) => {
+                  handleLongTextChange(
+                    event.target.value,
+                    'keyFeatures',
+                    setKeyFeatures,
+                  )
+                }}
+                placeholder="Key features"
+                required
+                value={keyFeatures}
+              />
+              <FieldError message={errors.keyFeatures} />
+              <FieldCounter
+                count={keyFeatures.length}
+                limit={LONG_TEXT_CHAR_LIMIT}
+              />
+            </div>
           </div>
         </Field>
-        <Field label="Search Intent Keywords">
-          <Textarea
-            className="min-h-24"
-            placeholder="Comma-separated terms (e.g., hydrating serum, serum kulit sensitif, SPF daily serum...)"
-          />
-        </Field>
-        <Field label="Ideal Customer Segment">
-          <BasicSelect
-            placeholder="Select primary segment..."
-            values={[
-              'Stressed Young Professional',
-              'Skincare Hobbyist',
-              'Sensitive Skin Seeker',
-            ]}
-          />
-        </Field>
-        <Field label="Biggest Consumer Pain Point">
-          <Textarea
-            className="min-h-24"
-            placeholder="Describe the friction your target audience experiences most frequently..."
-          />
-        </Field>
-        <div>
-          <div className="mb-4 flex items-center justify-between text-xs font-medium uppercase tracking-[0.18em]">
-            <span>Target Price Range</span>
-            <span>Rp89K - Rp159K</span>
+        <Field label="Competitive Advantage">
+          <div className="grid gap-2">
+            <Textarea
+              aria-invalid={errors.competitiveAdvantage ? 'true' : undefined}
+              className={cn(
+                'min-h-24',
+                errors.competitiveAdvantage &&
+                  'border-destructive focus-visible:ring-destructive/40',
+              )}
+              onChange={(event) => {
+                handleLongTextChange(
+                  event.target.value,
+                  'competitiveAdvantage',
+                  setCompetitiveAdvantage,
+                )
+              }}
+              placeholder="What makes you win against competitors?"
+              required
+              value={competitiveAdvantage}
+            />
+            <FieldError message={errors.competitiveAdvantage} />
+            <FieldCounter
+              count={competitiveAdvantage.length}
+              limit={LONG_TEXT_CHAR_LIMIT}
+            />
           </div>
-          <div className="relative h-1 rounded-full bg-muted">
-            <div className="absolute left-0 top-0 h-full w-1/2 rounded-full bg-foreground" />
-            <div className="-top-1.5 absolute left-1/2 size-4 rounded-full bg-foreground" />
+        </Field>
+        <Field label="Price Range">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-2">
+              <Input
+                aria-invalid={errors.lowestPrice ? 'true' : undefined}
+                className={cn(
+                  errors.lowestPrice &&
+                    'border-destructive focus-visible:ring-destructive/40',
+                )}
+                inputMode="decimal"
+                min="0"
+                onChange={(event) => {
+                  setLowestPrice(event.target.value)
+                  clearError('lowestPrice')
+                  clearError('priceOrder')
+                }}
+                placeholder="Lowest price"
+                required
+                step="0.01"
+                type="number"
+                value={lowestPrice}
+              />
+              <FieldError message={errors.lowestPrice} />
+            </div>
+            <div className="grid gap-2">
+              <Input
+                aria-invalid={errors.corePrice ? 'true' : undefined}
+                className={cn(
+                  errors.corePrice &&
+                    'border-destructive focus-visible:ring-destructive/40',
+                )}
+                inputMode="decimal"
+                min="0"
+                onChange={(event) => {
+                  setCorePrice(event.target.value)
+                  clearError('corePrice')
+                  clearError('priceOrder')
+                }}
+                placeholder="Core price"
+                required
+                step="0.01"
+                type="number"
+                value={corePrice}
+              />
+              <FieldError message={errors.corePrice} />
+            </div>
+            <div className="grid gap-2">
+              <Input
+                aria-invalid={errors.highestPrice ? 'true' : undefined}
+                className={cn(
+                  errors.highestPrice &&
+                    'border-destructive focus-visible:ring-destructive/40',
+                )}
+                inputMode="decimal"
+                min="0"
+                onChange={(event) => {
+                  setHighestPrice(event.target.value)
+                  clearError('highestPrice')
+                  clearError('priceOrder')
+                }}
+                placeholder="Highest price"
+                required
+                step="0.01"
+                type="number"
+                value={highestPrice}
+              />
+              <FieldError message={errors.highestPrice} />
+            </div>
           </div>
-          <div className="mt-3 flex justify-between text-[10px] text-muted-foreground">
-            <span>Rp50K</span>
-            <span>Rp119K</span>
-            <span>Rp300K+</span>
+          <FieldError message={errors.priceOrder} />
+        </Field>
+        <StepActions onBack={onBack} onNext={handleNext} />
+      </div>
+    </OnboardingShell>
+  )
+}
+
+function ResearchGoalsStep({
+  onBack,
+  onNext,
+}: {
+  onBack: () => void
+  onNext: () => void
+}) {
+  const researchGoals = [
+    'Who my ideal customer is',
+    'Product-market fit',
+    'Positioning',
+    'Competitor analysis',
+    'Market expansion',
+    'Customer persona',
+    'New product idea validation',
+  ]
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([])
+  const [errors, setErrors] = useState<{ goals?: string }>({})
+  const selectedLabel =
+    selectedGoals.length === 0
+      ? 'Select research goals'
+      : selectedGoals.length <= 2
+        ? selectedGoals.join(', ')
+        : `${selectedGoals.slice(0, 2).join(', ')} +${selectedGoals.length - 2} more`
+
+  const handleNext = () => {
+    if (selectedGoals.length === 0) {
+      setErrors({ goals: 'Select at least one research goal to continue.' })
+      return
+    }
+
+    setErrors({})
+    onNext()
+  }
+
+  return (
+    <OnboardingShell footer="STEP 03/04" progress={75}>
+      <h1 className="text-3xl font-semibold tracking-tight">
+        Founder Input | Research Goals
+      </h1>
+      <p className="mt-3 text-muted-foreground">
+        Select the insights you want ConsumerIQ to prioritize.
+      </p>
+
+      <div className="mt-8 grid gap-6">
+        <Field label="What do you want to understand? (Multi-select)">
+          <div className="grid gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  aria-invalid={errors.goals ? 'true' : undefined}
+                  className={cn(
+                    'h-11 w-full justify-between',
+                    errors.goals && 'border-destructive text-destructive',
+                  )}
+                  variant="outline"
+                >
+                  <span
+                    className={cn(
+                      'truncate text-left',
+                      selectedGoals.length === 0 && 'text-muted-foreground',
+                    )}
+                  >
+                    {selectedLabel}
+                  </span>
+                  <ChevronDown className="size-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuLabel>Research goals</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {researchGoals.map((goal) => (
+                  <DropdownMenuCheckboxItem
+                    checked={selectedGoals.includes(goal)}
+                    key={goal}
+                    onCheckedChange={(checked) => {
+                      if (errors.goals) {
+                        setErrors({})
+                      }
+                      setSelectedGoals((current) => {
+                        const isSelected = current.includes(goal)
+                        if (checked && !isSelected) {
+                          return [...current, goal]
+                        }
+                        if (!checked && isSelected) {
+                          return current.filter((item) => item !== goal)
+                        }
+                        return current
+                      })
+                    }}
+                  >
+                    {goal}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {selectedGoals.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {selectedGoals.map((goal) => (
+                  <span
+                    className="rounded-full border px-3 py-1 text-xs"
+                    key={goal}
+                  >
+                    {goal}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Select one or more goals to continue.
+              </p>
+            )}
+            <FieldError message={errors.goals} />
           </div>
-        </div>
-        <StepActions onBack={onBack} onNext={onNext} />
+        </Field>
+        <StepActions onBack={onBack} onNext={handleNext} />
       </div>
     </OnboardingShell>
   )
@@ -774,17 +1393,19 @@ function WhiteSpaceStep({
 function GeneratingStep({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(18)
   const [isVisible, setIsVisible] = useState(false)
+  const redirectTimeoutRef = useRef<number | null>(null)
+  const hasAutoRedirectedRef = useRef(false)
 
   useEffect(() => {
     const firstFrame = window.requestAnimationFrame(() => setIsVisible(true))
     const progressTimer = window.setInterval(() => {
       setProgress((current) => {
-        if (current >= 93) {
+        if (current >= 100) {
           window.clearInterval(progressTimer)
-          return 93
+          return 100
         }
 
-        return Math.min(93, current + 5)
+        return Math.min(100, current + 5)
       })
     }, 180)
 
@@ -793,6 +1414,23 @@ function GeneratingStep({ onComplete }: { onComplete: () => void }) {
       window.clearInterval(progressTimer)
     }
   }, [])
+
+  useEffect(() => {
+    if (progress < 100 || hasAutoRedirectedRef.current) {
+      return
+    }
+
+    hasAutoRedirectedRef.current = true
+    redirectTimeoutRef.current = window.setTimeout(() => {
+      onComplete()
+    }, 900)
+
+    return () => {
+      if (redirectTimeoutRef.current !== null) {
+        window.clearTimeout(redirectTimeoutRef.current)
+      }
+    }
+  }, [onComplete, progress])
 
   const processRows = [
     'Establishing secure connection',
@@ -849,7 +1487,7 @@ function GeneratingStep({ onComplete }: { onComplete: () => void }) {
           className="absolute inset-5 rounded-full border border-border/70"
           style={{ animation: 'pulse 1.8s ease-in-out infinite' }}
         />
-        <span className="relative text-3xl font-semibold">93%</span>
+        <span className="relative text-3xl font-semibold">{progress}%</span>
       </div>
 
       <div
@@ -1498,25 +2136,54 @@ function ProgressBar({ value }: { value: number }) {
 
 function Field({ children, label }: { children: ReactNode; label: string }) {
   return (
-    <label className="grid gap-2">
+    <div aria-label={label} className="grid gap-2" role="group">
       <span className="text-xs font-medium uppercase tracking-[0.16em]">
         {label}
       </span>
       {children}
-    </label>
+    </div>
+  )
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) {
+    return null
+  }
+
+  return <p className="text-xs text-destructive">{message}</p>
+}
+
+function FieldCounter({ count, limit }: { count: number; limit: number }) {
+  return (
+    <p className="text-xs text-muted-foreground">{count}/{limit}</p>
   )
 }
 
 function BasicSelect({
   placeholder,
   values,
+  value,
+  onValueChange,
+  isInvalid,
+  isRequired,
 }: {
   placeholder: string
   values: string[]
+  value?: string
+  onValueChange?: (value: string) => void
+  isInvalid?: boolean
+  isRequired?: boolean
 }) {
   return (
-    <Select>
-      <SelectTrigger className="h-11 w-full">
+    <Select onValueChange={onValueChange} value={value}>
+      <SelectTrigger
+        aria-invalid={isInvalid ? 'true' : undefined}
+        aria-required={isRequired ? 'true' : undefined}
+        className={cn(
+          'h-11 w-full',
+          isInvalid && 'border-destructive focus:ring-destructive/40',
+        )}
+      >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -1530,12 +2197,25 @@ function BasicSelect({
   )
 }
 
-function StepActions({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
+function StepActions({
+  onBack,
+  onNext,
+}: {
+  onBack?: () => void
+  onNext: () => void
+}) {
   return (
-    <div className="mt-3 flex items-center justify-between border-t pt-6">
-      <Button onClick={onBack} variant="outline">
-        Back
-      </Button>
+    <div
+      className={cn(
+        'mt-3 flex items-center border-t pt-6',
+        onBack ? 'justify-between' : 'justify-end',
+      )}
+    >
+      {onBack ? (
+        <Button onClick={onBack} variant="outline">
+          Back
+        </Button>
+      ) : null}
       <Button
         className="bg-foreground text-background hover:bg-foreground/90"
         onClick={onNext}
