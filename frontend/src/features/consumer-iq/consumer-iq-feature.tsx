@@ -1,6 +1,5 @@
 import { nanoid } from "nanoid";
 import {
-  AlertTriangle,
   ArrowRight,
   BarChart3,
   CheckCircle2,
@@ -13,10 +12,8 @@ import {
   Globe2,
   LayoutDashboard,
   LoaderCircle,
-  Lock,
   Menu,
   MessageSquare,
-  PackageX,
   Search,
   Settings,
   ShieldCheck,
@@ -428,8 +425,8 @@ export function ConsumerIQDashboard({
           ],
         },
         {
-          label: "Top Rising Formats",
-          keywords: ["rising", "formats", "top rising", "trend formats"],
+          label: "AI Recommendation",
+          keywords: ["recommendation", "channel", "advertising", "ads"],
         },
         {
           label: "Marketplace Share",
@@ -1970,7 +1967,7 @@ function MarketOverview() {
         <MetricCard
           label="Price Target"
           status="Optimal market fit"
-          title="Rp119K"
+          title="$19"
         />
         <MetricCard
           label="Market Gaps"
@@ -1986,7 +1983,7 @@ function MarketOverview() {
           subtitle="Real-time SKU tracking across platforms"
         >
           <div className="mb-2 flex gap-2">
-            {["Shopee", "Lazada", "TikTok"].map((item, index) => (
+            {["Amazon", "Temu"].map((item, index) => (
               <span
                 className={cn(
                   "rounded-md border px-3 py-1 text-xs font-medium",
@@ -2001,23 +1998,23 @@ function MarketOverview() {
           <div className="overflow-hidden rounded-lg border">
             {[
               [
-                "Hyalu-Boost B5",
-                "GlowIndo Official",
-                "Rp125,000",
+                "Barrier Repair Serum",
+                "Amazon Hero SKU",
+                "$18.99",
                 "82%",
                 "+12.4%",
               ],
               [
-                "Aqua-Lock Serum",
-                "DewySkin Lab",
-                "Rp98,000",
+                "SPF Moisture Duo",
+                "Temu Bundle",
+                "$14.50",
                 "Low Stock",
                 "+28.1%",
               ],
               [
-                "Ceramide+ Intense",
-                "Purendo Wellness",
-                "Rp142,000",
+                "Peptide Night Cream",
+                "Amazon Premium",
+                "$22.00",
                 "55%",
                 "-1.2%",
               ],
@@ -2059,9 +2056,9 @@ function MarketOverview() {
           <MapCard />
           <RegionBars
             rows={[
-              ["Jabodetabek", 58.2],
-              ["Surabaya", 19.4],
-              ["Bandung", 12.1],
+              ["Los Angeles", 58.2],
+              ["New York", 19.4],
+              ["Dallas", 12.1],
             ]}
           />
         </Panel>
@@ -2091,23 +2088,7 @@ function DemandPulse() {
           </div>
         </Panel>
 
-        <Panel title="Top Rising Formats">
-          <div className="grid gap-3">
-            {[
-              ["Hydrating Serum", "+88%", "42% of total reach"],
-              ["Ceramide Barrier", "+54%", "12% penetration"],
-              ["Sensitive Skin SPF", "+31%", "High LTV segments"],
-            ].map(([name, growth, caption]) => (
-              <div className="rounded-lg border p-3" key={name}>
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{name}</p>
-                  <p className="text-xl font-semibold">{growth}</p>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">{caption}</p>
-              </div>
-            ))}
-          </div>
-        </Panel>
+        <DemandPulseRecommendation />
 
         <Panel
           title="Marketplace Share"
@@ -2127,9 +2108,9 @@ function DemandPulse() {
             </span>
           </div>
           {[
-            ['"hydrating serum spf"', "Commercial", "144K"],
-            ['"serum kulit sensitif"', "Informational", "82K"],
-            ['"ceramide serum murah"', "Transactional", "36K"],
+            ['"barrier repair serum"', "Commercial", "144K"],
+            ['"spf moisturizer sensitive skin"', "Informational", "82K"],
+            ['"budget skincare bundle"', "Transactional", "36K"],
           ].map(([keyword, intent, volume]) => (
             <div
               className="mb-2 rounded-lg border border-background/20 p-3"
@@ -2154,6 +2135,47 @@ function DemandPulse() {
 
       <ProductOpportunityMatrix />
     </div>
+  );
+}
+
+function DemandPulseRecommendation() {
+  return (
+    <Panel>
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-chart-5/10 text-chart-5">
+          <Sparkles className="size-5" />
+        </span>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            AI Recommendation
+          </p>
+          <h3 className="mt-2 text-lg font-semibold">
+            Lead with Amazon intent, amplify with Temu discovery.
+          </h3>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Prioritize Amazon for high-intent conversion because search demand
+            is clustering around proof-based skincare terms. Use Sponsored
+            Products on "barrier repair serum" and "sensitive skin SPF", then
+            test Temu deal placements for bundle discovery and price-sensitive
+            trial traffic.
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+        <div className="rounded-lg border bg-muted/25 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Best Channel
+          </p>
+          <p className="mt-2 font-semibold">Amazon Search + Sponsored Products</p>
+        </div>
+        <div className="rounded-lg border bg-muted/25 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Ad Placement
+          </p>
+          <p className="mt-2 font-semibold">Temu in-app bundles + coupon feed</p>
+        </div>
+      </div>
+    </Panel>
   );
 }
 
@@ -2198,37 +2220,39 @@ function ProductOpportunityMatrix() {
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">
-        {opportunities.map(({ demand, icon: Icon, saturation, tags, title }) => (
-          <article
-            className="relative overflow-hidden rounded-lg border bg-muted/25 p-4"
-            key={title}
-          >
-            <div className="absolute top-0 right-0 grid size-16 place-items-start justify-end rounded-bl-full bg-chart-5/10 p-3 text-chart-5">
-              <Icon className="size-5" />
-            </div>
-            <h4 className="pr-12 text-base font-semibold">{title}</h4>
-            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              <p>
-                <span className="text-muted-foreground">Demand Index: </span>
-                <strong>{demand}</strong>
-              </p>
-              <p>
-                <span className="text-muted-foreground">Saturation: </span>
-                <strong>{saturation}</strong>
-              </p>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <span
-                  className="rounded bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
-                  key={tag}
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </article>
-        ))}
+        {opportunities.map(
+          ({ demand, icon: Icon, saturation, tags, title }) => (
+            <article
+              className="relative overflow-hidden rounded-lg border bg-muted/25 p-4"
+              key={title}
+            >
+              <div className="absolute top-0 right-0 grid size-16 place-items-start justify-end rounded-bl-full bg-chart-5/10 p-3 text-chart-5">
+                <Icon className="size-5" />
+              </div>
+              <h4 className="pr-12 text-base font-semibold">{title}</h4>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <p>
+                  <span className="text-muted-foreground">Demand Index: </span>
+                  <strong>{demand}</strong>
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Saturation: </span>
+                  <strong>{saturation}</strong>
+                </p>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <span
+                    className="rounded bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+                    key={tag}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </article>
+          )
+        )}
       </div>
     </section>
   );
@@ -2429,7 +2453,7 @@ function PersonaDecode() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Main Channel
             </p>
-            <p className="mt-2 text-sm font-semibold">Shopee + TikTok</p>
+            <p className="mt-2 text-sm font-semibold">Amazon + Temu</p>
           </div>
           <div className="rounded-lg border bg-muted/40 p-3">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -2454,40 +2478,40 @@ function PersonaDecode() {
 function CompetitorMirror() {
   const competitorRows = [
     {
-      brand: "Somethinc",
-      sku: "5% Niacinamide Sabi Beet",
-      avgPrice: "Rp 115.000",
+      brand: "CeraVe",
+      sku: "AM Facial Moisturizing Lotion SPF 30",
+      avgPrice: "$16.99",
       priceDelta: "-2.1%",
       promoIntensity: "High",
       promoLevel: "high",
       monthlySales: "45.2K",
       salesDelta: "+5.4%",
-      rating: "4.9",
-      reviews: "128K",
+      rating: "4.7",
+      reviews: "94K",
     },
     {
-      brand: "Avoskin",
-      sku: "PHTE Essence 100ml",
-      avgPrice: "Rp 299.000",
+      brand: "COSRX",
+      sku: "Snail Mucin Essence 100ml",
+      avgPrice: "$13.80",
       priceDelta: "-0.8%",
       promoIntensity: "Low",
       promoLevel: "low",
       monthlySales: "18.5K",
       salesDelta: "-1.2%",
-      rating: "4.8",
-      reviews: "85K",
+      rating: "4.6",
+      reviews: "72K",
     },
     {
-      brand: "Skintific",
-      sku: "5X Ceramide Moisture Gel",
-      avgPrice: "Rp 149.000",
+      brand: "The Ordinary",
+      sku: "Hyaluronic Acid 2% + B5",
+      avgPrice: "$18.50",
       priceDelta: "+5.8%",
       promoIntensity: "Very High",
       promoLevel: "very-high",
       monthlySales: "82.1K",
       salesDelta: "+12.4%",
-      rating: "4.9",
-      reviews: "320K",
+      rating: "4.5",
+      reviews: "118K",
     },
   ];
 
@@ -2500,14 +2524,14 @@ function CompetitorMirror() {
 
   return (
     <div className="grid gap-3">
-      <CompetitorSignalCards />
+      <CompetitorAiRecommendation />
 
       <Panel title="Top Competitor Matrix">
         <div className="overflow-x-auto rounded-lg border">
           <div className="min-w-[52rem]">
             <div className="grid grid-cols-[1.5fr_0.8fr_0.8fr_0.9fr_0.9fr] border-b bg-muted/40 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               <span>Brand / Hero SKU</span>
-              <span>Avg Price (IDR)</span>
+              <span>Avg Price (USD)</span>
               <span>Promo Intensity</span>
               <span>Est. Monthly Sales</span>
               <span>Rating / Reviews</span>
@@ -2574,16 +2598,16 @@ function CompetitorMirror() {
         </div>
       </Panel>
 
-      <Panel title="Avg Movement">
+      <Panel title="Avg Sales Movement">
         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-2">
             <span className="size-2 rounded-full bg-foreground" /> You
           </span>
           <span className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-chart-4" /> Somethinc
+            <span className="size-2 rounded-full bg-chart-4" /> Amazon Avg
           </span>
           <span className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-destructive" /> Skintific
+            <span className="size-2 rounded-full bg-destructive" /> Temu Avg
           </span>
         </div>
         <div className="mt-3 h-32 w-full rounded-lg border bg-muted/30 p-3">
@@ -2594,228 +2618,315 @@ function CompetitorMirror() {
   );
 }
 
-function CompetitorSignalCards() {
-  const signals = [
+function CompetitorAiRecommendation() {
+  const items = [
     {
-      action: "View Impact",
-      body: (
-        <>
-          <strong>Skintific</strong> dropped price on{" "}
-          <em>5X Ceramide Barrier Repair Moisture Gel</em> by 15% on Shopee.
-        </>
-      ),
-      icon: AlertTriangle,
-      label: "Price Drop Alert",
-      time: "2h ago",
-      tone: "danger",
+      label: "Key Advantage",
+      value: "Proof-led barrier repair positioning",
+      detail:
+        "Amazon buyers reward clinical proof, while Temu shoppers respond to visible bundle value.",
     },
     {
-      action: "View Keywords",
-      body: (
-        <>
-          <strong>Somethinc</strong> moved up 3 spots in "Niacinamide Serum"
-          keyword search.
-        </>
-      ),
-      icon: TrendingUp,
-      label: "Search Rank Surge",
-      time: "5h ago",
-      tone: "warning",
+      label: "Pricing Advice",
+      value: "$18-$22 Amazon core SKU",
+      detail:
+        "Keep Amazon above commodity pricing, then use Temu under-$15 starter bundles for trial.",
     },
     {
-      action: "Capitalize Now",
-      body: (
-        <>
-          <strong>Avoskin</strong> Perfect Hydrating Treatment Essence is OOS on
-          Tokopedia.
-        </>
-      ),
-      icon: PackageX,
-      label: "Stock Outage",
-      time: "1d ago",
-      tone: "success",
+      label: "Positioning",
+      value: "Premium efficacy without premium friction",
+      detail:
+        "Lead with sensitive-skin trust, fast absorption, and clearer ingredient claims.",
     },
-  ] as const;
-
-  const toneClasses = {
-    danger: {
-      card: "border-destructive/30 bg-destructive/5",
-      text: "text-destructive",
-    },
-    warning: {
-      card: "border-chart-3/40 bg-chart-3/10",
-      text: "text-chart-3",
-    },
-    success: {
-      card: "border-chart-4/40 bg-chart-4/10",
-      text: "text-chart-4",
-    },
-  };
+  ];
 
   return (
-    <div className="grid gap-3 lg:grid-cols-3">
-      {signals.map(({ action, body, icon: Icon, label, time, tone }) => {
-        const classes = toneClasses[tone];
+    <Panel>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-chart-5/10 text-chart-5">
+            <Sparkles className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              AI Recommendation
+            </p>
+            <h3 className="mt-2 text-lg font-semibold">
+              Win by owning the trust gap between Amazon and Temu.
+            </h3>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+              Competitors are either credible but expensive on Amazon, or cheap
+              but low-trust on Temu. Position the product as a clinically clear,
+              affordable barrier-repair routine with enough proof for Amazon and
+              enough bundle value for Temu.
+            </p>
+          </div>
+        </div>
+        <Button className="shrink-0 bg-foreground text-background hover:bg-foreground/90">
+          Export Strategy
+          <ArrowRight className="size-4" />
+        </Button>
+      </div>
 
-        return (
-          <article
-            className={cn("rounded-xl border p-3.5 shadow-sm", classes.card)}
-            key={label}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <p
-                className={cn(
-                  "flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em]",
-                  classes.text
-                )}
-              >
-                <Icon className="size-4" />
-                {label}
-              </p>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {time}
-              </span>
-            </div>
-            <p className="mt-3 min-h-12 text-sm leading-6">{body}</p>
-            <Button className="mt-2 h-auto p-0" size="sm" variant="link">
-              {action}
-              <ArrowRight className="size-3.5" />
-            </Button>
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        {items.map((item) => (
+          <article className="rounded-lg border bg-muted/25 p-3" key={item.label}>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {item.label}
+            </p>
+            <p className="mt-2 font-semibold">{item.value}</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              {item.detail}
+            </p>
           </article>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+    </Panel>
   );
 }
 
 function LaunchCompass() {
   return (
     <div className="grid gap-3">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-3">
-        <Panel>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4">
-            <div>
-              <span className="rounded bg-foreground px-2 py-1 text-[10px] font-semibold uppercase text-background">
-                AI Recommended Decision
-              </span>
-              <h3 className="mt-4 text-3xl font-semibold leading-none tracking-tight xl:text-4xl">
-                GO TO
-                <br />
-                MARKET
-              </h3>
-              <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
-                All primary indicators align for a high-impact launch. Demand
-                signals in the target demographic have peaked at a 24-month
-                high.
-              </p>
-              <div className="mt-4 flex gap-3">
-                <Button className="bg-foreground text-background hover:bg-foreground/90">
-                  Initiate Rollout
-                </Button>
-                <Button variant="outline">Export Logic</Button>
-              </div>
-            </div>
-            <div className="grid place-items-center border-l">
-              <div className="text-center">
-                <ScoreDonutChart score={92} />
-                <p className="mt-4 font-semibold">Market Gap Score</p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Extreme validation against current competitor saturation.
-                </p>
-              </div>
-            </div>
-          </div>
+      <div className="grid gap-3 xl:grid-cols-[1.5fr_0.9fr]">
+        <Panel
+          title="Interactive Heatmap"
+          subtitle="Demand area by sales and expansion opportunity by competitor position"
+        >
+          <LaunchHeatmap />
         </Panel>
 
-        <Panel title="Pricing Strategy">
-          <div className="rounded-lg border bg-muted/30 p-4">
-            <div className="flex items-start justify-between">
-              <span className="text-xs text-muted-foreground">
-                Introductory Tier
-              </span>
-              <p className="text-2xl font-semibold">Rp119K</p>
+        <Panel title="City Sales Signals" subtitle="Amazon and Temu only">
+          <LaunchCitySales />
+        </Panel>
+      </div>
+
+      <LaunchAiRecommendation />
+    </div>
+  );
+}
+
+function LaunchHeatmap() {
+  const chartData = [
+    {
+      city: "Los Angeles",
+      channel: "Amazon",
+      demand: 92,
+      expansion: 74,
+      sales: 18400,
+    },
+    {
+      city: "New York",
+      channel: "Amazon",
+      demand: 88,
+      expansion: 62,
+      sales: 16100,
+    },
+    {
+      city: "Dallas",
+      channel: "Temu",
+      demand: 72,
+      expansion: 86,
+      sales: 12800,
+    },
+    {
+      city: "Phoenix",
+      channel: "Temu",
+      demand: 64,
+      expansion: 91,
+      sales: 9600,
+    },
+    {
+      city: "Chicago",
+      channel: "Amazon",
+      demand: 78,
+      expansion: 68,
+      sales: 11200,
+    },
+  ];
+
+  const chartConfig = {
+    amazon: { label: "Amazon demand", color: "var(--foreground)" },
+    temu: { label: "Temu expansion", color: "var(--chart-5)" },
+  };
+
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap gap-2 text-xs">
+        <span className="rounded-full border bg-muted/30 px-3 py-1 font-medium">
+          Demand Area: sales-weighted demand
+        </span>
+        <span className="rounded-full border bg-chart-5/10 px-3 py-1 font-medium text-chart-5">
+          Opportunity Expansion: lower competitor pressure
+        </span>
+      </div>
+      <ChartContainer className="h-64 w-full" config={chartConfig}>
+        <ScatterChart margin={{ bottom: 12, left: 0, right: 18, top: 12 }}>
+          <CartesianGrid />
+          <XAxis
+            dataKey="demand"
+            name="Demand"
+            tickLine={false}
+            axisLine={false}
+            label={{
+              value: "Demand Area",
+              position: "insideBottom",
+              offset: -8,
+            }}
+            type="number"
+            domain={[50, 100]}
+          />
+          <YAxis
+            dataKey="expansion"
+            name="Expansion"
+            tickLine={false}
+            axisLine={false}
+            type="number"
+            domain={[50, 100]}
+          />
+          <ZAxis dataKey="sales" range={[90, 420]} />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                formatter={(value, name, item) => {
+                  const payload = item.payload as (typeof chartData)[number];
+
+                  if (name === "sales") {
+                    return `${Number(value).toLocaleString("en-US")} sales`;
+                  }
+
+                  return `${value} - ${payload.city} (${payload.channel})`;
+                }}
+              />
+            }
+          />
+          <Scatter
+            data={chartData.filter((item) => item.channel === "Amazon")}
+            dataKey="sales"
+            fill="var(--foreground)"
+            name="Amazon"
+          />
+          <Scatter
+            data={chartData.filter((item) => item.channel === "Temu")}
+            dataKey="sales"
+            fill="var(--chart-5)"
+            name="Temu"
+          />
+        </ScatterChart>
+      </ChartContainer>
+    </div>
+  );
+}
+
+function LaunchCitySales() {
+  const rows = [
+    {
+      city: "Los Angeles",
+      amazon: "18.4K",
+      temu: "7.2K",
+      signal: "Best first city",
+    },
+    {
+      city: "New York",
+      amazon: "16.1K",
+      temu: "6.8K",
+      signal: "High intent",
+    },
+    {
+      city: "Dallas",
+      amazon: "9.4K",
+      temu: "12.8K",
+      signal: "Expansion pocket",
+    },
+    {
+      city: "Phoenix",
+      amazon: "6.7K",
+      temu: "9.6K",
+      signal: "Low competition",
+    },
+  ];
+
+  return (
+    <div className="grid gap-3">
+      {rows.map((row) => (
+        <div className="rounded-lg border bg-muted/25 p-3" key={row.city}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold">{row.city}</p>
+              <p className="text-xs text-muted-foreground">{row.signal}</p>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Penetration pricing model with 35% margin floor.
+            <span className="rounded bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]">
+              Sales
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+            <div className="rounded-md border bg-card p-2">
+              <p className="text-xs text-muted-foreground">Amazon</p>
+              <p className="font-semibold">{row.amazon}</p>
+            </div>
+            <div className="rounded-md border bg-card p-2">
+              <p className="text-xs text-muted-foreground">Temu</p>
+              <p className="font-semibold">{row.temu}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LaunchAiRecommendation() {
+  return (
+    <Panel>
+      <div className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-chart-5/10 text-chart-5">
+            <Sparkles className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              AI Recommendation
+            </p>
+            <h3 className="mt-2 text-xl font-semibold">
+              Start in Los Angeles on Amazon, then expand Temu into Dallas and
+              Phoenix.
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Los Angeles has the strongest Amazon sales density and enough
+              competitor distance to validate premium positioning. Use Amazon
+              Sponsored Products and creator review seeding first. Once review
+              confidence is visible, use Temu coupon bundles in Dallas and
+              Phoenix to capture value-sensitive expansion demand.
             </p>
           </div>
-          <div className="mt-4">
-            <div className="mb-2 flex justify-between text-xs">
-              <span>Elasticity Range</span>
-              <span>Rp89K - Rp159K</span>
-            </div>
-            <PricingElasticityChart />
-          </div>
-          <Button className="mt-4 w-full" variant="outline">
-            Review Profit Models
-          </Button>
-        </Panel>
-      </div>
+        </div>
 
-      <Panel
-        title="Channel Rollout Sequence"
-        subtitle="Prioritized phases based on CAC efficiency"
-      >
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3">
+        <div className="grid gap-3">
           {[
-            ["1", "Shopee Beta", "Top 500 wishlist users"],
-            ["2", "Organic Search", "SEO keyword injection"],
-            ["3", "TikTok Amplify", "Creator affiliate test"],
-            ["4", "Mass Market", "Lazada expansion"],
-          ].map(([num, title, desc], index) => (
-            <div className="rounded-lg border p-3" key={title}>
-              <div
-                className={cn(
-                  "mb-4 grid size-8 place-items-center rounded-full border font-semibold",
-                  index === 0 && "bg-foreground text-background"
-                )}
-              >
-                {num}
-              </div>
-              <p className="font-semibold uppercase tracking-[0.08em] text-xs">
+            [
+              "Amazon GTM",
+              "Amazon Ads partner or marketplace agency",
+              "Maya Chen - Retail media lead, example.amazon@agency.test",
+            ],
+            [
+              "Temu Expansion",
+              "Creator-commerce and coupon placement operator",
+              "Ethan Brooks - Marketplace ops, example.temu@agency.test",
+            ],
+          ].map(([title, firm, contact]) => (
+            <article className="rounded-lg border bg-muted/25 p-3" key={title}>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 {title}
               </p>
-              <p className="mt-3 text-xs text-muted-foreground">{desc}</p>
-            </div>
+              <p className="mt-2 font-semibold">{firm}</p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                {contact}
+              </p>
+            </article>
           ))}
         </div>
-      </Panel>
-
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-3">
-        <Panel title="Strategic Moat Analysis">
-          <div className="grid gap-3">
-            <MoatRow icon={<Lock />} label="Data Propriety" value="High" />
-            <MoatRow
-              icon={<Zap />}
-              label="Execution Velocity"
-              value="Extreme"
-            />
-            <MoatRow
-              icon={<Sparkles />}
-              label="Switching Costs"
-              value="Medium"
-            />
-          </div>
-        </Panel>
-        <Panel
-          title="Intelligence Feed"
-          subtitle="Global market signals tracked hourly"
-        >
-          {[
-            "Beauty challenger adjusts pricing for Southeast Asia.",
-            "Consumer interest in sensitive skin spikes +12%.",
-            "Search trend for ceramide barrier continues upward.",
-          ].map((item, index) => (
-            <div className="border-b py-3 text-sm last:border-b-0" key={item}>
-              <p className="text-xs text-muted-foreground">
-                {index === 0 ? "2m ago" : index === 1 ? "15m ago" : "1h ago"}
-              </p>
-              <p className="mt-1 font-medium">{item}</p>
-            </div>
-          ))}
-        </Panel>
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -2826,8 +2937,8 @@ function DataSettings() {
         <Panel title="Network Health">
           <div className="grid gap-3 text-sm">
             <HealthRow label="Bright Data" value="99.9% Uptime" />
-            <HealthRow label="Shopee Connect" value="12ms" />
-            <HealthRow label="Tokopedia Stream" value="18ms" />
+            <HealthRow label="Amazon Connect" value="12ms" />
+            <HealthRow label="Temu Stream" value="18ms" />
           </div>
           <Button className="mt-4" variant="ghost">
             View incident history
@@ -2865,7 +2976,7 @@ function DataSettings() {
             ],
             [
               "Web Scraper API",
-              "Shopee storefronts",
+              "Amazon storefronts",
               "Active",
               "15 mins ago",
               "1.2M req",
@@ -2873,7 +2984,7 @@ function DataSettings() {
             ],
             [
               "Scraper Studio",
-              "Custom Tokopedia parser",
+              "Custom Temu parser",
               "Throttled",
               "1 hr ago",
               "850k req",
@@ -3212,9 +3323,9 @@ function SmallStat({
 
 function MapCard() {
   const chartData = [
-    { city: "Jabodetabek", x: 31, y: 46, z: 58.2 },
-    { city: "Surabaya", x: 62, y: 54, z: 19.4 },
-    { city: "Bandung", x: 48, y: 66, z: 12.1 },
+    { city: "Los Angeles", x: 31, y: 46, z: 58.2 },
+    { city: "New York", x: 62, y: 54, z: 19.4 },
+    { city: "Dallas", x: 48, y: 66, z: 12.1 },
   ];
   const chartConfig = {
     z: {
@@ -3278,9 +3389,8 @@ function RegionBars({ rows }: { rows: [string, number][] }) {
 
 function PlatformShareChart() {
   const chartData = [
-    { name: "Shopee", value: 64.2, fill: "var(--foreground)" },
-    { name: "Tokopedia", value: 22.8, fill: "var(--muted-foreground)" },
-    { name: "TikTok Shop", value: 13, fill: "var(--chart-5)" },
+    { name: "Amazon", value: 61.5, fill: "var(--foreground)" },
+    { name: "Temu", value: 38.5, fill: "var(--chart-5)" },
   ];
   const chartConfig = {
     value: {
@@ -3310,7 +3420,7 @@ function PlatformShareChart() {
           </PieChart>
         </ChartContainer>
         <div className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 text-center">
-          <p className="text-xl font-semibold">64%</p>
+          <p className="text-xl font-semibold">62%</p>
           <p className="text-[10px] uppercase tracking-[0.16em]">Leader</p>
         </div>
       </div>
@@ -3387,8 +3497,8 @@ function PriceMovementChart() {
   ];
   const chartConfig = {
     you: { label: "You", color: "var(--foreground)" },
-    somethinc: { label: "Somethinc", color: "var(--chart-4)" },
-    skintific: { label: "Skintific", color: "var(--destructive)" },
+    somethinc: { label: "Amazon Avg", color: "var(--chart-4)" },
+    skintific: { label: "Temu Avg", color: "var(--destructive)" },
   };
 
   return (
@@ -3425,117 +3535,6 @@ function PriceMovementChart() {
         />
       </LineChart>
     </ChartContainer>
-  );
-}
-
-function ScoreDonutChart({ score }: { score: number }) {
-  const chartData = [
-    { name: "Score", value: score, fill: "var(--foreground)" },
-    { name: "Remaining", value: 100 - score, fill: "var(--muted)" },
-  ];
-  const chartConfig = {
-    value: {
-      label: "Score",
-      color: "var(--foreground)",
-    },
-  };
-
-  return (
-    <div className="relative mx-auto size-28">
-      <ChartContainer className="h-full w-full" config={chartConfig}>
-        <PieChart>
-          <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-          <Pie
-            data={chartData}
-            dataKey="value"
-            innerRadius={36}
-            nameKey="name"
-            outerRadius={54}
-            paddingAngle={2}
-            startAngle={90}
-            endAngle={-270}
-          >
-            {chartData.map((entry) => (
-              <Cell fill={entry.fill} key={entry.name} />
-            ))}
-          </Pie>
-        </PieChart>
-      </ChartContainer>
-      <div className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2">
-        <p className="text-2xl font-semibold">{score}</p>
-        <p className="text-[10px] uppercase tracking-[0.18em]">Score</p>
-      </div>
-    </div>
-  );
-}
-
-function PricingElasticityChart() {
-  const chartData = [
-    { tier: "Floor", price: 89 },
-    { tier: "Target", price: 119 },
-    { tier: "Ceiling", price: 159 },
-  ];
-  const chartConfig = {
-    price: {
-      label: "Price",
-      color: "var(--foreground)",
-    },
-  };
-
-  return (
-    <ChartContainer className="h-16 w-full" config={chartConfig}>
-      <BarChart
-        data={chartData}
-        margin={{ bottom: 0, left: 0, right: 0, top: 8 }}
-      >
-        <XAxis
-          dataKey="tier"
-          tickLine={false}
-          axisLine={false}
-          tickMargin={8}
-        />
-        <YAxis hide domain={[0, 180]} />
-        <ChartTooltip
-          content={
-            <ChartTooltipContent
-              formatter={(value) =>
-                `Rp${Number(value).toLocaleString("id-ID")}K`
-              }
-            />
-          }
-        />
-        <Bar dataKey="price" fill="var(--color-price)" radius={[6, 6, 0, 0]} />
-      </BarChart>
-    </ChartContainer>
-  );
-}
-
-function MoatRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-lg border p-4">
-      <div className="flex items-center gap-4">
-        <span className="grid size-10 place-items-center rounded-md bg-muted">
-          {icon}
-        </span>
-        <div>
-          <p className="font-semibold">{label}</p>
-          <p className="text-xs text-muted-foreground">
-            Unique access to niche behavioral data sets.
-          </p>
-        </div>
-      </div>
-      <span className="rounded bg-muted px-2 py-1 text-xs font-semibold uppercase text-chart-4">
-        {value}
-      </span>
-    </div>
   );
 }
 
