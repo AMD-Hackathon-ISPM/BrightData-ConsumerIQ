@@ -129,6 +129,27 @@ function truncateToCharLimit(value: string, limit: number) {
   };
 }
 
+function formatPriceInput(value: string) {
+  const cleaned = value.replace(/[^\d.]/g, "");
+
+  if (!cleaned) {
+    return "";
+  }
+
+  const [integerPart, ...decimalParts] = cleaned.split(".");
+  const normalizedInteger = integerPart.replace(/^0+(?=\d)/, "");
+  const safeInteger = normalizedInteger === "" ? "0" : normalizedInteger;
+  const integerWithCommas = safeInteger.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const decimalPart = decimalParts.join("");
+  const hasTrailingDot = value.trim().endsWith(".");
+
+  if (cleaned.includes(".") && (decimalPart.length > 0 || hasTrailingDot)) {
+    return `${integerWithCommas}.${decimalPart}`;
+  }
+
+  return integerWithCommas;
+}
+
 export function ConsumerIQExperience() {
   const [isOnboarded, setIsOnboarded] = useState(() => {
     if (typeof window === "undefined") {
@@ -557,19 +578,37 @@ export function ConsumerIQDashboard({
   ];
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
-  const searchSuggestions = searchIndex.flatMap((entry) =>
+  const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
+  const sectionEntries = navItems.map((item) => {
+    const title = getSectionTitle(item.id);
+    const description = getSectionLabel(item.id);
+
+    return {
+      section: item.id,
+      label: title,
+      description,
+      keywords: [item.label, title, description],
+    };
+  });
+  const suggestionEntries = searchIndex.flatMap((entry) =>
     entry.suggestions.map((suggestion) => ({
       section: entry.section,
       label: suggestion.label,
       keywords: suggestion.keywords,
     }))
   );
-  const filteredSuggestions = normalizedQuery
-    ? searchSuggestions.filter(
-        (entry) =>
-          entry.keywords.some((keyword) =>
-            keyword.toLowerCase().includes(normalizedQuery)
-          ) || entry.label.toLowerCase().includes(normalizedQuery)
+  const searchSuggestions = [...sectionEntries, ...suggestionEntries].map(
+    (entry) => ({
+      ...entry,
+      searchText: [entry.label, entry.description, ...entry.keywords]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase(),
+    })
+  );
+  const filteredSuggestions = queryTokens.length
+    ? searchSuggestions.filter((entry) =>
+        queryTokens.every((token) => entry.searchText.includes(token))
       )
     : [];
 
@@ -580,12 +619,7 @@ export function ConsumerIQDashboard({
       return;
     }
 
-    const match = searchSuggestions.find(
-      (entry) =>
-        entry.keywords.some((keyword) =>
-          normalizedQuery.includes(keyword.toLowerCase())
-        ) || entry.label.toLowerCase().includes(normalizedQuery)
-    );
+    const match = filteredSuggestions[0];
 
     if (match) {
       setActive(match.section);
@@ -1547,6 +1581,9 @@ function ProductContextStep({
         <Field label="Price Range">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="grid gap-2">
+              <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground/80">
+                Lowest price
+              </span>
               <Input
                 aria-invalid={errors.lowestPrice ? "true" : undefined}
                 className={cn(
@@ -1556,19 +1593,22 @@ function ProductContextStep({
                 inputMode="decimal"
                 min="0"
                 onChange={(event) => {
-                  setLowestPrice(event.target.value);
+                  setLowestPrice(formatPriceInput(event.target.value));
                   clearError("lowestPrice");
                   clearError("priceOrder");
                 }}
                 placeholder="Lowest price"
                 required
                 step="0.01"
-                type="number"
+                type="text"
                 value={lowestPrice}
               />
               <FieldError message={errors.lowestPrice} />
             </div>
             <div className="grid gap-2">
+              <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground/80">
+                Core price
+              </span>
               <Input
                 aria-invalid={errors.corePrice ? "true" : undefined}
                 className={cn(
@@ -1578,19 +1618,22 @@ function ProductContextStep({
                 inputMode="decimal"
                 min="0"
                 onChange={(event) => {
-                  setCorePrice(event.target.value);
+                  setCorePrice(formatPriceInput(event.target.value));
                   clearError("corePrice");
                   clearError("priceOrder");
                 }}
                 placeholder="Core price"
                 required
                 step="0.01"
-                type="number"
+                type="text"
                 value={corePrice}
               />
               <FieldError message={errors.corePrice} />
             </div>
             <div className="grid gap-2">
+              <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground/80">
+                Highest price
+              </span>
               <Input
                 aria-invalid={errors.highestPrice ? "true" : undefined}
                 className={cn(
@@ -1600,14 +1643,14 @@ function ProductContextStep({
                 inputMode="decimal"
                 min="0"
                 onChange={(event) => {
-                  setHighestPrice(event.target.value);
+                  setHighestPrice(formatPriceInput(event.target.value));
                   clearError("highestPrice");
                   clearError("priceOrder");
                 }}
                 placeholder="Highest price"
                 required
                 step="0.01"
-                type="number"
+                type="text"
                 value={highestPrice}
               />
               <FieldError message={errors.highestPrice} />
