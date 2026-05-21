@@ -109,3 +109,9 @@ CREATE TABLE insightRuns (
     inputs JSONB,
     outputs JSONB,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+CREATE TABLE founderForms (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    payload JSONB NOT NULL);

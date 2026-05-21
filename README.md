@@ -8,6 +8,7 @@
    - `k3d kubeconfig merge consumeriq-local --kubeconfig-switch-context`
 4) Deploy core services:
    - `kubectl apply -k infra/k8s/postgres`
+   - `kubectl get configmap -n consumeriq postgres-init`
    - `kubectl apply -k infra/k8s/redis`
 5) Build and load the backend image:
    - `docker build -t consumeriq-backend:local -f backend/Dockerfile .`
@@ -19,12 +20,22 @@
    - `k3d image import consumeriq-frontend:local -c consumeriq-local`
 8) Deploy frontend:
    - `kubectl apply -k infra/k8s/frontend`
-9) Deploy nginx gateway:
+9) Deploy nginx gateway (requires backend + frontend services to exist first):
    - `kubectl apply -k infra/k8s/nginx`
+   - `kubectl rollout restart -n consumeriq deploy/consumeriq-nginx`
 
 ## Access
 - Frontend: `http://localhost:30080`
 - API: `http://localhost:30080/api`
+
+## Troubleshooting
+- If `postgres-0` is stuck in `ContainerCreating`, re-run:
+   - `kubectl apply -k infra/k8s/postgres`
+   - `kubectl get configmap -n consumeriq postgres-init`
+- If nginx logs show `host not found in upstream "consumeriq-api"`, re-run:
+   - `kubectl apply -k infra/k8s/backend`
+   - `kubectl apply -k infra/k8s/nginx`
+   - `kubectl rollout restart -n consumeriq deploy/consumeriq-nginx`
 
 ## How to stop
 1) Stop just the workloads (keep cluster):

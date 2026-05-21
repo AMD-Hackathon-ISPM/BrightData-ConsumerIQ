@@ -1,8 +1,21 @@
+import importlib.util
+from pathlib import Path as FsPath
 from fastapi import FastAPI, Path
 from celery.result import AsyncResult
 from backend.redis.worker import celeryApp, processLlmInsights
 
 app = FastAPI(title='ConsumerIQ API')
+
+def loadFounderFormRouter():
+    modulePath = FsPath(__file__).parent / 'founder-form' / 'router.py'
+    spec = importlib.util.spec_from_file_location('founderFormRouter', modulePath)
+    module = importlib.util.module_from_spec(spec)
+    if spec and spec.loader:
+        spec.loader.exec_module(module)
+        return module.router
+    raise RuntimeError('Unable to load founder form router')
+
+app.include_router(loadFounderFormRouter())
 
 
 @app.post('/api/scan-market/{category_name}')

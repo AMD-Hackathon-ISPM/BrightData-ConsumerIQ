@@ -4,7 +4,6 @@ import {
   BarChart3,
   Bell,
   CalendarDays,
-  CheckCircle2,
   ChevronRight,
   Compass,
   Database,
@@ -12,7 +11,6 @@ import {
   FileText,
   Globe2,
   LayoutDashboard,
-  LoaderCircle,
   Lock,
   MessageSquare,
   Search,
@@ -42,14 +40,6 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { ChatComposer } from '@/features/llm-chat/components/chat-composer'
 import { ChatConversation } from '@/features/llm-chat/components/chat-conversation'
 import { ChatPanel } from '@/features/llm-chat/components/chat-panel'
@@ -58,6 +48,14 @@ import { initialMessages, suggestions } from '@/features/llm-chat/data/chat-cont
 import { buildMockResponse, delay } from '@/features/llm-chat/lib/mock-streaming'
 import type { ChatStatus, MessageType } from '@/features/llm-chat/types'
 import { cn } from '@/lib/utils'
+import {
+  AnalysisStep,
+  GeneratingStep,
+  SignupStep,
+  WhiteSpaceStep,
+} from './founder-form'
+import { submitFounderForm } from './founder-form/api'
+import type { FounderFormPayload, FounderFormState } from './founder-form/types'
 
 const STREAM_FRAME_MS = 16
 const STREAM_CHARS_PER_FRAME = 8
@@ -127,7 +125,7 @@ export function ConsumerIQExperience() {
           defaultSize="32%"
           maxSize="42%"
           minSize="26%"
-          onResize={(panelSize) => {
+          onResize={(panelSize: { asPercentage: number }) => {
             setIsChatOpen(panelSize.asPercentage > 6)
           }}
           panelRef={chatPanelRef}
@@ -200,19 +198,158 @@ export function ConsumerIQOnboarding({
   onComplete: () => void
 }) {
   const [step, setStep] = useState(1)
+  const [submitStatus, setSubmitStatus] = useState<
+    'idle' | 'submitting' | 'success' | 'error'
+  >('idle')
+  const [submittedFormId, setSubmittedFormId] = useState<string | null>(null)
+  const [formState, setFormState] = useState<FounderFormState>({
+    fullName: '',
+    workEmail: '',
+    password: '',
+    workspaceName: '',
+    industry: '',
+    region: '',
+    marketplace: '',
+    competitors: ['', '', ''],
+    searchIntentKeywords: '',
+    customerSegment: '',
+    painPoint: '',
+    priceRangeMin: 89000,
+    priceRangeMax: 159000,
+  })
+
+  const updateField = useCallback(
+    <T extends keyof FounderFormState>(field: T, value: FounderFormState[T]) => {
+      setFormState((current: FounderFormState) => ({
+        ...current,
+        [field]: value,
+      }))
+    },
+    [],
+  )
+
+  const updateCompetitor = useCallback((index: number, value: string) => {
+    setFormState((current: FounderFormState) => {
+      const nextCompetitors = [...current.competitors]
+      nextCompetitors[index] = value
+      return { ...current, competitors: nextCompetitors }
+    })
+  }, [])
+
+  const handleComplete = useCallback(async () => {
+    if (submitStatus === 'success') {
+      onComplete()
+      return
+    }
+
+    if (submitStatus === 'submitting') {
+      return
+    }
+
+    setSubmitStatus('submitting')
+    setSubmittedFormId(null)
+
+    const payload: FounderFormPayload = {
+      fullName: formState.fullName,
+      workEmail: formState.workEmail,
+      password: formState.password,
+      workspaceName: formState.workspaceName,
+      industry: formState.industry,
+      region: formState.region,
+      marketplace: formState.marketplace,
+      competitors: formState.competitors
+        .map((entry: string) => entry.trim())
+        .filter(Boolean),
+      searchIntentKeywords: formState.searchIntentKeywords
+        .split(',')
+        .map((entry: string) => entry.trim())
+        .filter(Boolean),
+      customerSegment: formState.customerSegment,
+      painPoint: formState.painPoint,
+      priceRangeMin: formState.priceRangeMin,
+      priceRangeMax: formState.priceRangeMax,
+    }
+
+    try {
+      const response = await submitFounderForm(payload)
+      setSubmittedFormId(response.id)
+      setSubmitStatus('success')
+    } catch (error) {
+      setSubmitStatus('error')
+      toast.error('Unable to submit the founder form')
+    }
+  }, [formState, onComplete, submitStatus])
+
+  const isSignupValid =
+    formState.fullName.trim().length > 0 &&
+    formState.workEmail.includes('@') &&
+    formState.password.trim().length >= 8
+  const isAnalysisValid =
+    formState.workspaceName.trim().length > 0 &&
+    formState.industry.trim().length > 0 &&
+    formState.region.trim().length > 0 &&
+    formState.marketplace.trim().length > 0
+  const isWhiteSpaceValid =
+    formState.competitors.some((entry: string) => entry.trim().length > 0) &&
+    formState.searchIntentKeywords.trim().length > 0 &&
+    formState.customerSegment.trim().length > 0 &&
+    formState.painPoint.trim().length > 0
 
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-6 py-10">
         <AnimatedPage className="flex w-full justify-center" transitionKey={step}>
           {step === 1 ? (
-            <SignupStep onNext={() => setStep(2)} />
+            <SignupStep
+              onNext={() => setStep(2)}
+              fullName={formState.fullName}
+              workEmail={formState.workEmail}
+              password={formState.password}
+              onFullNameChange={(value) => updateField('fullName', value)}
+              onWorkEmailChange={(value) => updateField('workEmail', value)}
+              onPasswordChange={(value) => updateField('password', value)}
+              isNextDisabled={!isSignupValid}
+            />
           ) : step === 2 ? (
-            <AnalysisStep onBack={() => setStep(1)} onNext={() => setStep(3)} />
+            <AnalysisStep
+              onBack={() => setStep(1)}
+              onNext={() => setStep(3)}
+              workspaceName={formState.workspaceName}
+              industry={formState.industry}
+              region={formState.region}
+              marketplace={formState.marketplace}
+              onWorkspaceNameChange={(value) =>
+                updateField('workspaceName', value)
+              }
+              onIndustryChange={(value) => updateField('industry', value)}
+              onRegionChange={(value) => updateField('region', value)}
+              onMarketplaceChange={(value) => updateField('marketplace', value)}
+              isNextDisabled={!isAnalysisValid}
+            />
           ) : step === 3 ? (
-            <WhiteSpaceStep onBack={() => setStep(2)} onNext={() => setStep(4)} />
+            <WhiteSpaceStep
+              onBack={() => setStep(2)}
+              onNext={() => setStep(4)}
+              competitors={formState.competitors}
+              searchIntentKeywords={formState.searchIntentKeywords}
+              customerSegment={formState.customerSegment}
+              painPoint={formState.painPoint}
+              onCompetitorChange={updateCompetitor}
+              onSearchIntentKeywordsChange={(value) =>
+                updateField('searchIntentKeywords', value)
+              }
+              onCustomerSegmentChange={(value) =>
+                updateField('customerSegment', value)
+              }
+              onPainPointChange={(value) => updateField('painPoint', value)}
+              isNextDisabled={!isWhiteSpaceValid}
+            />
           ) : (
-            <GeneratingStep onComplete={onComplete} />
+            <GeneratingStep
+              onComplete={handleComplete}
+              submitStatus={submitStatus}
+              formId={submittedFormId}
+            />
           )}
         </AnimatedPage>
       </div>
@@ -233,51 +370,51 @@ export function ConsumerIQDashboard({ className }: { className?: string }) {
       )}
     >
       {isNavDesktop ? (
-      <aside className="flex h-full w-64 shrink-0 flex-col border-r bg-sidebar px-5 py-6 text-sidebar-foreground">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">ConsumerIQ</h1>
-          <p className="mt-0.5 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-            Market Intelligence
-          </p>
-        </div>
+        <aside className="flex h-full w-64 shrink-0 flex-col border-r bg-sidebar px-5 py-6 text-sidebar-foreground">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">ConsumerIQ</h1>
+            <p className="mt-0.5 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Market Intelligence
+            </p>
+          </div>
 
-        <nav className="mt-10 grid gap-1">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = active === item.id
+          <nav className="mt-10 grid gap-1">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = active === item.id
 
-            return (
-              <button
-                className={cn(
-                  'flex h-10 items-center gap-3 rounded-lg px-3 text-left text-sm transition-colors duration-200 ease-out',
-                  isActive
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )}
-                key={item.id}
-                onClick={() => setActive(item.id)}
-                type="button"
-              >
-                <Icon className="size-4" />
-                <span className="font-medium">{item.label}</span>
-              </button>
-            )
-          })}
-        </nav>
+              return (
+                <button
+                  className={cn(
+                    'flex h-10 items-center gap-3 rounded-lg px-3 text-left text-sm transition-colors duration-200 ease-out',
+                    isActive
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  )}
+                  key={item.id}
+                  onClick={() => setActive(item.id)}
+                  type="button"
+                >
+                  <Icon className="size-4" />
+                  <span className="font-medium">{item.label}</span>
+                </button>
+              )
+            })}
+          </nav>
 
-        <div className="mt-auto border-t pt-6">
-          <Button className="w-full bg-foreground text-background hover:bg-foreground/90">
-            <MessageSquare className="size-4" />
-            Founder Chat
-          </Button>
-        </div>
-      </aside>
+          <div className="mt-auto border-t pt-6">
+            <Button className="w-full bg-foreground text-background hover:bg-foreground/90">
+              <MessageSquare className="size-4" />
+              Founder Chat
+            </Button>
+          </div>
+        </aside>
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-14 items-center justify-between border-b px-5">
           <div className="relative w-full max-w-md">
-            <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-9 border-border bg-muted/40 pl-9"
               placeholder="Search insights..."
@@ -306,41 +443,41 @@ export function ConsumerIQDashboard({ className }: { className?: string }) {
 
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           <div className="mx-auto w-full max-w-6xl px-5 py-8">
-          <div className="mb-7 flex flex-wrap items-start justify-between gap-5">
-            <div>
-              <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-                Analysis <ChevronRight className="size-3" />
-                <span className="font-medium text-foreground">
-                  {navItems.find((item) => item.id === active)?.label}
-                </span>
-              </p>
-              <h2 className="text-3xl font-semibold tracking-tight">
-                {getSectionTitle(active)}
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                {getSectionLabel(active)}
-              </p>
+            <div className="mb-7 flex flex-wrap items-start justify-between gap-5">
+              <div>
+                <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                  Analysis <ChevronRight className="size-3" />
+                  <span className="font-medium text-foreground">
+                    {navItems.find((item) => item.id === active)?.label}
+                  </span>
+                </p>
+                <h2 className="text-3xl font-semibold tracking-tight">
+                  {getSectionTitle(active)}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                  {getSectionLabel(active)}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <Button variant="outline">
+                  <CalendarDays className="size-4" />
+                  Last 30 Days
+                </Button>
+                <Button className="bg-foreground text-background hover:bg-foreground/90">
+                  <ActiveIcon className="size-4" />
+                  Analyze
+                </Button>
+              </div>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <Button variant="outline">
-                <CalendarDays className="size-4" />
-                Last 30 Days
-              </Button>
-              <Button className="bg-foreground text-background hover:bg-foreground/90">
-                <ActiveIcon className="size-4" />
-                Analyze
-              </Button>
-            </div>
-          </div>
 
-          <AnimatedPage transitionKey={active}>
-            {active === 'dashboard' && <MarketOverview />}
-            {active === 'pulse' && <DemandPulse />}
-            {active === 'persona' && <PersonaDecode />}
-            {active === 'competitor' && <CompetitorMirror />}
-            {active === 'compass' && <LaunchCompass />}
-            {active === 'settings' && <DataSettings />}
-          </AnimatedPage>
+            <AnimatedPage transitionKey={active}>
+              {active === 'dashboard' && <MarketOverview />}
+              {active === 'pulse' && <DemandPulse />}
+              {active === 'persona' && <PersonaDecode />}
+              {active === 'competitor' && <CompetitorMirror />}
+              {active === 'compass' && <LaunchCompass />}
+              {active === 'settings' && <DataSettings />}
+            </AnimatedPage>
           </div>
         </main>
       </div>
@@ -583,353 +720,6 @@ function MobileSectionNav({
             </button>
           )
         })}
-      </div>
-    </div>
-  )
-}
-
-function SignupStep({ onNext }: { onNext: () => void }) {
-  return (
-    <div className="w-full max-w-md">
-      <div className="rounded-xl border bg-card p-8 shadow-sm">
-        <ProgressBar value={25} />
-        <div className="mt-8 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome to ConsumerIQ
-          </h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            The intelligence layer for your next big launch.
-          </p>
-        </div>
-        <div className="mt-8 grid gap-5">
-          <Field label="Full Name">
-            <Input placeholder="Acme Corp" />
-          </Field>
-          <Field label="Work Email">
-            <Input placeholder="name@company.com" type="email" />
-          </Field>
-          <Field label="Password">
-            <Input placeholder="••••••••" type="password" />
-          </Field>
-          <Button
-            className="h-11 bg-foreground text-background hover:bg-foreground/90"
-            onClick={onNext}
-          >
-            Continue
-          </Button>
-          <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            or continue with
-            <span className="h-px flex-1 bg-border" />
-          </div>
-          <Button className="h-10" variant="outline">
-            <span className="font-semibold text-primary">G</span>
-            Google
-          </Button>
-        </div>
-      </div>
-      <p className="mt-7 text-center text-sm text-muted-foreground">
-        Already have an account?{' '}
-        <span className="font-medium text-foreground underline">Log in</span>
-      </p>
-      <p className="mx-auto mt-4 max-w-xs text-center text-xs text-muted-foreground">
-        By clicking continue, you agree to our Terms of Service and Privacy
-        Policy.
-      </p>
-    </div>
-  )
-}
-
-function AnalysisStep({
-  onBack,
-  onNext,
-}: {
-  onBack: () => void
-  onNext: () => void
-}) {
-  return (
-    <OnboardingShell footer="STEP 02/04" progress={50}>
-      <h1 className="text-3xl font-semibold tracking-tight">
-        What are we analyzing?
-      </h1>
-      <p className="mt-3 text-muted-foreground">
-        Define the industry and region you want to dominate.
-      </p>
-
-      <div className="mt-10 grid gap-7">
-        <Field label="Workspace Name">
-          <Input placeholder="e.g. My Market Research" />
-        </Field>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Industry">
-            <BasicSelect
-              placeholder="Select industry"
-              values={[
-                'Beauty & Personal Care',
-                'Food & Beverage',
-                'Home & Lifestyle',
-                'Fashion & Apparel',
-              ]}
-            />
-          </Field>
-          <Field label="Region">
-            <BasicSelect
-              placeholder="Select region"
-              values={['Indonesia', 'Southeast Asia', 'United States', 'Global']}
-            />
-          </Field>
-        </div>
-        <Field label="Primary Marketplace Focus">
-          <BasicSelect
-            placeholder="Select marketplace"
-            values={['Shopee', 'Tokopedia', 'TikTok Shop', 'Lazada']}
-          />
-        </Field>
-        <div className="flex gap-4 rounded-lg border bg-muted/60 p-5">
-          <Target className="mt-1 size-5 text-foreground" />
-          <div>
-            <p className="font-medium">Targeting Tip</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Narrowing your region helps our AI models surface localized
-              cultural nuances that broader searches often miss.
-            </p>
-          </div>
-        </div>
-        <StepActions onBack={onBack} onNext={onNext} />
-      </div>
-    </OnboardingShell>
-  )
-}
-
-function WhiteSpaceStep({
-  onBack,
-  onNext,
-}: {
-  onBack: () => void
-  onNext: () => void
-}) {
-  return (
-    <OnboardingShell footer="INTELLIGENCE ENGINE V2.4.0" progress={75}>
-      <span className="rounded bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-        STEP 03/04
-      </span>
-      <h1 className="mt-4 text-3xl font-semibold tracking-tight">
-        Targeting the White Space.
-      </h1>
-      <p className="mt-3 text-muted-foreground">
-        Help our AI focus on the most relevant signals.
-      </p>
-
-      <div className="mt-8 grid gap-6">
-        <Field label="Top 3 Competitors">
-          <div className="grid gap-3">
-            <Input placeholder="Primary direct competitor" />
-            <Input placeholder="Secondary market player" />
-            <Input placeholder="Emerging challenger" />
-          </div>
-        </Field>
-        <Field label="Search Intent Keywords">
-          <Textarea
-            className="min-h-24"
-            placeholder="Comma-separated terms (e.g., hydrating serum, serum kulit sensitif, SPF daily serum...)"
-          />
-        </Field>
-        <Field label="Ideal Customer Segment">
-          <BasicSelect
-            placeholder="Select primary segment..."
-            values={[
-              'Stressed Young Professional',
-              'Skincare Hobbyist',
-              'Sensitive Skin Seeker',
-            ]}
-          />
-        </Field>
-        <Field label="Biggest Consumer Pain Point">
-          <Textarea
-            className="min-h-24"
-            placeholder="Describe the friction your target audience experiences most frequently..."
-          />
-        </Field>
-        <div>
-          <div className="mb-4 flex items-center justify-between text-xs font-medium uppercase tracking-[0.18em]">
-            <span>Target Price Range</span>
-            <span>Rp89K - Rp159K</span>
-          </div>
-          <div className="relative h-1 rounded-full bg-muted">
-            <div className="absolute left-0 top-0 h-full w-1/2 rounded-full bg-foreground" />
-            <div className="-top-1.5 absolute left-1/2 size-4 rounded-full bg-foreground" />
-          </div>
-          <div className="mt-3 flex justify-between text-[10px] text-muted-foreground">
-            <span>Rp50K</span>
-            <span>Rp119K</span>
-            <span>Rp300K+</span>
-          </div>
-        </div>
-        <StepActions onBack={onBack} onNext={onNext} />
-      </div>
-    </OnboardingShell>
-  )
-}
-
-function GeneratingStep({ onComplete }: { onComplete: () => void }) {
-  const [progress, setProgress] = useState(18)
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    const firstFrame = window.requestAnimationFrame(() => setIsVisible(true))
-    const progressTimer = window.setInterval(() => {
-      setProgress((current) => {
-        if (current >= 93) {
-          window.clearInterval(progressTimer)
-          return 93
-        }
-
-        return Math.min(93, current + 5)
-      })
-    }, 180)
-
-    return () => {
-      window.cancelAnimationFrame(firstFrame)
-      window.clearInterval(progressTimer)
-    }
-  }, [])
-
-  const processRows = [
-    'Establishing secure connection',
-    'Connecting API infrastructure',
-    'Syncing historical market data',
-    'Optimizing predictive algorithms',
-    'Running Bright Data synthesis',
-  ]
-  const activeIndex = Math.min(
-    processRows.length - 1,
-    Math.floor((progress / 100) * processRows.length),
-  )
-  const ringAngle = progress * 3.6
-
-  return (
-    <div className="w-full max-w-3xl text-center">
-      <ProgressBar value={progress} />
-      <h1
-        className={cn(
-          'mt-12 text-3xl font-semibold tracking-tight transition-all duration-500 ease-out',
-          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
-        )}
-      >
-        Building your Intelligence Engine...
-      </h1>
-      <p
-        className={cn(
-          'mx-auto mt-4 max-w-sm text-muted-foreground transition-all delay-100 duration-500 ease-out',
-          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
-        )}
-      >
-        We're synthesizing your custom market parameters into a live,
-        predictive data model.
-      </p>
-
-      <div
-        className={cn(
-          'relative mx-auto mt-12 grid size-44 place-items-center transition-all delay-150 duration-700 ease-out will-change-transform',
-          isVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0',
-        )}
-      >
-        <div
-          className="absolute inset-0 rounded-full transition-all duration-500 ease-out"
-          style={{
-            background: `conic-gradient(var(--foreground) ${ringAngle}deg, var(--muted) ${ringAngle}deg 360deg)`,
-          }}
-        />
-        <div className="absolute inset-[18px] rounded-full bg-background" />
-        <div
-          className="absolute -inset-2 rounded-full border border-transparent border-t-foreground/80"
-          style={{ animation: 'spin 1.6s linear infinite' }}
-        />
-        <div
-          className="absolute inset-5 rounded-full border border-border/70"
-          style={{ animation: 'pulse 1.8s ease-in-out infinite' }}
-        />
-        <span className="relative text-3xl font-semibold">93%</span>
-      </div>
-
-      <div
-        className={cn(
-          'mx-auto mt-10 max-w-xl rounded-xl border bg-card p-5 text-left transition-all delay-200 duration-500 ease-out',
-          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0',
-        )}
-      >
-        <div className="mb-5 flex items-center justify-between">
-          <p className="text-xs font-medium uppercase tracking-[0.22em]">
-            System Processes
-          </p>
-          <p className="font-mono text-xs">{activeIndex + 1}/5 Active</p>
-        </div>
-        {processRows.map((label, index) => {
-          const status =
-            progress >= 93 || index < activeIndex
-              ? 'DONE'
-              : index === activeIndex
-                ? 'RUNNING'
-                : 'QUEUED'
-
-          return (
-          <div
-            className={cn(
-              'flex items-center justify-between py-2 text-sm transition-all duration-500 ease-out',
-              isVisible ? 'translate-x-0 opacity-100' : '-translate-x-3 opacity-0',
-            )}
-            key={label}
-            style={{ transitionDelay: `${250 + index * 90}ms` }}
-          >
-            <span className="flex items-center gap-3">
-              {status === 'DONE' ? (
-                <CheckCircle2 className="size-4" />
-              ) : (
-                <LoaderCircle
-                  className="size-4"
-                  style={{ animation: 'spin 1s linear infinite' }}
-                />
-              )}
-              {label}
-            </span>
-            <span
-              className={cn(
-                'rounded bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground',
-              )}
-              style={
-                status !== 'DONE'
-                  ? { animation: 'pulse 1.4s ease-in-out infinite' }
-                  : undefined
-              }
-            >
-              {status}
-            </span>
-          </div>
-          )
-        })}
-      </div>
-
-      <Button
-        className={cn(
-          'mt-9 h-12 min-w-56 bg-foreground text-background transition-all duration-300 hover:scale-[1.02] hover:bg-foreground/90 active:scale-[0.99]',
-          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
-        )}
-        onClick={onComplete}
-      >
-        Launch Dashboard
-      </Button>
-      <div
-        className={cn(
-          'mx-auto mt-7 grid max-w-xl gap-4 transition-all delay-300 duration-500 ease-out sm:grid-cols-2',
-          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
-        )}
-      >
-        <MiniMetric icon={<Zap className="size-5" />} label="Speed" value="0.4s Latency" />
-        <MiniMetric
-          icon={<Database className="size-5" />}
-          label="Data Points"
-          value="12.4M Analyzed"
-        />
       </div>
     </div>
   )
@@ -1317,7 +1107,7 @@ function LaunchCompass() {
               >
                 {num}
               </div>
-              <p className="font-semibold uppercase tracking-[0.08em] text-xs">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em]">
                 {title}
               </p>
               <p className="mt-3 text-xs text-muted-foreground">{desc}</p>
@@ -1459,94 +1249,6 @@ function getSectionLabel(section: DashboardSection) {
   }
 }
 
-function OnboardingShell({
-  children,
-  footer,
-  progress,
-}: {
-  children: ReactNode
-  footer: string
-  progress: number
-}) {
-  return (
-    <div className="w-full max-w-2xl overflow-hidden rounded-xl border bg-card shadow-sm">
-      <div className="p-10">
-        <ProgressBar value={progress} />
-        <div className="mt-8">{children}</div>
-      </div>
-      <div className="flex items-center justify-between border-t bg-muted/35 px-10 py-4 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-        <span className="flex items-center gap-2">
-          <span className="size-3 rounded-sm bg-muted-foreground" />
-          {footer}
-        </span>
-        <span>Secure Transmission</span>
-      </div>
-    </div>
-  )
-}
-
-function ProgressBar({ value }: { value: number }) {
-  return (
-    <div className="h-1 overflow-hidden rounded-full bg-muted">
-      <div
-        className="h-full rounded-full bg-foreground transition-all duration-700 ease-out"
-        style={{ width: `${value}%` }}
-      />
-    </div>
-  )
-}
-
-function Field({ children, label }: { children: ReactNode; label: string }) {
-  return (
-    <label className="grid gap-2">
-      <span className="text-xs font-medium uppercase tracking-[0.16em]">
-        {label}
-      </span>
-      {children}
-    </label>
-  )
-}
-
-function BasicSelect({
-  placeholder,
-  values,
-}: {
-  placeholder: string
-  values: string[]
-}) {
-  return (
-    <Select>
-      <SelectTrigger className="h-11 w-full">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {values.map((value) => (
-          <SelectItem key={value} value={value}>
-            {value}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
-
-function StepActions({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
-  return (
-    <div className="mt-3 flex items-center justify-between border-t pt-6">
-      <Button onClick={onBack} variant="outline">
-        Back
-      </Button>
-      <Button
-        className="bg-foreground text-background hover:bg-foreground/90"
-        onClick={onNext}
-      >
-        Continue
-        <ArrowRight className="size-4" />
-      </Button>
-    </div>
-  )
-}
-
 function Panel({
   children,
   subtitle,
@@ -1617,30 +1319,6 @@ function MetricCard({
           )}
           style={{ width: tone === 'danger' ? '45%' : '67%' }}
         />
-      </div>
-    </div>
-  )
-}
-
-function MiniMetric({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode
-  label: string
-  value: string
-}) {
-  return (
-    <div className="flex items-center gap-4 rounded-lg border bg-card p-4 text-left">
-      <span className="grid size-10 place-items-center rounded-md bg-muted">
-        {icon}
-      </span>
-      <div>
-        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-          {label}
-        </p>
-        <p className="font-semibold">{value}</p>
       </div>
     </div>
   )
