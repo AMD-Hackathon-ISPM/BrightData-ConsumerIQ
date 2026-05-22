@@ -1,51 +1,50 @@
-import importlib.util
-import sys
-import types
-from pathlib import Path as FsPath
 from fastapi import FastAPI, Path
 from celery.result import AsyncResult
 from backend.redis.worker import celeryApp, processLlmInsights
 
 app = FastAPI(title='ConsumerIQ API')
 
-def loadFounderFormRouter():
-    modulePath = FsPath(__file__).parent / 'founder-form' / 'router.py'
-    packageName = 'founderForm'
-    moduleName = f'{packageName}.router'
-    if packageName not in sys.modules:
-        packageModule = types.ModuleType(packageName)
-        packageModule.__path__ = [str(modulePath.parent)]
-        sys.modules[packageName] = packageModule
-    spec = importlib.util.spec_from_file_location(moduleName, modulePath)
-    module = importlib.util.module_from_spec(spec)
-    module.__package__ = packageName
-    if spec and spec.loader:
-        sys.modules[moduleName] = module
-        spec.loader.exec_module(module)
-        return module.router
-    raise RuntimeError('Unable to load founder form router')
 
-app.include_router(loadFounderFormRouter())
-
-
-@app.post('/api/scan-market/{category_name}')
-async def scanMarket(categoryName: str = Path(..., alias='category_name')):
-    print(f'Received request to scan market for: {categoryName}')
+@app.post("/api/scan-market/{category_name}")
+async def scanMarket(categoryName: str = Path(..., alias="category_name")):
+    try:
+        from backend.redis.worker import processLlmInsights
+    except ModuleNotFoundError as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"LLM worker dependency is not installed: {error.name}",
+        ) from error
 
     task = processLlmInsights.delay(categoryName)
 
     return {
-        'message': f'Successfully queued LLM analysis for {categoryName}',
-        'task_id': task.id,
-        'status': 'processing',
+        "message": f"Successfully queued LLM analysis for {categoryName}",
+        "task_id": task.id,
+        "status": "processing",
     }
 
 
-@app.get('/api/task-status/{task_id}')
-async def getTaskStatus(taskId: str = Path(..., alias='task_id')):
+@app.get("/api/task-status/{task_id}")
+async def getTaskStatus(taskId: str = Path(..., alias="task_id")):
+    try:
+        from celery.result import AsyncResult
+        from backend.redis.worker import celeryApp
+    except ModuleNotFoundError as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Worker dependency is not installed: {error.name}",
+        ) from error
+
     taskResult = AsyncResult(taskId, app=celeryApp)
 
     if taskResult.ready():
-        return {'task_id': taskId, 'status': 'completed', 'result': taskResult.result}
+        return {
+            "task_id": taskId,
+            "status": "completed",
+            "result": taskResult.result,
+        }
 
-    return {'task_id': taskId, 'status': 'processing'}
+    return {
+        "task_id": taskId,
+        "status": "processing",
+    }

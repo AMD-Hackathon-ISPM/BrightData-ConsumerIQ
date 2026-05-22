@@ -4,3 +4,7 @@ uvicorn
 celery
 redis
 psycopg2-binary
+
+# for scrapingbee's needs
+requests
+python-dotenv

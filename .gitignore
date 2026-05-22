@@ -3,3 +3,4 @@ data/*
 !data/README.md
 !models/README.md
 notebooks/datasets/*
+backend/.env*
