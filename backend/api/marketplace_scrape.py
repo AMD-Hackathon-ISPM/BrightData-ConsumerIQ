@@ -10,6 +10,7 @@ from backend.api.scrapingbee_client import (
     normalizeText,
     scrapePageText,
     searchGoogle,
+    scrapeAmazonWithReviews,  # Added import for scrapeAmazonWithReviews
 )
 
 router = APIRouter(tags=["marketplace"])
@@ -19,7 +20,8 @@ class MarketplaceScrapeRequest(BaseModel):
     url: str
     keyword: str | None = None
     country_code: str = "cn"
-    render_js: bool = True scroll: bool = False  
+    render_js: bool = True 
+    scroll: bool = False  
     wait_for: str | None = None 
 
 
@@ -158,29 +160,29 @@ def buildMarketplaceDiscoveryQuery(payload: MarketplaceDiscoveryRequest):
 @router.post("/api/marketplace-scrape")
 async def marketplaceScrape(payload: MarketplaceScrapeRequest):
     if "amazon.com" in payload.url.lower():
-    result, error = scrapeAmazonWithReviews(
-        url=payload.url,
-        country_code=payload.country_code,
-    )
-    if not error:
-        # result sudah berupa dict dengan reviews terstruktur!
-        return {
-            "status": "success",
-            "source": "scrapingbee",
-            "source_url": payload.url,
-            "page_type": "amazon_product_page",
-            "signals": {
-                "marketplace": "amazon",
-                "page_blocked": False,
-                "prices": result.get("price", []),
-                "review_tags": [],
-                "product_mentions": [],
-                "amazon_specific": {
-                    "reviews": result.get("reviews", []),
-                    "rating_summary": result.get("rating_summary", {}),
+        result, error = scrapeAmazonWithReviews(
+            url=payload.url,
+            country_code=payload.country_code,
+        )
+        if not error:
+            # result sudah berupa dict dengan reviews terstruktur!
+            return {
+                "status": "success",
+                "source": "scrapingbee",
+                "source_url": payload.url,
+                "page_type": "amazon_product_page",
+                "signals": {
+                    "marketplace": "amazon",
+                    "page_blocked": False,
+                    "prices": result.get("price", []),
+                    "review_tags": [],
+                    "product_mentions": [],
+                    "amazon_specific": {
+                        "reviews": result.get("reviews", []),
+                        "rating_summary": result.get("rating_summary", {}),
+                    }
                 }
             }
-        }
 
     # Fallback ke generic untuk non-Amazon
     page_text, error = scrapePageText(...)
