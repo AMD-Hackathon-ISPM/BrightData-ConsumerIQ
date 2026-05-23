@@ -1,5 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import type { PanelImperativeHandle } from "react-resizable-panels";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -21,7 +20,6 @@ const FounderChat = lazy(() =>
 
 export function ConsumerIQExperience() {
   const [isOnboarded, setIsOnboarded] = useState(false);
-  const chatPanelRef = useRef<PanelImperativeHandle>(null);
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [activeSection, setActiveSection] =
     useState<DashboardSection>("dashboard");
@@ -36,15 +34,8 @@ export function ConsumerIQExperience() {
   }, []);
 
   const handleToggleChat = useCallback(() => {
-    if (isChatOpen) {
-      chatPanelRef.current?.collapse();
-      setIsChatOpen(false);
-      return;
-    }
-
-    chatPanelRef.current?.expand();
-    setIsChatOpen(true);
-  }, [isChatOpen]);
+    setIsChatOpen((open) => !open);
+  }, []);
 
   if (!isOnboarded) {
     return <ConsumerIQOnboarding onComplete={handleOnboardingComplete} />;
@@ -62,23 +53,23 @@ export function ConsumerIQExperience() {
           onActiveChange={setActiveSection}
         />
       </ResizablePanel>
-      <ResizableHandle withHandle />
-      <ResizablePanel
-        className="min-w-0"
-        collapsedSize="4%"
-        collapsible
-        defaultSize="32%"
-        maxSize="42%"
-        minSize="26%"
-        onResize={(panelSize) => {
-          setIsChatOpen(panelSize.asPercentage > 6);
-        }}
-        panelRef={chatPanelRef}
-      >
-        <Suspense fallback={<div className="h-full bg-background-default" />}>
-          <FounderChat isOpen={isChatOpen} onToggle={handleToggleChat} />
-        </Suspense>
-      </ResizablePanel>
+      {isChatOpen ? (
+        <>
+          <ResizableHandle withHandle />
+          <ResizablePanel
+            className="min-w-0"
+            defaultSize="32%"
+            maxSize="42%"
+            minSize="26%"
+          >
+            <Suspense
+              fallback={<div className="h-full bg-background-default" />}
+            >
+              <FounderChat isOpen onToggle={handleToggleChat} />
+            </Suspense>
+          </ResizablePanel>
+        </>
+      ) : null}
     </ResizablePanelGroup>
   ) : (
     <ResizablePanelGroup
@@ -92,28 +83,28 @@ export function ConsumerIQExperience() {
           onActiveChange={setActiveSection}
         />
       </ResizablePanel>
-      <ResizableHandle withHandle />
-      <ResizablePanel
-        className="min-h-0"
-        collapsedSize="8%"
-        collapsible
-        defaultSize="38%"
-        maxSize="55%"
-        minSize="25%"
-        onResize={(panelSize) => {
-          setIsChatOpen(panelSize.asPercentage > 10);
-        }}
-        panelRef={chatPanelRef}
-      >
-        <Suspense fallback={<div className="h-full bg-background-default" />}>
-          <FounderChat
-            className="border-t border-l-0"
-            isOpen={isChatOpen}
-            onToggle={handleToggleChat}
-            panelClassName="border-l-0 border-t"
-          />
-        </Suspense>
-      </ResizablePanel>
+      {isChatOpen ? (
+        <>
+          <ResizableHandle withHandle />
+          <ResizablePanel
+            className="min-h-0"
+            defaultSize="38%"
+            maxSize="55%"
+            minSize="25%"
+          >
+            <Suspense
+              fallback={<div className="h-full bg-background-default" />}
+            >
+              <FounderChat
+                className="border-t border-l-0"
+                isOpen
+                onToggle={handleToggleChat}
+                panelClassName="border-l-0 border-t"
+              />
+            </Suspense>
+          </ResizablePanel>
+        </>
+      ) : null}
     </ResizablePanelGroup>
   );
 

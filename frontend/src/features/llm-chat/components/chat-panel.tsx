@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 interface ChatPanelProps {
   children: ReactNode
   className?: string
+  hideWhenCollapsed?: boolean
   isOpen: boolean
   onToggle: () => void
 }
@@ -17,9 +18,14 @@ interface ChatPanelProps {
 export function ChatPanel({
   children,
   className,
+  hideWhenCollapsed = false,
   isOpen,
   onToggle,
 }: ChatPanelProps) {
+  if (hideWhenCollapsed && !isOpen) {
+    return null
+  }
+
   return (
     <aside
       className={cn(

@@ -373,6 +373,7 @@ export function FounderChat({
           '!h-full !min-h-0 transition-[width] duration-200 ease-out',
           panelClassName,
         )}
+        hideWhenCollapsed
         isOpen={isOpen}
         onToggle={onToggle}
       >

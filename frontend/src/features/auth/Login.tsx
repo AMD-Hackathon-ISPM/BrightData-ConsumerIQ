@@ -18,7 +18,7 @@ interface LoginProps {
 }
 
 export function Login({ onSwitchToRegister }: LoginProps) {
-    const { login } = useAuth();
+    const { login, loginWithToken } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -37,8 +37,26 @@ export function Login({ onSwitchToRegister }: LoginProps) {
         }
     };
 
+    const skipLogin = () => {
+        loginWithToken(
+            { fullName: "Debug User", email: "debug@local" },
+            "debug-token",
+        );
+    };
+
     return (
         <form className="flex flex-col" onSubmit={submit} noValidate>
+            {import.meta.env.DEV ? (
+                <Button
+                    className="fixed right-4 top-4 z-50 text-xs text-foreground-lighter"
+                    onClick={skipLogin}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                >
+                    Skip login (debug)
+                </Button>
+            ) : null}
             <FieldGroup className="gap-6">
                 <div className="mb-4 flex flex-col items-start gap-2 text-left">
                     <h1 className="text-3xl font-medium tracking-tight">

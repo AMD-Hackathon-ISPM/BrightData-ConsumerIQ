@@ -1,4 +1,5 @@
 import type { FormEvent } from 'react'
+import { Check, ChevronsUpDown } from 'lucide-react'
 import {
   Field,
   FieldDescription,
@@ -7,6 +8,11 @@ import {
   FieldLabel,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -17,6 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
+import { COUNTRIES, type MarketRegion } from './country-options'
 import { OnboardingShell, StepFooter } from './shared'
 
 const PHYSICAL_PRODUCT_INDUSTRIES = [
@@ -27,7 +35,7 @@ const PHYSICAL_PRODUCT_INDUSTRIES = [
   'Electronics & Gadgets',
 ]
 
-const REGIONS = [
+const REGIONS: MarketRegion[] = [
   'Africa',
   'Asia',
   'Europe',
@@ -43,7 +51,7 @@ const GEN_RANGES = [
   '29 - 44 years old (Millennials)',
   '45 - 60 years old (Gen X)',
   '61 - 79 years old (Baby Boomers)',
-  '80+ years old (Silent Generation)'
+  '80+ years old (Silent Generation)',
 ]
 
 const GENDERS = ['Female', 'Male', 'All genders']
@@ -57,7 +65,7 @@ type BusinessSetupStepProps = {
   industry: string
   region: string
   country: string
-  targetGen: string
+  targetGen: string[]
   targetGender: string
   targetMarketDetail: string
   salesChannel: string
@@ -65,11 +73,96 @@ type BusinessSetupStepProps = {
   onIndustryChange: (value: string) => void
   onRegionChange: (value: string) => void
   onCountryChange: (value: string) => void
-  onTargetGenChange: (value: string) => void
+  onTargetGenChange: (value: string[]) => void
   onTargetGenderChange: (value: string) => void
   onTargetMarketDetailChange: (value: string) => void
   onSalesChannelChange: (value: string) => void
   isNextDisabled?: boolean
+}
+
+type MultiListProps = {
+  id: string
+  options: string[]
+  placeholder: string
+  value: string[]
+  onChange: (value: string[]) => void
+}
+
+function MultiList({
+  id,
+  options,
+  placeholder,
+  value,
+  onChange,
+}: MultiListProps) {
+  const selected = new Set(value)
+  const summary =
+    value.length === 0
+      ? placeholder
+      : value.length <= 2
+        ? value.join(', ')
+        : `${value.slice(0, 2).join(', ')} +${value.length - 2} more`
+
+  const toggleOption = (option: string) => {
+    if (selected.has(option)) {
+      onChange(value.filter((entry) => entry !== option))
+      return
+    }
+
+    onChange([...value, option])
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          aria-label={placeholder}
+          className="flex h-11 w-full cursor-pointer items-center justify-between gap-1.5 rounded-md border border-control bg-background-surface-100 px-3 py-2 text-left text-sm font-normal whitespace-nowrap transition-colors outline-none hover:border-border-stronger hover:bg-background-selection focus-visible:border-sidebar-ring focus-visible:ring-3 focus-visible:ring-sidebar-ring/50 data-[state=open]:border-border-stronger data-[state=open]:bg-background-selection"
+          id={id}
+          type="button"
+        >
+          <span
+            className={cn(
+              'min-w-0 truncate',
+              value.length === 0 && 'text-foreground-muted',
+            )}
+          >
+            {summary}
+          </span>
+          <ChevronsUpDown className="size-3.5 text-foreground-muted" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-(--radix-popover-trigger-width) gap-1 p-1"
+      >
+        {options.map((option) => {
+          const isChecked = selected.has(option)
+
+          return (
+            <button
+              className="flex min-h-8 w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-foreground-light outline-none hover:bg-background-overlay-hover hover:text-foreground-default focus:bg-background-overlay-hover focus:text-foreground-default"
+              key={option}
+              onClick={() => toggleOption(option)}
+              type="button"
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'flex size-4 shrink-0 items-center justify-center rounded-sm border border-border-default',
+                  isChecked &&
+                    'border-brand-default bg-brand-default/30 text-brand-default',
+                )}
+              >
+                {isChecked ? <Check className="size-3" /> : null}
+              </span>
+              <span className="min-w-0 flex-1">{option}</span>
+            </button>
+          )
+        })}
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 export function BusinessSetupStep({
@@ -93,6 +186,8 @@ export function BusinessSetupStep({
   onSalesChannelChange,
   isNextDisabled,
 }: BusinessSetupStepProps) {
+  const countryOptions = COUNTRIES.filter((entry) => entry.region === region)
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (isNextDisabled) return
@@ -184,14 +279,26 @@ export function BusinessSetupStep({
 
               <Field>
                 <FieldLabel htmlFor="country">Country</FieldLabel>
-                <Input
-                  id="country"
-                  autoComplete="country-name"
-                  placeholder="e.g. Indonesia"
-                  required
+                <Select
+                  disabled={!region}
                   value={country}
-                  onChange={(event) => onCountryChange(event.target.value)}
-                />
+                  onValueChange={onCountryChange}
+                >
+                  <SelectTrigger className="h-11 w-full" id="country">
+                    <SelectValue
+                      placeholder={
+                        region ? 'Pick a country' : 'Pick a region first'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countryOptions.map((entry) => (
+                      <SelectItem key={entry.name} value={entry.name}>
+                        {entry.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FieldError />
               </Field>
             </div>
@@ -199,18 +306,13 @@ export function BusinessSetupStep({
             <div className="grid gap-5 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="targetGen">Gen Target</FieldLabel>
-                <Select value={targetGen} onValueChange={onTargetGenChange}>
-                  <SelectTrigger className="h-11 w-full" id="targetGen">
-                    <SelectValue placeholder="Pick an gen range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GEN_RANGES.map((entry) => (
-                      <SelectItem key={entry} value={entry}>
-                        {entry}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiList
+                  id="targetGen"
+                  onChange={onTargetGenChange}
+                  options={GEN_RANGES}
+                  placeholder="Pick gen ranges"
+                  value={targetGen}
+                />
                 <FieldError />
               </Field>
 
