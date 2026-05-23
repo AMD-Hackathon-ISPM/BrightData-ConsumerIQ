@@ -16,9 +16,9 @@ export const navGroups = [
   [{ id: "dashboard", label: "Dashboard", icon: LayoutDashboard }],
   [
     { id: "persona", label: "Persona Decode", icon: Users },
+    { id: "compass", label: "Launch Compass", icon: Compass },
     { id: "pulse", label: "Demand Pulse", icon: TrendingUp },
     { id: "competitor", label: "Competitor Mirror", icon: Target },
-    { id: "compass", label: "Launch Compass", icon: Compass },
     { id: "settings", label: "Settings", icon: Settings },
   ],
 ] as const;
