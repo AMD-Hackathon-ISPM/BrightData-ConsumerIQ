@@ -1,10 +1,10 @@
 type ScanMarketResponse = {
-  task_id: string
+  taskId: string
   status: string
 }
 
 type TaskStatusResponse = {
-  task_id: string
+  taskId: string
   status: string
   result?: Record<string, unknown>
 }

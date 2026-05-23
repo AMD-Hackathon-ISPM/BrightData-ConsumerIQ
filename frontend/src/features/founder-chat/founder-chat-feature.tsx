@@ -196,7 +196,7 @@ export function FounderChat({
           const assistantMessageId = createAssistantMessage()
           try {
             const scanResponse = await startMarketScan(prompt)
-            const result = await pollTaskResult(scanResponse.task_id)
+            const result = await pollTaskResult(scanResponse.taskId)
             if (!result) {
               return
             }

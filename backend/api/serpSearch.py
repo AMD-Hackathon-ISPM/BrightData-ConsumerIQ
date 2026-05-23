@@ -1,19 +1,19 @@
 ﻿from fastapi import APIRouter
 from pydantic import BaseModel
 
-from backend.api.scrapingbee_client import normalizeSerpResults, searchGoogle
+from backend.api.scrapingbeeClient import normalizeSerpResults, searchGoogle
 
-router = APIRouter(tags=["serp"])
+router = APIRouter(tags=['serp'])
 
 
 class SerpSearchRequest(BaseModel):
     query: str
-    country_code: str = "us"
-    language: str = "en"
+    country_code: str = 'us'
+    language: str = 'en'
     nb_results: int = 10
 
 
-@router.post("/api/serp-search")
+@router.post('/api/serp-search')
 async def serpSearch(payload: SerpSearchRequest):
     data, error = searchGoogle(
         query=payload.query,
@@ -28,10 +28,10 @@ async def serpSearch(payload: SerpSearchRequest):
     results = normalizeSerpResults(data)
 
     return {
-        "status": "success",
-        "source": "scrapingbee_google",
-        "query": payload.query,
-        "country_code": payload.country_code,
-        "results": results,
-        "raw_result_count": len(data.get("organic_results", [])),
+        'status': 'success',
+        'source': 'scrapingbee_google',
+        'query': payload.query,
+        'countryCode': payload.country_code,
+        'results': results,
+        'rawResultCount': len(data.get('organic_results', [])),
     }

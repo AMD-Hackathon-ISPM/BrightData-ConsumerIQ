@@ -191,6 +191,20 @@ def _saveCategoryInsights(categoryName: str, insights: dict[str, Any]) -> None:
             )
 
 
+@celeryApp.task(name='runAgentTask')
+def runAgentTask(prompt: str, max_steps: int = 6) -> dict[str, Any]:
+    from backend.agent.reactAgent import runReactAgent
+
+    llm = createLlm(verbose=False)
+    try:
+        result = runReactAgent(prompt, llm, max_steps=max_steps)
+    finally:
+        del llm
+        gc.collect()
+
+    return result
+
+
 @celeryApp.task(name='processLlmInsights')
 def processLlmInsights(categoryName: str):
     print(f'Worker picked up job for category: {categoryName}')
