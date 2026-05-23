@@ -22,10 +22,10 @@ def _translateText(text: str) -> str:
         'Return only the translation, no extra text.\n\n'
         f'Text: {text}\nTranslation:'
     )
-    payload = {'prompt': prompt, 'n_predict': 256, 'temperature': 0.2, 'stop': ['\n\n']}
-    response = httpx.post(f'{_TRANSLATOR_URL}/completion', json=payload, timeout=60)
+    payload = {'prompt': prompt, 'max_tokens': 256, 'temperature': 0.2, 'stop': ['\n\n']}
+    response = httpx.post(f'{_TRANSLATOR_URL}/v1/completions', json=payload, timeout=60)
     response.raise_for_status()
-    return response.json()['content'].strip()
+    return response.json()['choices'][0]['text'].strip()
 
 
 def translateTextsIfNeeded(texts: Iterable[str]) -> list[str]:

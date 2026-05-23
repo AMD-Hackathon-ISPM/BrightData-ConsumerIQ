@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: translator
-          image: localhost:5001/consumeriq-translator:local
+          image: k3d-consumeriq-registry:5000/consumeriq-translator:local
           ports:
             - containerPort: 8080
           resources:

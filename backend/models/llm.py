@@ -22,13 +22,13 @@ class _LlmClient:
     ) -> dict:
         payload = {
             'prompt': prompt,
-            'n_predict': max_tokens,
+            'max_tokens': max_tokens,
             'temperature': temperature,
             'stop': stop or [],
         }
-        response = httpx.post(f'{self._url}/completion', json=payload, timeout=120)
+        response = httpx.post(f'{self._url}/v1/completions', json=payload, timeout=120)
         response.raise_for_status()
-        return {'choices': [{'text': response.json()['content']}]}
+        return response.json()
 
 
 def createLlm() -> _LlmClient:
