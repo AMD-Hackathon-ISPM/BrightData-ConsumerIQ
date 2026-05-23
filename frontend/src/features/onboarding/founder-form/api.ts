@@ -1,11 +1,11 @@
-import type { FounderFormState } from './types'
+import type { FounderFormState } from "./types";
 
 export type SubmitFounderFormResponse = {
-  id: string
-  status: string
-  token: string
-  user_id: number
-}
+  id: string;
+  status: string;
+  token: string;
+  user_id: number;
+};
 
 export async function submitFounderForm(
   state: FounderFormState,
@@ -20,13 +20,9 @@ export async function submitFounderForm(
     marketplace: state.salesChannel,
     competitors: [] as string[],
     searchIntentKeywords: state.researchGoals,
-<<<<<<< HEAD
-    customerSegment: [state.targetGen.join(', '), state.targetGender]
-=======
     customerSegment: [state.targetGen, state.targetGender]
->>>>>>> 59271387a8fdf7616e23eea5d87f945ad86b431b
       .filter(Boolean)
-      .join(', '),
+      .join(", "),
     painPoint: state.problemToSolve,
     priceRangeMin: state.priceRangeMin,
     priceRangeMax: state.priceRangeMax,
@@ -37,22 +33,18 @@ export async function submitFounderForm(
     uniqueSellingPoint: state.uniqueSellingPoint,
     mainFeatures: state.mainFeatures,
     competitiveAdvantage: state.competitiveAdvantage,
-<<<<<<< HEAD
-    priceRangeMid: Math.round((state.priceRangeMin + state.priceRangeMax) / 2),
-=======
->>>>>>> 59271387a8fdf7616e23eea5d87f945ad86b431b
-  }
+  };
 
-  const response = await fetch('/go-api/founder-form/submit', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const response = await fetch("/go-api/founder-form/submit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  })
+  });
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'Request failed')
+    const message = await response.text();
+    throw new Error(message || "Request failed");
   }
 
-  return response.json() as Promise<SubmitFounderFormResponse>
+  return response.json() as Promise<SubmitFounderFormResponse>;
 }
