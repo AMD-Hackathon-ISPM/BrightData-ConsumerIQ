@@ -10,16 +10,16 @@ const buttonVariants = cva(
         variants: {
             variant: {
                 default:
-                    "border-primary/55 bg-primary/30 text-foreground shadow-none hover:border-primary/80 hover:bg-primary/40 focus-visible:border-primary/80 focus-visible:bg-primary/40",
-                submit: "!h-[42px] rounded-md border border-primary/55 bg-primary/30 px-4 py-2 text-base !font-medium text-foreground shadow-none hover:border-primary/80 hover:bg-primary/40 focus-visible:border-primary/80 focus-visible:bg-primary/40",
+                    "border-brand-default/55 bg-brand-default/30 text-foreground-default shadow-none hover:border-brand-default/80 hover:bg-brand-default/40 focus-visible:border-brand-default/80 focus-visible:bg-brand-default/40",
+                submit: "!h-[42px] rounded-md border border-brand-default/55 bg-brand-default/30 px-4 py-2 text-base !font-medium text-foreground-default shadow-none hover:border-brand-default/80 hover:bg-brand-default/40 focus-visible:border-brand-default/80 focus-visible:bg-brand-default/40",
                 outline:
-                    "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+                    "border-border-default bg-background-default hover:bg-background-muted hover:text-foreground-default aria-expanded:bg-background-muted aria-expanded:text-foreground-default dark:border-border-strong dark:bg-border-strong/30 dark:hover:bg-border-strong/50",
                 secondary:
-                    "bg-card text-muted-foreground hover:bg-card/80 aria-expanded:bg-card aria-expanded:text-muted-foreground",
-                ghost: "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+                    "bg-background-surface-200 text-foreground-light hover:bg-background-surface-200/80 aria-expanded:bg-background-surface-200 aria-expanded:text-foreground-light",
+                ghost: "hover:bg-background-muted hover:text-foreground-default aria-expanded:bg-background-muted aria-expanded:text-foreground-default dark:hover:bg-background-muted/50",
                 destructive:
                     "border-destructive/35 bg-destructive/10 text-destructive hover:border-destructive/50 hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-                link: "text-primary underline-offset-4 hover:underline",
+                link: "text-brand-default underline-offset-4 hover:underline",
             },
             size: {
                 default:

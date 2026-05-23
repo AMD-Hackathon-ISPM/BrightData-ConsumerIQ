@@ -4,9 +4,9 @@ import { cn } from '@/lib/utils'
 
 export function ProgressBar({ value }: { value: number }) {
   return (
-    <div aria-hidden className="relative h-px w-full overflow-hidden bg-border">
+    <div aria-hidden className="relative h-px w-full overflow-hidden bg-border-default">
       <div
-        className="absolute inset-y-0 left-0 bg-foreground/70 transition-all duration-700 ease-out"
+        className="absolute inset-y-0 left-0 bg-foreground-default/70 transition-all duration-700 ease-out"
         style={{ width: `${value}%` }}
       />
     </div>
@@ -19,7 +19,7 @@ export function StepContext({ items }: { items: string[] }) {
     return null
   }
   return (
-    <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+    <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-foreground-muted">
       {filtered.map((entry, index) => (
         <span key={entry}>
           {index > 0 ? <span className="px-2 opacity-50">·</span> : null}
@@ -49,7 +49,7 @@ export function OnboardingShell({
       {showStep || context ? (
         <div className="mb-6 flex items-center justify-between">
           {showStep ? (
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground-muted">
               Step {String(step).padStart(2, '0')} /{' '}
               {String(totalSteps).padStart(2, '0')}
             </span>
@@ -59,7 +59,7 @@ export function OnboardingShell({
           {context}
         </div>
       ) : null}
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="overflow-hidden rounded-xl border border-border-default bg-background-surface-100">
         <ProgressBar value={progress} />
         <div className="px-8 py-10 sm:px-10 sm:py-12">{children}</div>
       </div>
@@ -96,15 +96,15 @@ export function ChipToggleGroup({
             className={cn(
               'inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm transition-colors',
               selected
-                ? 'border-foreground bg-foreground text-background'
-                : 'border-border bg-card text-foreground hover:border-foreground/40 hover:bg-accent/30',
+                ? 'border-brand-default bg-brand-default text-foreground-contrast'
+                : 'border-border-default bg-background-surface-100 text-foreground-default hover:border-brand-default/40 hover:bg-background-muted',
             )}
           >
             <span
               aria-hidden
               className={cn(
                 'inline-block size-1.5 rounded-full',
-                selected ? 'bg-background' : 'bg-muted-foreground/40',
+                selected ? 'bg-foreground-contrast' : 'bg-foreground-muted/40',
               )}
             />
             {option}
@@ -129,15 +129,15 @@ export function StatusLine({
       className={cn(
         'flex items-baseline gap-3 font-mono text-sm transition-all duration-500 ease-out',
         state === 'queued' && 'translate-y-1 opacity-30',
-        state === 'running' && 'translate-y-0 text-foreground opacity-100',
-        state === 'done' && 'translate-y-0 text-muted-foreground opacity-80',
+        state === 'running' && 'translate-y-0 text-foreground-default opacity-100',
+        state === 'done' && 'translate-y-0 text-foreground-muted opacity-80',
       )}
       style={{ transitionDelay: `${delayMs}ms` }}
     >
       <span
         aria-hidden
         className={cn(
-          state === 'done' ? 'text-foreground/70' : 'text-muted-foreground',
+          state === 'done' ? 'text-foreground-default/70' : 'text-foreground-muted',
         )}
       >
         →

@@ -44,7 +44,7 @@ export function Login({ onSwitchToRegister }: LoginProps) {
                     <h1 className="text-3xl font-medium tracking-tight">
                         Welcome back
                     </h1>
-                    <p className="text-sm text-balance text-muted-foreground">
+                    <p className="text-sm text-balance text-foreground-light">
                         Sign in to continue
                     </p>
                 </div>
@@ -91,7 +91,7 @@ export function Login({ onSwitchToRegister }: LoginProps) {
                             aria-label={
                                 showPassword ? "Hide password" : "Show password"
                             }
-                            className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-muted-foreground transition-colors hover:text-foreground"
+                            className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-foreground-muted transition-colors hover:text-foreground-default"
                             onClick={() =>
                                 setShowPassword((current) => !current)
                             }
@@ -119,11 +119,11 @@ export function Login({ onSwitchToRegister }: LoginProps) {
                             {processing ? "Signing in..." : "Sign In"}
                         </span>
                     </Button>
-                    <FieldDescription className="pt-6 text-center text-sm text-muted-foreground">
+                    <FieldDescription className="pt-6 text-center text-sm text-foreground-light">
                         Don&apos;t have an account?{" "}
                         <button
                             type="button"
-                            className="cursor-pointer font-medium text-foreground underline-offset-4 hover:underline"
+                            className="cursor-pointer font-medium text-brand-default underline-offset-4 hover:underline"
                             onClick={onSwitchToRegister}
                         >
                             Sign Up

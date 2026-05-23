@@ -1,4 +1,4 @@
-import { MessageSquare, X } from "lucide-react";
+import { IconMessageCircle, IconX } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type DashboardSection, navItems } from "../constants";
@@ -24,7 +24,7 @@ export function MobileSidebarNav({
     <div className="fixed inset-0 z-40 flex md:hidden">
       <button
         aria-label="Close navigation"
-        className="flex-1 bg-background/70"
+        className="flex-1 bg-background-default/70"
         onClick={onClose}
         type="button"
       />
@@ -32,7 +32,7 @@ export function MobileSidebarNav({
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-sm font-semibold tracking-tight">ConsumerIQ</h2>
-            <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-foreground-lighter">
               Mobile Menu
             </p>
           </div>
@@ -43,7 +43,7 @@ export function MobileSidebarNav({
             type="button"
             variant="ghost"
           >
-            <X className="size-4" />
+            <IconX className="size-4" stroke={1.8} />
           </Button>
         </div>
 
@@ -57,8 +57,8 @@ export function MobileSidebarNav({
                 className={cn(
                   "flex h-10 items-center gap-2 rounded-lg px-3 text-left text-xs font-medium transition-colors duration-150",
                   isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-foreground-lighter hover:bg-background-muted hover:text-foreground-default"
                 )}
                 key={item.id}
                 onClick={() => {
@@ -76,14 +76,14 @@ export function MobileSidebarNav({
 
         <div className="mt-auto border-t pt-4">
           <Button
-            className="w-full bg-foreground text-background hover:bg-foreground/90"
+            className="w-full bg-brand-default text-foreground-contrast hover:bg-brand-400"
             onClick={() => {
               onToggleChat?.();
               onClose();
             }}
             type="button"
           >
-            <MessageSquare className="size-4" />
+            <IconMessageCircle className="size-4" stroke={1.8} />
             Founder Chat
           </Button>
         </div>

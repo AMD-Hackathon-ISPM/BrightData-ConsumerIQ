@@ -36,7 +36,7 @@ export function ScrollableTableWrapper({ children }: { children: ReactNode }) {
     return (
         <div
             ref={wrapperRef}
-            className="overflow-hidden rounded-lg border border-border bg-background"
+            className="overflow-hidden rounded-lg border border-border-default bg-background-default"
         >
             <div className="relative">
                 <div

@@ -68,7 +68,7 @@ export function ResearchGoalsStep({
             <h1 className="text-3xl font-medium tracking-tight">
               Research goals
             </h1>
-            <p className="text-sm text-balance text-muted-foreground">
+            <p className="text-sm text-balance text-foreground-light">
               What do you want to understand? Pick as many as apply — we'll
               prioritize signals that move these forward.
             </p>

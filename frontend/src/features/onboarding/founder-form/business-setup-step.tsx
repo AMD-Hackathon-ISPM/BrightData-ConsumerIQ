@@ -37,14 +37,13 @@ const REGIONS = [
   'Antarctica',
 ]
 
-const AGE_RANGES = [
-  'Under 18',
-  '18–24',
-  '25–34',
-  '35–44',
-  '45–54',
-  '55+',
-  'All ages',
+const GEN_RANGES = [
+  '1 - 12 years old (Gen Alpha)',
+  '13 - 28 years old (Gen Z)',
+  '29 - 44 years old (Millennials)',
+  '45 - 60 years old (Gen X)',
+  '61 - 79 years old (Baby Boomers)',
+  '80+ years old (Silent Generation)'
 ]
 
 const GENDERS = ['Female', 'Male', 'All genders']
@@ -58,7 +57,7 @@ type BusinessSetupStepProps = {
   industry: string
   region: string
   country: string
-  targetAge: string
+  targetGen: string
   targetGender: string
   targetMarketDetail: string
   salesChannel: string
@@ -66,7 +65,7 @@ type BusinessSetupStepProps = {
   onIndustryChange: (value: string) => void
   onRegionChange: (value: string) => void
   onCountryChange: (value: string) => void
-  onTargetAgeChange: (value: string) => void
+  onTargetGenChange: (value: string) => void
   onTargetGenderChange: (value: string) => void
   onTargetMarketDetailChange: (value: string) => void
   onSalesChannelChange: (value: string) => void
@@ -80,7 +79,7 @@ export function BusinessSetupStep({
   industry,
   region,
   country,
-  targetAge,
+  targetGen,
   targetGender,
   targetMarketDetail,
   salesChannel,
@@ -88,7 +87,7 @@ export function BusinessSetupStep({
   onIndustryChange,
   onRegionChange,
   onCountryChange,
-  onTargetAgeChange,
+  onTargetGenChange,
   onTargetGenderChange,
   onTargetMarketDetailChange,
   onSalesChannelChange,
@@ -108,7 +107,7 @@ export function BusinessSetupStep({
             <h1 className="text-3xl font-medium tracking-tight">
               Business setup
             </h1>
-            <p className="text-sm text-balance text-muted-foreground">
+            <p className="text-sm text-balance text-foreground-light">
               A few framing details so we know where to point the lens.
             </p>
           </div>
@@ -154,12 +153,12 @@ export function BusinessSetupStep({
             <FieldError />
           </Field>
 
-          <FieldGroup className="rounded-lg border bg-muted/20 p-5">
+          <FieldGroup className="rounded-lg border border-border-default bg-background-muted/20 p-5">
             <div className="-mt-1 mb-1">
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium text-foreground-default">
                 Target region / market
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-foreground-muted">
                 Country + demographic detail. Also sets your dashboard
                 currency.
               </p>
@@ -199,13 +198,13 @@ export function BusinessSetupStep({
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field>
-                <FieldLabel htmlFor="targetAge">Age</FieldLabel>
-                <Select value={targetAge} onValueChange={onTargetAgeChange}>
-                  <SelectTrigger className="h-11 w-full" id="targetAge">
-                    <SelectValue placeholder="Pick an age range" />
+                <FieldLabel htmlFor="targetGen">Gen Target</FieldLabel>
+                <Select value={targetGen} onValueChange={onTargetGenChange}>
+                  <SelectTrigger className="h-11 w-full" id="targetGen">
+                    <SelectValue placeholder="Pick an gen range" />
                   </SelectTrigger>
                   <SelectContent>
-                    {AGE_RANGES.map((entry) => (
+                    {GEN_RANGES.map((entry) => (
                       <SelectItem key={entry} value={entry}>
                         {entry}
                       </SelectItem>
@@ -239,7 +238,7 @@ export function BusinessSetupStep({
             <Field>
               <FieldLabel htmlFor="targetMarketDetail">
                 Added details{' '}
-                <span className="text-muted-foreground">(optional)</span>
+                <span className="text-foreground-muted">(optional)</span>
               </FieldLabel>
               <Textarea
                 id="targetMarketDetail"

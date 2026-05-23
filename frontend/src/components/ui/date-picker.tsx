@@ -38,7 +38,7 @@ export function DatePicker({
                     variant="outline"
                     data-empty={!selected}
                     className={cn(
-                        "h-9 w-full justify-start rounded-md border border-border bg-card px-3 text-left text-sm font-normal shadow-none transition-colors hover:border-input hover:bg-accent data-[empty=true]:text-muted-foreground data-[state=open]:border-input data-[state=open]:bg-accent",
+                        "h-9 w-full justify-start rounded-md border border-control bg-background-surface-100 px-3 text-left text-sm font-normal shadow-none transition-colors hover:border-border-stronger hover:bg-background-selection data-[empty=true]:text-foreground-muted data-[state=open]:border-border-stronger data-[state=open]:bg-background-selection",
                         className,
                     )}
                 >

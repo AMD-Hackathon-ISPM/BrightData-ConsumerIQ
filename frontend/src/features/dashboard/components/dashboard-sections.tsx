@@ -341,6 +341,7 @@ export function PersonaDecode() {
     {
       name: "Stressed Young Professional",
       priority: "High Priority",
+      tone: "high" as const,
       description:
         "Urban Gen Z women aged 18-26 who prioritize reliable daily hair solutions, value affordability, and respond to barrier-repair claims.",
       tags: ["Age 18-26", "Urban Indonesia", "Value Seeking"],
@@ -348,6 +349,7 @@ export function PersonaDecode() {
     {
       name: "Budget-Conscious Trend Seeker",
       priority: "Medium Priority",
+      tone: "medium" as const,
       description:
         "Early adopters who follow social trends and switch brands quickly when price/value feels right.",
       tags: ["Age 19-27", "Social-First", "Deal Hunting"],
@@ -355,50 +357,77 @@ export function PersonaDecode() {
     {
       name: "Family Care Gatekeeper",
       priority: "Growth Priority",
+      tone: "growth" as const,
       description:
         "Household decision makers who prefer gentle daily solutions with proven safety and easy availability.",
       tags: ["Age 28-40", "Family Focused", "Safety First"],
     },
   ];
 
+  const initials = (name: string) =>
+    name
+      .split(/[\s-]+/)
+      .map((w) => w[0])
+      .join("")
+      .slice(0, 3)
+      .toUpperCase();
+
+  const priorityToneClass: Record<"high" | "medium" | "growth", string> = {
+    high: "bg-destructive-500/15 text-destructive-500",
+    medium: "bg-warning-500/20 text-warning-600 dark:text-warning-500",
+    growth:
+      "bg-[#98971a]/15 text-[#98971a] dark:bg-[#b8bb26]/15 dark:text-[#b8bb26]",
+  };
+
   return (
     <div className="grid gap-3">
-      <div className="grid gap-3 xl:grid-cols-[minmax(17rem,0.95fr)_minmax(18rem,1.15fr)_minmax(15rem,0.9fr)]">
-        <Panel title="User Persona" subtitle="Market Persona">
-          <div className="max-h-[440px] overflow-y-auto pr-1">
-            <div className="grid gap-3">
-              {personaCards.map((persona) => (
-                <div
-                  className="grid gap-3 rounded-xl border bg-card p-3"
-                  key={persona.name}
-                >
-                  <div className="flex h-20 w-full items-center justify-center rounded-xl border bg-muted/40 text-xs text-muted-foreground">
-                    Image generation optional
-                  </div>
-                  <div className="grid gap-3">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h3 className="text-lg font-semibold">{persona.name}</h3>
-                      <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
-                        {persona.priority}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {persona.description}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                    {persona.tags.map((tag) => (
-                      <span className="rounded-full border px-3 py-1" key={tag}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+      <section>
+        <div className="mb-3 min-w-0">
+          <h2 className="break-words text-base font-semibold">User Personas</h2>
+          <p className="mt-1 break-words text-sm text-muted-foreground">
+            Top 3 target audience segments
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {personaCards.map((persona) => (
+            <article
+              className="grid gap-3 rounded-xl border bg-card p-3.5 shadow-sm"
+              key={persona.name}
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full border bg-muted text-xs font-semibold text-muted-foreground">
+                  {initials(persona.name)}
                 </div>
-              ))}
-            </div>
-          </div>
-        </Panel>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-semibold leading-tight">
+                    {persona.name}
+                  </h3>
+                  <span
+                    className={cn(
+                      "mt-2 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+                      priorityToneClass[persona.tone]
+                    )}
+                  >
+                    {persona.priority}
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {persona.description}
+              </p>
+              <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+                {persona.tags.map((tag) => (
+                  <span className="rounded-full border px-2 py-0.5" key={tag}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
+      <div className="grid gap-3 xl:grid-cols-2">
         <Panel title="STP" subtitle="Segmentation, Targeting, Positioning">
           <div className="grid gap-3">
             <div className="rounded-lg border bg-muted/40 p-3">

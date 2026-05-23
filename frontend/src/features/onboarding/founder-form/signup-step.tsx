@@ -19,7 +19,7 @@ export function SignupStep({ onNext, signedInAs }: SignupStepProps) {
           <h1 className="text-3xl font-medium tracking-tight">
             Welcome to ConsumerIQ
           </h1>
-          <p className="text-sm text-balance text-muted-foreground">
+          <p className="text-sm text-balance text-foreground-light">
             The intelligence layer for your next launch. We'll ask a few short
             questions, then quietly assemble a research notebook for your
             category.
@@ -27,9 +27,9 @@ export function SignupStep({ onNext, signedInAs }: SignupStepProps) {
         </div>
 
         {signedInAs ? (
-          <p className="font-mono text-xs text-muted-foreground">
+          <p className="font-mono text-xs text-foreground-muted">
             <span className="opacity-70">Signed in as</span>{' '}
-            <span className="text-foreground">{signedInAs}</span>
+            <span className="text-foreground-default">{signedInAs}</span>
           </p>
         ) : null}
 

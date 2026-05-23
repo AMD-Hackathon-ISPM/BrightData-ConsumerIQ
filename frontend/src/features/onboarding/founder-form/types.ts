@@ -7,7 +7,7 @@ export type FounderFormState = {
   industry: string
   region: string
   country: string
-  targetAge: string
+  targetGen: string
   targetGender: string
   targetMarketDetail: string
   salesChannel: string
@@ -19,7 +19,6 @@ export type FounderFormState = {
   mainFeatures: string
   competitiveAdvantage: string
   priceRangeMin: number
-  priceRangeMid: number
   priceRangeMax: number
 
   researchGoals: string[]
