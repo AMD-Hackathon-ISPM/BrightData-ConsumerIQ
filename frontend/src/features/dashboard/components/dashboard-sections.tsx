@@ -1282,7 +1282,7 @@ function LaunchCitySales() {
           </p>
         </div>
         <span className="shrink-0 rounded-full border bg-muted/40 px-2.5 py-1 text-[10px] font-semibold">
-          1 bulan terakhir
+          the past month
         </span>
       </div>
 
