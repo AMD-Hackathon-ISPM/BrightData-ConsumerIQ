@@ -1,22 +1,35 @@
 from __future__ import annotations
-from pathlib import Path
-from typing import Optional
-from llama_cpp import Llama
+import os
+import httpx
+
+_INFERENCE_URL = os.getenv(
+    'INFERENCE_URL',
+    'http://consumeriq-inference.consumeriq.svc.cluster.local:8080',
+)
 
 
-def _defaultLlmPath() -> Path:
-    return Path(__file__).resolve().parents[2] / 'models' / 'Llama3.23B.gguf'
+class _LlmClient:
+    def __init__(self, base_url: str) -> None:
+        self._url = base_url.rstrip('/')
+
+    def create_completion(
+        self,
+        *,
+        prompt: str,
+        max_tokens: int = 512,
+        temperature: float = 0.2,
+        stop: list[str] | None = None,
+    ) -> dict:
+        payload = {
+            'prompt': prompt,
+            'n_predict': max_tokens,
+            'temperature': temperature,
+            'stop': stop or [],
+        }
+        response = httpx.post(f'{self._url}/completion', json=payload, timeout=120)
+        response.raise_for_status()
+        return {'choices': [{'text': response.json()['content']}]}
 
 
-def createLlm(
-    modelPath: Optional[Path] = None,
-    *,
-    nCtx: int = 4096,
-    verbose: bool = False,
-) -> Llama:
-    resolvedPath = modelPath or _defaultLlmPath()
-    return Llama(
-        model_path=str(resolvedPath),
-        n_ctx=nCtx,
-        verbose=verbose,
-    )
+def createLlm() -> _LlmClient:
+    return _LlmClient(_INFERENCE_URL)

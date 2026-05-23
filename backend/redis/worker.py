@@ -46,7 +46,7 @@ def _formatVector(values: list[float]) -> str:
 
 
 def _fetchRelevantSignals(categoryName: str, *, limit: int = 50) -> list[dict[str, Any]]:
-    embedder = createEmbedder(verbose=False)
+    embedder = createEmbedder()
     try:
         queryVector = embedTexts(embedder, [categoryName])[0]
     finally:
@@ -153,7 +153,7 @@ def _parseInsights(rawText: str) -> dict[str, Any]:
 
 def _runLlmInsights(categoryName: str, signals: list[dict[str, Any]]) -> dict[str, Any]:
     prompt = _buildPrompt(categoryName, signals)
-    llm = createLlm(verbose=False)
+    llm = createLlm()
     try:
         response = llm.create_completion(
             prompt=prompt,
@@ -264,7 +264,7 @@ def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | Non
 
     session_id = self.request.id
     redis_client = getRedisClient()
-    llm = createLlm(verbose=False)
+    llm = createLlm()
     try:
         result = runReactAgent(
             prompt,

@@ -15,8 +15,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: consumeriq-backend:local
-          # concurrency=1: LLM and embedding models are memory-heavy; one job at a time.
+          image: localhost:5000/consumeriq-backend:local
           command:
             - celery
             - -A
@@ -32,6 +31,12 @@ spec:
               value: redis://redis.consumeriq.svc.cluster.local:6379/0
             - name: DATABASE_URL
               value: postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.local:5432/consumeriq
+            - name: INFERENCE_URL
+              value: http://consumeriq-inference.consumeriq.svc.cluster.local:8080
+            - name: EMBEDDINGS_URL
+              value: http://consumeriq-embeddings.consumeriq.svc.cluster.local:8080
+            - name: TRANSLATOR_URL
+              value: http://consumeriq-translator.consumeriq.svc.cluster.local:8080
             - name: SCRAPINGBEE_API_KEY
               valueFrom:
                 secretKeyRef:

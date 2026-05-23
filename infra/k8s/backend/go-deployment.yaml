@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: go-service
-          image: consumeriq-go:local
+          image: localhost:5000/consumeriq-go:local
           ports:
             - containerPort: 8080
           env:

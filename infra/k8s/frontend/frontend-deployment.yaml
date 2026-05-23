@@ -15,6 +15,6 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: consumeriq-frontend:local
+          image: localhost:5000/consumeriq-frontend:local
           ports:
             - containerPort: 80

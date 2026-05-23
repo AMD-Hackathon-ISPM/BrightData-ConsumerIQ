@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: go-worker
-          image: consumeriq-go:local
+          image: localhost:5000/consumeriq-go:local
           command: ["/go-worker"]
           env:
             - name: REDIS_ADDR

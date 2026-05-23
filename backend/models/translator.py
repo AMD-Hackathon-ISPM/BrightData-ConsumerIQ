@@ -1,62 +1,36 @@
 from __future__ import annotations
-from pathlib import Path
-from typing import Iterable, Optional
-import gc
+import os
 import re
-from llama_cpp import Llama
+from typing import Iterable
+import httpx
 
-_cjkPattern = re.compile(r'[\u4e00-\u9fff]')
+_TRANSLATOR_URL = os.getenv(
+    'TRANSLATOR_URL',
+    'http://consumeriq-translator.consumeriq.svc.cluster.local:8080',
+)
 
-
-def _defaultTranslatorPath() -> Path:
-    return (Path(__file__).resolve().parents[2] / 'models' / 'Qwen3.50.8B.gguf')
+_cjkPattern = re.compile(r'[一-鿿]')
 
 
 def _isCjk(text: str) -> bool:
     return bool(_cjkPattern.search(text))
 
 
-def _loadTranslator(modelPath: Optional[Path] = None) -> Llama:
-    resolvedPath = modelPath or _defaultTranslatorPath()
-    return Llama(
-        model_path=str(resolvedPath),
-        n_ctx=2048,
-        verbose=False,
-    )
-
-
-def _translateText(translator: Llama, text: str) -> str:
+def _translateText(text: str) -> str:
     prompt = (
         'Translate the following text to natural English. '
         'Return only the translation, no extra text.\n\n'
         f'Text: {text}\nTranslation:'
     )
-    response = translator.create_completion(
-        prompt=prompt,
-        max_tokens=256,
-        temperature=0.2,
-        stop=['\n\n'],
-    )
-    return response['choices'][0]['text'].strip()
+    payload = {'prompt': prompt, 'n_predict': 256, 'temperature': 0.2, 'stop': ['\n\n']}
+    response = httpx.post(f'{_TRANSLATOR_URL}/completion', json=payload, timeout=60)
+    response.raise_for_status()
+    return response.json()['content'].strip()
 
 
-def translateTextsIfNeeded(
-    texts: Iterable[str],
-    *,
-    modelPath: Optional[Path] = None,
-) -> list[str]:
+def translateTextsIfNeeded(texts: Iterable[str]) -> list[str]:
     items = list(texts)
-    indicesToTranslate = [i for i, text in enumerate(items) if _isCjk(text)]
-
-    if not indicesToTranslate:
-        return items
-
-    translator = _loadTranslator(modelPath)
-    try:
-        for index in indicesToTranslate:
-            items[index] = _translateText(translator, items[index])
-    finally:
-        del translator
-        gc.collect()
-
+    for i, text in enumerate(items):
+        if _isCjk(text):
+            items[i] = _translateText(text)
     return items

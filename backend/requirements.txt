@@ -1,11 +1,9 @@
-llama-cpp-python
 fastapi
 uvicorn
 celery
 kombu
 redis
 psycopg2-binary
-
-# for scrapingbee's needs
+httpx
 requests
 python-dotenv

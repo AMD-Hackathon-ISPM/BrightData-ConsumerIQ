@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumeriq-inference
+  namespace: consumeriq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumeriq-inference
+  template:
+    metadata:
+      labels:
+        app: consumeriq-inference
+    spec:
+      containers:
+        - name: inference
+          image: localhost:5000/consumeriq-inference:local
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "3Gi"
+            limits:
+              memory: "5Gi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5

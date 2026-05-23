@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - inference-deployment.yaml
+  - inference-service.yaml
+  - embeddings-deployment.yaml
+  - embeddings-service.yaml
+  - translator-deployment.yaml
+  - translator-service.yaml

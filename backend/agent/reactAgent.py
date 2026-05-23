@@ -4,7 +4,6 @@ import re
 from typing import Any
 
 import redis as redis_lib
-from llama_cpp import Llama
 
 from backend.agent.tools import TOOL_SCHEMAS, callTool
 from backend.agent.summarizer import summarizeObservation, keyFinding
@@ -83,7 +82,7 @@ def _appendObservation(
     )
 
 
-def _generate(llm: Llama, prompt: str) -> str:
+def _generate(llm: Any, prompt: str) -> str:
     result = llm.create_completion(
         prompt=prompt,
         max_tokens=512,
@@ -110,7 +109,7 @@ def _extractJson(text: str) -> dict | None:
 
 def runReactAgent(
     user_prompt: str,
-    llm: Llama,
+    llm: Any,
     *,
     max_steps: int = 6,
     redis_client: redis_lib.Redis | None = None,
