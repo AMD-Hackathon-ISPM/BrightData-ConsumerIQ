@@ -32,3 +32,8 @@ spec:
               value: redis://redis.consumeriq.svc.cluster.local:6379/0
             - name: DATABASE_URL
               value: postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.local:5432/consumeriq
+            - name: SCRAPINGBEE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-scrapingbee
+                  key: SCRAPINGBEE_API_KEY

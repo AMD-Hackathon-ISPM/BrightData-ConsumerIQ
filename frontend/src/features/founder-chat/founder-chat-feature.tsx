@@ -1,5 +1,11 @@
 import { nanoid } from 'nanoid'
-import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
+import {
+  type ChangeEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { toast } from 'sonner'
 import type { PromptInputMessage } from '@/components/ai-elements/prompt-input'
 import { ChatComposer } from '@/features/llm-chat/components/chat-composer'
@@ -13,13 +19,16 @@ import {
 import { delay, streamText } from '@/features/llm-chat/lib/streaming'
 import type { ChatStatus, MessageType } from '@/features/llm-chat/types'
 import { cn } from '@/lib/utils'
-import { getTaskStatus, startMarketScan } from './api'
+import { getTaskStatus, startAgentRun } from './api'
 
 const TASK_POLL_INTERVALS_MS = [1200, 2000, 3500, 5000]
 const TASK_TIMEOUT_MS = 60000
 
 const formatSection = (label: string, value: unknown) => {
-  if (!value || (typeof value === 'object' && Object.keys(value as object).length === 0)) {
+  if (
+    !value ||
+    (typeof value === 'object' && Object.keys(value as object).length === 0)
+  ) {
     return `### ${label}\n_No data yet._`
   }
 
@@ -27,7 +36,19 @@ const formatSection = (label: string, value: unknown) => {
 }
 
 const formatInsights = (result: Record<string, unknown>) => {
-  const category = typeof result.category === 'string' ? result.category : 'Unknown'
+  const finalAnswer =
+    typeof result.finalAnswer === 'string'
+      ? result.finalAnswer
+      : typeof result.final_answer === 'string'
+        ? result.final_answer
+        : ''
+
+  if (finalAnswer) {
+    return finalAnswer
+  }
+
+  const category =
+    typeof result.category === 'string' ? result.category : 'Unknown'
   const gtm = result.gtmIntelligence
   const finance = result.financeIntelligence
   const security = result.securityCompliance
@@ -181,10 +202,7 @@ export function FounderChat({
       versions: [{ content: '', id: assistantMessageId }],
     }
 
-    setMessages((previousMessages) => [
-      ...previousMessages,
-      assistantMessage,
-    ])
+    setMessages((previousMessages) => [...previousMessages, assistantMessage])
 
     return assistantMessageId
   }, [])
@@ -225,7 +243,7 @@ export function FounderChat({
         void (async () => {
           const assistantMessageId = createAssistantMessage()
           try {
-            const scanResponse = await startMarketScan(
+            const scanResponse = await startAgentRun(
               prompt,
               abortController.signal,
             )
@@ -270,7 +288,12 @@ export function FounderChat({
         })()
       }, 300)
     },
-    [createAssistantMessage, pollTaskResult, streamResponse, updateMessageContent],
+    [
+      createAssistantMessage,
+      pollTaskResult,
+      streamResponse,
+      updateMessageContent,
+    ],
   )
 
   const handleSubmit = useCallback(
@@ -353,7 +376,7 @@ export function FounderChat({
         isOpen={isOpen}
         onToggle={onToggle}
       >
-        <div className="relative flex size-full min-h-0 flex-col divide-y overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 flex-col divide-y overflow-hidden">
           <ChatConversation messages={messages} />
           <div className="grid shrink-0 gap-4 pt-4">
             <SuggestionList

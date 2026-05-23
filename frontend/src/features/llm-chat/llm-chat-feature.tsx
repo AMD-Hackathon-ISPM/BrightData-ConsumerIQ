@@ -214,7 +214,7 @@ export function LlmChatFeature() {
   )
 
   const chatExperience = (
-    <div className="relative flex size-full min-h-0 flex-col divide-y overflow-hidden">
+    <div className="relative flex min-h-0 flex-1 flex-col divide-y overflow-hidden">
       <ChatConversation messages={messages} />
 
       <div className="grid shrink-0 gap-4 pt-4">

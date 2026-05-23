@@ -1,9 +1,17 @@
+import asyncio
+import json
 import os
+from functools import partial
 
-from fastapi import FastAPI, HTTPException, Path
+from fastapi import FastAPI, HTTPException, Path, Request
 from pydantic import BaseModel
 from celery.result import AsyncResult
 from backend.redis.worker import celeryApp, processLlmInsights
+
+_DATABASE_URL = os.getenv(
+    'DATABASE_URL',
+    'postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.local:5432/consumeriq',
+)
 from backend.api.marketplaceScrape import router as marketplaceRouter
 from backend.api.serpSearch import router as serpRouter
 from backend.api.socialScrape import router as socialRouter
@@ -18,6 +26,28 @@ def _inferenceQueueDepth() -> int:
         return redis_lib.from_url(_REDIS_URL).llen('inference')
     except Exception:
         return 0
+
+
+def _fetchUserContextSync(user_id: str) -> dict | None:
+    try:
+        import psycopg2
+        with psycopg2.connect(_DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'SELECT payload FROM founderforms WHERE user_id = %s ORDER BY createdat DESC LIMIT 1',
+                    (int(user_id),),
+                )
+                row = cur.fetchone()
+                if row:
+                    return json.loads(row[0]) if isinstance(row[0], str) else row[0]
+    except Exception:
+        return None
+    return None
+
+
+async def _fetchUserContext(user_id: str) -> dict | None:
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, partial(_fetchUserContextSync, user_id))
 
 
 app = FastAPI(title='ConsumerIQ API')
@@ -36,7 +66,7 @@ class ScrapeMarketSignalsRequest(BaseModel):
 
 
 @app.post('/api/agent/run')
-async def agentRun(payload: AgentRunRequest):
+async def agentRun(payload: AgentRunRequest, request: Request):
     if _inferenceQueueDepth() >= _INFERENCE_QUEUE_LIMIT:
         raise HTTPException(status_code=503, detail='Inference queue full, try again later')
 
@@ -48,7 +78,10 @@ async def agentRun(payload: AgentRunRequest):
             detail=f'Agent worker dependency is not installed: {error.name}',
         ) from error
 
-    task = runAgentTask.delay(payload.prompt, payload.max_steps)
+    user_id = request.headers.get('X-User-Id')
+    user_context = await _fetchUserContext(user_id) if user_id else None
+
+    task = runAgentTask.delay(payload.prompt, payload.max_steps, user_context)
 
     return {'message': 'ReAct agent queued', 'taskId': task.id, 'status': 'processing', 'prompt': payload.prompt}
 
