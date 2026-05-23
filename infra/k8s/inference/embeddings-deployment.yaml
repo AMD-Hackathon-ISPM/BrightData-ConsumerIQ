@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: consumeriq-embeddings
@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: embeddings
-          image: localhost:5000/consumeriq-embeddings:local
+          image: localhost:5001/consumeriq-embeddings:local
           ports:
             - containerPort: 8080
           resources:
