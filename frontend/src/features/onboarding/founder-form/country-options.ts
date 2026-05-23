@@ -5,7 +5,6 @@ export type MarketRegion =
   | 'North America'
   | 'South America'
   | 'Oceania'
-  | 'Antarctica'
 
 export type CountryOption = {
   name: string
@@ -71,16 +70,6 @@ export const COUNTRIES: CountryOption[] = [
 
   { name: 'Australia', region: 'Oceania', currencyCode: 'AUD' },
   { name: 'New Zealand', region: 'Oceania', currencyCode: 'NZD' },
-  { name: 'Papua New Guinea', region: 'Oceania', currencyCode: 'PGK' },
-  { name: 'Fiji', region: 'Oceania', currencyCode: 'FJD' },
-  { name: 'Samoa', region: 'Oceania', currencyCode: 'WST' },
-  { name: 'Tonga', region: 'Oceania', currencyCode: 'TOP' },
-  { name: 'Vanuatu', region: 'Oceania', currencyCode: 'VUV' },
-  { name: 'Solomon Islands', region: 'Oceania', currencyCode: 'SBD' },
-  { name: 'Kiribati', region: 'Oceania', currencyCode: 'AUD' },
-  { name: 'Micronesia', region: 'Oceania', currencyCode: 'USD' },
-
-  { name: 'Antarctica', region: 'Antarctica', currencyCode: 'No official currency' },
 ]
 
 export function getCountryCurrency(countryName: string) {
