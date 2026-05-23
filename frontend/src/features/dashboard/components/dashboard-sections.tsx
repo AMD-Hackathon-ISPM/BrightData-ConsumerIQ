@@ -340,7 +340,6 @@ export function PersonaDecode() {
   const personaCards = [
     {
       name: "Stressed Young Professional",
-      priority: "High Priority",
       tone: "high" as const,
       description:
         "Urban Gen Z women aged 18-26 who prioritize reliable daily hair solutions, value affordability, and respond to barrier-repair claims.",
@@ -348,7 +347,6 @@ export function PersonaDecode() {
     },
     {
       name: "Budget-Conscious Trend Seeker",
-      priority: "Medium Priority",
       tone: "medium" as const,
       description:
         "Early adopters who follow social trends and switch brands quickly when price/value feels right.",
@@ -356,7 +354,6 @@ export function PersonaDecode() {
     },
     {
       name: "Family Care Gatekeeper",
-      priority: "Growth Priority",
       tone: "growth" as const,
       description:
         "Household decision makers who prefer gentle daily solutions with proven safety and easy availability.",
@@ -402,14 +399,6 @@ export function PersonaDecode() {
                   <h3 className="text-sm font-semibold leading-tight">
                     {persona.name}
                   </h3>
-                  <span
-                    className={cn(
-                      "mt-2 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium",
-                      priorityToneClass[persona.tone]
-                    )}
-                  >
-                    {persona.priority}
-                  </span>
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
