@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { getCountryCurrency } from './country-options'
 import { OnboardingShell, StepContext, StepFooter } from './shared'
 
 type ProductContextStepProps = {
@@ -15,6 +16,7 @@ type ProductContextStepProps = {
   onNext: () => void
   workspaceName: string
   industry: string
+  country: string
   problemToSolve: string
   productName: string
   productDescription: string
@@ -37,6 +39,7 @@ export function ProductContextStep({
   onNext,
   workspaceName,
   industry,
+  country,
   problemToSolve,
   productName,
   productDescription,
@@ -53,6 +56,8 @@ export function ProductContextStep({
   onPriceChange,
   isNextDisabled,
 }: ProductContextStepProps) {
+  const priceCurrency = getCountryCurrency(country)
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (isNextDisabled) return
@@ -69,6 +74,7 @@ export function ProductContextStep({
           items={[
             workspaceName ? `ConsumerIQ for: ${workspaceName}` : '',
             industry,
+            country,
           ]}
         />
       }
@@ -138,18 +144,24 @@ export function ProductContextStep({
             </Field>
             <Field>
               <FieldLabel htmlFor="price">Price</FieldLabel>
-              <Input
-                id="price"
-                inputMode="numeric"
-                min={0}
-                placeholder="125000"
-                step={1000}
-                type="number"
-                value={price || ''}
-                onChange={(event) =>
-                  onPriceChange(Number(event.target.value) || 0)
-                }
-              />
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-medium text-foreground-muted">
+                  {priceCurrency}
+                </span>
+                <Input
+                  className="pl-32"
+                  id="price"
+                  inputMode="numeric"
+                  min={0}
+                  placeholder="125000"
+                  step={1000}
+                  type="number"
+                  value={price || ''}
+                  onChange={(event) =>
+                    onPriceChange(Number(event.target.value) || 0)
+                  }
+                />
+              </div>
               <FieldError />
             </Field>
             <Field>

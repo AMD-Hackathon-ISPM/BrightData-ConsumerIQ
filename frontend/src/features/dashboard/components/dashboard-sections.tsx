@@ -392,7 +392,12 @@ export function PersonaDecode() {
               key={persona.name}
             >
               <div className="flex items-start gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-full border bg-muted text-xs font-semibold text-muted-foreground">
+                <div
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
+                    priorityToneClass[persona.tone],
+                  )}
+                >
                   {initials(persona.name)}
                 </div>
                 <div className="min-w-0 flex-1">

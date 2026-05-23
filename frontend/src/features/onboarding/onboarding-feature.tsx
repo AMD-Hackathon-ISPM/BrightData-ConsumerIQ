@@ -33,7 +33,7 @@ export function ConsumerIQOnboarding({
     industry: '',
     region: '',
     country: '',
-    targetGen: '',
+    targetGen: [],
     targetGender: '',
     targetMarketDetail: '',
     salesChannel: '',
@@ -138,7 +138,10 @@ export function ConsumerIQOnboarding({
                 updateField('workspaceName', value)
               }
               onIndustryChange={(value) => updateField('industry', value)}
-              onRegionChange={(value) => updateField('region', value)}
+              onRegionChange={(value) => {
+                updateField('region', value)
+                updateField('country', '')
+              }}
               onCountryChange={(value) => updateField('country', value)}
               onTargetGenChange={(value) => updateField('targetGen', value)}
               onTargetGenderChange={(value) =>
@@ -158,6 +161,7 @@ export function ConsumerIQOnboarding({
               onNext={() => setStep(4)}
               workspaceName={formState.workspaceName}
               industry={formState.industry}
+              country={formState.country}
               problemToSolve={formState.problemToSolve}
               productName={formState.productName}
               productDescription={formState.productDescription}
