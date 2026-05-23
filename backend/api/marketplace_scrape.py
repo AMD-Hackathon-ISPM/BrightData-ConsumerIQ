@@ -21,6 +21,10 @@ class MarketplaceScrapeRequest(BaseModel):
     country_code: str = "cn"
     render_js: bool = True scroll: bool = False  
     wait_for: str | None = None 
+    include_reviews: bool = True
+    max_review_pages: int = 1
+    wait_ms: int | None = None
+    block_resources: bool | None = None
 
 
 class MarketplaceBatchScrapeRequest(BaseModel):
@@ -155,8 +159,22 @@ def buildMarketplaceDiscoveryQuery(payload: MarketplaceDiscoveryRequest):
     return f"site:{marketplace}.com {keyword} reviews price"
 
 
+def shouldRetryWithFullAmazonRender(error: dict | None):
+    if not isinstance(error, dict):
+        return False
+
+    message = str(error.get("message") or "").lower()
+
+    return (
+        "document is empty" in message
+        or "block_resources=false" in message
+        or "read timeout" in message
+    )
+
+
 @router.post("/api/marketplace-scrape")
 async def marketplaceScrape(payload: MarketplaceScrapeRequest):
+<<<<<<< HEAD
     if "amazon.com" in payload.url.lower():
     result, error = scrapeAmazonWithReviews(
         url=payload.url,
@@ -179,11 +197,121 @@ async def marketplaceScrape(payload: MarketplaceScrapeRequest):
                     "reviews": result.get("reviews", []),
                     "rating_summary": result.get("rating_summary", {}),
                 }
+=======
+    if "amazon." in payload.url.lower():
+        country_code = "us" if payload.country_code == "cn" else payload.country_code
+
+        if payload.include_reviews:
+            result, error = scrapeAmazonWithReviews(
+                url=payload.url,
+                country_code=country_code,
+                max_pages=payload.max_review_pages,
+            )
+
+            if not error:
+                return {
+                    "status": "success",
+                    "source": "scrapingbee",
+                    "source_url": payload.url,
+                    "page_type": "amazon_review_page",
+                    "signals": {
+                        "marketplace": "amazon",
+                        "page_blocked": False,
+                        "prices": [],
+                        "review_tags": [],
+                        "product_mentions": [],
+                        "amazon_specific": {
+                            "reviews": result.get("reviews", []),
+                            "rating_summary": result.get("rating_summary", {}),
+                            "review_count_scraped": result.get("review_count_scraped", 0),
+                            "review_source": "scrapingbee_live",
+                        },
+                    },
+                }
+
+            return {
+                "status": "success",
+                "source": "scrapingbee_with_fallback",
+                "source_url": payload.url,
+                "page_type": "amazon_product_page",
+                "signals": {
+                    "marketplace": "amazon",
+                    "page_blocked": True,
+                    "prices": [],
+                    "review_tags": [],
+                    "product_mentions": [],
+                    "amazon_specific": {
+                        "reviews": [],
+                        "rating_summary": {},
+                        "review_count_scraped": 0,
+                        "review_source": "blocked_or_timed_out_live_scrape",
+                        "blocked_reason": error.get("message") if isinstance(error, dict) else str(error),
+                        "live_review_error_status": error.get("status") if isinstance(error, dict) else None,
+                    },
+                },
+>>>>>>> 89bb938 (fallback and review fix)
             }
         }
 
-    # Fallback ke generic untuk non-Amazon
-    page_text, error = scrapePageText(...)
+        page_text, error = scrapePageText(
+            url=payload.url,
+            country_code=country_code,
+            render_js=payload.render_js,
+            wait_ms=payload.wait_ms if payload.wait_ms is not None else 0,
+            wait_for=payload.wait_for,
+            scroll_to="#averageCustomerReviewsAnchor" if payload.scroll else None,
+            block_resources=payload.block_resources,
+        )
+
+        if error and payload.block_resources is None and shouldRetryWithFullAmazonRender(error):
+            page_text, error = scrapePageText(
+                url=payload.url,
+                country_code=country_code,
+                render_js=payload.render_js,
+                wait_ms=3000,
+                wait_for=payload.wait_for,
+                scroll_to="#averageCustomerReviewsAnchor" if payload.scroll else None,
+                block_resources=False,
+            )
+
+        if error and not payload.render_js and shouldRetryWithFullAmazonRender(error):
+            page_text, error = scrapePageText(
+                url=payload.url,
+                country_code=country_code,
+                render_js=True,
+                wait_ms=8000,
+                wait_for=payload.wait_for,
+                scroll_to="#averageCustomerReviewsAnchor" if payload.scroll else None,
+                block_resources=False,
+            )
+
+        if error:
+            return error
+
+        clean_text = normalizeText(page_text)
+        signals = extractMarketplaceSignals(payload.url, page_text)
+
+        return {
+            "status": "success",
+            "source": "scrapingbee",
+            "source_url": payload.url,
+            "page_type": "amazon_product_page",
+            "keyword": payload.keyword,
+            "country_code": country_code,
+            "signals": signals,
+            "text_preview": clean_text[:2500],
+            "raw_text_length": len(page_text),
+        }
+
+    page_text, error = scrapePageText(
+        url=payload.url,
+        country_code=payload.country_code,
+        render_js=payload.render_js,
+        wait_ms=payload.wait_ms if payload.wait_ms is not None else 5000,
+        wait_for=payload.wait_for,
+        scroll_to="body" if payload.scroll else None,
+        block_resources=payload.block_resources,
+    )
 
     if error:
         return error
