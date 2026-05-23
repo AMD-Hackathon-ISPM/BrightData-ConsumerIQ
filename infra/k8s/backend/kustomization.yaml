@@ -4,3 +4,5 @@ resources:
   - api-deployment.yaml
   - api-service.yaml
   - worker-deployment.yaml
+  - go-deployment.yaml
+  - go-service.yaml

@@ -34,7 +34,8 @@ def _buildSystemPrompt() -> str:
     lines: list[str] = []
     for name, meta in TOOL_SCHEMAS.items():
         params = ', '.join(f'{k}: {v}' for k, v in meta['input'].items())
-        lines.append(f'  {name}({params})\n    → {meta[\'description\']}')
+        description = meta['description']
+        lines.append(f'  {name}({params})\n    → {description}')
     return _SYSTEM.format(tools='\n'.join(lines))
 
 

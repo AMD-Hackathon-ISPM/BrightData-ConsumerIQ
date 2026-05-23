@@ -1,4 +1,12 @@
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE users (
+    id            BIGSERIAL PRIMARY KEY,
+    email         VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
@@ -111,7 +119,8 @@ CREATE TABLE insightRuns (
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 
 CREATE TABLE founderForms (
-    id TEXT PRIMARY KEY,
-    status TEXT NOT NULL,
+    id        TEXT PRIMARY KEY,
+    user_id   BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    status    TEXT NOT NULL,
     createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    payload JSONB NOT NULL);
+    payload   JSONB NOT NULL);

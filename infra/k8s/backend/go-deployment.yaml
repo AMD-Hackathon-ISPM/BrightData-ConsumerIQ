@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumeriq-go
+  namespace: consumeriq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumeriq-go
+  template:
+    metadata:
+      labels:
+        app: consumeriq-go
+    spec:
+      containers:
+        - name: go-service
+          image: consumeriq-go:local
+          ports:
+            - containerPort: 8080
+          env:
+            - name: REDIS_ADDR
+              value: redis.consumeriq.svc.cluster.local:6379
+            - name: DATABASE_URL
+              value: postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.local:5432/consumeriq
+            - name: PORT
+              value: "8080"
+          readinessProbe:
+            httpGet:
+              path: /internal/auth/validate
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10

@@ -10,32 +10,52 @@
    - `kubectl apply -k infra/k8s/postgres`
    - `kubectl get configmap -n consumeriq postgres-init`
    - `kubectl apply -k infra/k8s/redis`
-5) Build and load the backend image:
+5) Build and load the Python backend image:
    - `docker build -t consumeriq-backend:local -f backend/Dockerfile .`
    - `k3d image import consumeriq-backend:local -c consumeriq-local`
-6) Deploy backend API + worker:
+6) Build and load the Go service image:
+   - `docker build -t consumeriq-go:local backend/go-service/`
+   - `k3d image import consumeriq-go:local -c consumeriq-local`
+7) Deploy backend (Python API + Celery worker + Go auth/forms service):
    - `kubectl apply -k infra/k8s/backend`
-7) Build and load the frontend image:
+8) Build and load the frontend image:
    - `docker build -t consumeriq-frontend:local -f frontend/Dockerfile frontend`
    - `k3d image import consumeriq-frontend:local -c consumeriq-local`
-8) Deploy frontend:
+9) Deploy frontend:
    - `kubectl apply -k infra/k8s/frontend`
-9) Deploy nginx gateway (requires backend + frontend services to exist first):
-   - `kubectl apply -k infra/k8s/nginx`
-   - `kubectl rollout restart -n consumeriq deploy/consumeriq-nginx`
+10) Deploy nginx gateway (requires backend + frontend services to exist first):
+    - `kubectl apply -k infra/k8s/nginx`
+    - `kubectl rollout restart -n consumeriq deploy/consumeriq-nginx`
 
 ## Access
 - Frontend: `http://localhost:30080`
-- API: `http://localhost:30080/api`
+- API (Python — AI/ML): `http://localhost:30080/api`
+- Auth: `http://localhost:30080/auth`
+- Forms (Go): `http://localhost:30080/go-api`
+
+## Service responsibilities
+| Service | Language | Handles |
+|---|---|---|
+| `consumeriq-api` | Python | GGUF inference, LlamaCPP, ReAct agent, embeddings |
+| `consumeriq-worker` | Python | Celery background tasks (scraping, LLM jobs) |
+| `consumeriq-go` | Go | Auth (register/login/logout), opaque session tokens, founder forms |
+| `consumeriq-nginx` | NGINX | Reverse proxy, token validation via `auth_request` |
+
+## Auth flow
+1. `POST /auth/register` or `POST /auth/login` → returns an opaque session token
+2. Pass the token as `Authorization: Bearer <token>` on all subsequent requests
+3. NGINX validates the token against the Go service before proxying to Python — Python only ever sees `X-User-Id`, never raw tokens
 
 ## Troubleshooting
 - If `postgres-0` is stuck in `ContainerCreating`, re-run:
    - `kubectl apply -k infra/k8s/postgres`
    - `kubectl get configmap -n consumeriq postgres-init`
-- If nginx logs show `host not found in upstream "consumeriq-api"`, re-run:
+- If nginx logs show `host not found in upstream`, re-run:
    - `kubectl apply -k infra/k8s/backend`
    - `kubectl apply -k infra/k8s/nginx`
    - `kubectl rollout restart -n consumeriq deploy/consumeriq-nginx`
+- Go service not ready: check `kubectl logs -n consumeriq deploy/consumeriq-go`
+  - Common cause: `REDIS_ADDR` or `DATABASE_URL` env var wrong, or `users` table not migrated yet
 
 ## How to stop
 1) Stop just the workloads (keep cluster):

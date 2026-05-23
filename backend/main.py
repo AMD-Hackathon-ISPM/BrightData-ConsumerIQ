@@ -32,6 +32,14 @@ async def agentRun(payload: AgentRunRequest):
     return {'message': 'ReAct agent queued', 'taskId': task.id, 'status': 'processing', 'prompt': payload.prompt}
 
 
+@app.get('/api/agent/session/{session_id}')
+async def agentSession(session_id: str = Path(..., alias='session_id')):
+    from backend.agent.session import getRedisClient, getFullSession
+
+    redis_client = getRedisClient()
+    return getFullSession(redis_client, session_id)
+
+
 @app.post('/api/scan-market/{category_name}')
 async def scanMarket(categoryName: str = Path(..., alias='category_name')):
     try:

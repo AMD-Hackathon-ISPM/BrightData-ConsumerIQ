@@ -5,22 +5,106 @@ metadata:
   namespace: consumeriq
 data:
   default.conf: |
+    upstream python_backend {
+      server consumeriq-api.consumeriq.svc.cluster.local:8000;
+      keepalive 16;
+    }
+
+    upstream go_backend {
+      server consumeriq-go.consumeriq.svc.cluster.local:8080;
+      keepalive 16;
+    }
+
     server {
       listen 8080;
 
+      # ── Internal subrequest: NGINX calls this to validate every protected request.
+      # `internal` means clients can never hit this path directly.
+      location = /_validate {
+        internal;
+        proxy_pass              http://go_backend/internal/auth/validate;
+        proxy_pass_request_body off;
+        proxy_set_header        Content-Length    "";
+        proxy_set_header        Authorization     $http_authorization;
+        proxy_set_header        Cookie            $http_cookie;
+        proxy_set_header        X-Original-URI   $request_uri;
+        proxy_http_version      1.1;
+        proxy_set_header        Connection        "";
+      }
+
+      # ── Public auth endpoints: no token check, go straight to Go service.
+      location /auth/ {
+        proxy_pass         http://go_backend;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_http_version 1.1;
+        proxy_set_header   Connection        "";
+      }
+
+      # ── Founder form submit: public (this IS the registration flow).
+      # Must come before the catch-all /go-api/ block so NGINX matches it first.
+      location = /go-api/founder-form/submit {
+        proxy_pass         http://go_backend;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_http_version 1.1;
+        proxy_set_header   Connection        "";
+      }
+
+      # ── Python AI/ML endpoints: token required.
+      # NGINX validates the token, then forwards X-User-Id to Python.
+      # Python never sees raw tokens — it only trusts X-User-Id.
       location /api/ {
-        proxy_pass http://consumeriq-api.consumeriq.svc.cluster.local:8000/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        auth_request     /_validate;
+        auth_request_set $x_user_id    $upstream_http_x_user_id;
+        auth_request_set $x_user_email $upstream_http_x_user_email;
+
+        proxy_set_header   X-User-Id       $x_user_id;
+        proxy_set_header   X-User-Email    $x_user_email;
+        proxy_set_header   Authorization   "";
+        proxy_set_header   Host            $host;
+        proxy_set_header   X-Real-IP       $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_http_version 1.1;
+        proxy_set_header   Connection      "";
+
+        proxy_pass http://python_backend/;
+
+        error_page 401 = @unauthorized;
+      }
+
+      # ── Go service protected endpoints: token required.
+      location /go-api/ {
+        auth_request     /_validate;
+        auth_request_set $x_user_id    $upstream_http_x_user_id;
+        auth_request_set $x_user_email $upstream_http_x_user_email;
+
+        proxy_set_header   X-User-Id       $x_user_id;
+        proxy_set_header   X-User-Email    $x_user_email;
+        proxy_set_header   Authorization   "";
+        proxy_set_header   Host            $host;
+        proxy_set_header   X-Real-IP       $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_http_version 1.1;
+        proxy_set_header   Connection      "";
+
+        proxy_pass http://go_backend;
+
+        error_page 401 = @unauthorized;
+      }
+
+      location @unauthorized {
+        default_type application/json;
+        return 401 '{"error":"unauthorized"}';
       }
 
       location / {
-        proxy_pass http://consumeriq-frontend.consumeriq.svc.cluster.local:4173/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass         http://consumeriq-frontend.consumeriq.svc.cluster.local:4173/;
+        proxy_set_header   Host            $host;
+        proxy_set_header   X-Real-IP       $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
       }
     }

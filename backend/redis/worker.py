@@ -191,13 +191,22 @@ def _saveCategoryInsights(categoryName: str, insights: dict[str, Any]) -> None:
             )
 
 
-@celeryApp.task(name='runAgentTask')
-def runAgentTask(prompt: str, max_steps: int = 6) -> dict[str, Any]:
-    from backend.agent.reactAgent import runReactAgent
+@celeryApp.task(name='runAgentTask', bind=True)
+def runAgentTask(self, prompt: str, max_steps: int = 6) -> dict[str, Any]:
+    from backend.agent.react_agent import runReactAgent
+    from backend.agent.session import getRedisClient
 
+    session_id = self.request.id
+    redis_client = getRedisClient()
     llm = createLlm(verbose=False)
     try:
-        result = runReactAgent(prompt, llm, max_steps=max_steps)
+        result = runReactAgent(
+            prompt,
+            llm,
+            max_steps=max_steps,
+            redis_client=redis_client,
+            session_id=session_id,
+        )
     finally:
         del llm
         gc.collect()
