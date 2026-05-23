@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: consumeriq-worker-inference
@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: localhost:5000/consumeriq-backend:local
+          image: localhost:5001/consumeriq-backend:local
           command:
             - celery
             - -A

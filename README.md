@@ -1,4 +1,4 @@
-# BrightData-ConsumerIQ
+﻿# BrightData-ConsumerIQ
 
 ## Local k3d setup
 
@@ -8,8 +8,8 @@
 
 ### 2 — Create cluster + registry
 ```
-k3d registry create consumeriq-registry --port 5000
-k3d cluster create consumeriq-local --registry-use k3d-consumeriq-registry:5000
+k3d registry create consumeriq-registry --port 5001
+k3d cluster create consumeriq-local --registry-use k3d-consumeriq-registry:5001 --api-port 127.0.0.1:6550
 k3d kubeconfig merge consumeriq-local --kubeconfig-switch-context
 ```
 
@@ -22,29 +22,29 @@ kubectl apply -k infra/k8s/redis
 ### 4 — Build and push all images
 ```
 # Python backend
-docker build -t localhost:5000/consumeriq-backend:local -f backend/Dockerfile .
-docker push localhost:5000/consumeriq-backend:local
+docker build -t localhost:5001/consumeriq-backend:local -f backend/Dockerfile .
+docker push localhost:5001/consumeriq-backend:local
 
 # Go service
 cd backend/go-service && go mod tidy && cd ../..
-docker build -t localhost:5000/consumeriq-go:local backend/go-service/
-docker push localhost:5000/consumeriq-go:local
+docker build -t localhost:5001/consumeriq-go:local backend/go-service/
+docker push localhost:5001/consumeriq-go:local
 
 # Frontend
-docker build -t localhost:5000/consumeriq-frontend:local -f frontend/Dockerfile frontend/
-docker push localhost:5000/consumeriq-frontend:local
+docker build -t localhost:5001/consumeriq-frontend:local -f frontend/Dockerfile frontend/
+docker push localhost:5001/consumeriq-frontend:local
 
 # Inference — LLM (Llama 3.2 3B)
-docker build -t localhost:5000/consumeriq-inference:local -f inference/Dockerfile .
-docker push localhost:5000/consumeriq-inference:local
+docker build -t localhost:5001/consumeriq-inference:local -f inference/Dockerfile .
+docker push localhost:5001/consumeriq-inference:local
 
 # Inference — Embeddings (multilingual MiniLM L12)
-docker build -t localhost:5000/consumeriq-embeddings:local -f inference/embeddings.Dockerfile .
-docker push localhost:5000/consumeriq-embeddings:local
+docker build -t localhost:5001/consumeriq-embeddings:local -f inference/embeddings.Dockerfile .
+docker push localhost:5001/consumeriq-embeddings:local
 
 # Inference — Translator (Qwen 3.5 0.8B)
-docker build -t localhost:5000/consumeriq-translator:local -f inference/translator.Dockerfile .
-docker push localhost:5000/consumeriq-translator:local
+docker build -t localhost:5001/consumeriq-translator:local -f inference/translator.Dockerfile .
+docker push localhost:5001/consumeriq-translator:local
 ```
 
 ### 5 — Create backend secrets
