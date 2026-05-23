@@ -1228,7 +1228,6 @@ function LaunchCitySales() {
   const rows = [
     {
       city: "Los Angeles",
-      score: "92 fit",
       sales: "25.6K units",
       growth: "+18%",
       channels: "Amazon 72% - Temu 28%",
@@ -1240,7 +1239,6 @@ function LaunchCitySales() {
     },
     {
       city: "New York",
-      score: "86 fit",
       sales: "22.9K units",
       growth: "+11%",
       channels: "Amazon 70% - Temu 30%",
@@ -1252,7 +1250,6 @@ function LaunchCitySales() {
     },
     {
       city: "Dallas",
-      score: "81 fit",
       sales: "22.2K units",
       growth: "+24%",
       channels: "Amazon 42% - Temu 58%",
@@ -1264,7 +1261,6 @@ function LaunchCitySales() {
     },
     {
       city: "Phoenix",
-      score: "74 fit",
       sales: "16.3K units",
       growth: "+21%",
       channels: "Amazon 41% - Temu 59%",
@@ -1301,9 +1297,6 @@ function LaunchCitySales() {
                 <p className="break-words font-semibold">{row.city}</p>
                 <p className="text-xs text-muted-foreground">{row.signal}</p>
               </div>
-              <span className="shrink-0 rounded-full bg-foreground px-2.5 py-1 text-[10px] font-semibold text-background">
-                {row.score}
-              </span>
             </div>
             <div className="mt-4 grid gap-2 text-sm">
               {[
