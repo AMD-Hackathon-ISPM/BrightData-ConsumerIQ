@@ -38,9 +38,6 @@ export function DashboardAppSidebar({
                     </span>
                     <SidebarTrigger className="shrink-0 rounded-md text-foreground-lighter hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8" />
                 </div>
-                <p className="px-2 pb-1 text-[10px] uppercase tracking-[0.16em] text-foreground-lighter group-data-[collapsible=icon]:hidden">
-                    Market Intelligence
-                </p>
             </SidebarHeader>
 
             <SidebarContent>
