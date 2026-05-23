@@ -17,4 +17,4 @@ spec:
         - name: frontend
           image: consumeriq-frontend:local
           ports:
-            - containerPort: 4173
+            - containerPort: 80

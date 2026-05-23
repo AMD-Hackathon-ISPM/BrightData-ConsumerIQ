@@ -1,4 +1,4 @@
-# BrightData-ConsumerIQ
+﻿# BrightData-ConsumerIQ
 
 ## Local k3d setup
 1) Install Docker Desktop and ensure it is running.
@@ -17,14 +17,18 @@
    - `cd backend/go-service && go mod tidy && cd ../..`
    - `docker build -t consumeriq-go:local backend/go-service/`
    - `k3d image import consumeriq-go:local -c consumeriq-local`
-7) Deploy backend (Python API + all workers + Go service):
+7) Create/update backend Kubernetes secrets from `infra/k8s/backend/.env`:
+   - `cp infra/k8s/backend/.env.example infra/k8s/backend/.env` if the file does not exist yet
+   - Fill in `SCRAPINGBEE_API_KEY` in `infra/k8s/backend/.env`
+   - `kubectl create secret generic consumeriq-scrapingbee -n consumeriq --from-env-file=infra/k8s/backend/.env --dry-run=client -o yaml | kubectl apply -f -`
+8) Deploy backend (Python API + all workers + Go service):
    - `kubectl apply -k infra/k8s/backend`
-8) Build and load the frontend image:
+9) Build and load the frontend image:
    - `docker build -t consumeriq-frontend:local -f frontend/Dockerfile frontend`
    - `k3d image import consumeriq-frontend:local -c consumeriq-local`
-9) Deploy frontend:
+10) Deploy frontend:
    - `kubectl apply -k infra/k8s/frontend`
-10) Deploy nginx gateway (requires backend + frontend services to exist first):
+11) Deploy nginx gateway (requires backend + frontend services to exist first):
     - `kubectl apply -k infra/k8s/nginx`
     - `kubectl rollout restart -n consumeriq deploy/consumeriq-nginx`
 
@@ -88,6 +92,7 @@ GET  /api/task-status/{task_id}     → poll for result
    - `kubectl apply -k infra/k8s/postgres`
    - `kubectl get configmap -n consumeriq postgres-init`
 - If nginx logs show `host not found in upstream`, re-run:
+   - `kubectl create secret generic consumeriq-scrapingbee -n consumeriq --from-env-file=infra/k8s/backend/.env --dry-run=client -o yaml | kubectl apply -f -`
    - `kubectl apply -k infra/k8s/backend`
    - `kubectl apply -k infra/k8s/nginx`
    - `kubectl rollout restart -n consumeriq deploy/consumeriq-nginx`

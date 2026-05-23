@@ -9,5 +9,5 @@ spec:
     app: consumeriq-frontend
   ports:
     - name: http
-      port: 4173
-      targetPort: 4173
+      port: 80
+      targetPort: 80

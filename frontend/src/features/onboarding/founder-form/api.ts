@@ -1,18 +1,44 @@
-import type { FounderFormPayload } from './types'
+import type { FounderFormState } from './types'
 
-type SubmitFounderFormResponse = {
+export type SubmitFounderFormResponse = {
   id: string
   status: string
+  token: string
+  user_id: number
 }
 
 export async function submitFounderForm(
-  payload: FounderFormPayload,
+  state: FounderFormState,
 ): Promise<SubmitFounderFormResponse> {
-  const response = await fetch('/api/founder-form/submit', {
+  const payload = {
+    fullName: state.fullName,
+    workEmail: state.workEmail,
+    password: state.password,
+    workspaceName: state.workspaceName,
+    industry: state.industry,
+    region: state.region,
+    marketplace: state.salesChannel,
+    competitors: [] as string[],
+    searchIntentKeywords: state.researchGoals,
+    customerSegment: [state.targetAge, state.targetGender]
+      .filter(Boolean)
+      .join(', '),
+    painPoint: state.problemToSolve,
+    priceRangeMin: state.priceRangeMin,
+    priceRangeMax: state.priceRangeMax,
+    country: state.country,
+    targetMarketDetail: state.targetMarketDetail,
+    productName: state.productName,
+    productDescription: state.productDescription,
+    uniqueSellingPoint: state.uniqueSellingPoint,
+    mainFeatures: state.mainFeatures,
+    competitiveAdvantage: state.competitiveAdvantage,
+    priceRangeMid: state.priceRangeMid,
+  }
+
+  const response = await fetch('/go-api/founder-form/submit', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
 

@@ -8,6 +8,7 @@ import {
 } from "react";
 
 const STORAGE_KEY = "consumer-iq-auth";
+const TOKEN_KEY = "consumer-iq-token";
 
 export interface AuthUser {
     fullName: string;
@@ -33,6 +34,17 @@ export interface AuthContextValue {
         input: RegisterInput,
     ) => Promise<{ ok: boolean; error?: string }>;
     logout: () => void;
+    loginWithToken: (user: AuthUser, token: string) => void;
+}
+
+export function getAuthToken(): string | null {
+    try {
+        return typeof window !== "undefined"
+            ? localStorage.getItem(TOKEN_KEY)
+            : null;
+    } catch {
+        return null;
+    }
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,7 +52,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function readStoredUser(): AuthUser | null {
     if (typeof window === "undefined") return null;
     try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw) as AuthUser;
         if (
@@ -55,37 +67,56 @@ function readStoredUser(): AuthUser | null {
     }
 }
 
-function persist(user: AuthUser | null) {
+function persistUser(user: AuthUser | null, token?: string) {
     if (typeof window === "undefined") return;
     if (user) {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+        if (token) localStorage.setItem(TOKEN_KEY, token);
     } else {
-        window.localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(TOKEN_KEY);
     }
 }
 
-interface AuthProviderProps {
-    children: ReactNode;
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(() => readStoredUser());
 
-    const login = useCallback(
-        async ({ email, password }: LoginInput) => {
-            if (!email.trim() || !password) {
-                return { ok: false, error: "Email and password are required" };
+    const loginWithToken = useCallback((next: AuthUser, token: string) => {
+        setUser(next);
+        persistUser(next, token);
+    }, []);
+
+    const login = useCallback(async ({ email, password }: LoginInput) => {
+        if (!email.trim() || !password) {
+            return { ok: false, error: "Email and password are required" };
+        }
+        try {
+            const res = await fetch("/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                return {
+                    ok: false,
+                    error:
+                        (data as { error?: string }).error ??
+                        "Invalid credentials",
+                };
             }
+            const { token } = (await res.json()) as { token: string };
             const next: AuthUser = {
                 fullName: email.split("@")[0] || "User",
                 email,
             };
             setUser(next);
-            persist(next);
+            persistUser(next, token);
             return { ok: true };
-        },
-        [],
-    );
+        } catch {
+            return { ok: false, error: "Network error" };
+        }
+    }, []);
 
     const register = useCallback(
         async ({ fullName, email, password, confirmPassword }: RegisterInput) => {
@@ -95,25 +126,53 @@ export function AuthProvider({ children }: AuthProviderProps) {
             if (password !== confirmPassword) {
                 return { ok: false, error: "Passwords do not match" };
             }
-            const next: AuthUser = { fullName, email };
-            setUser(next);
-            persist(next);
-            return { ok: true };
+            try {
+                const res = await fetch("/auth/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password }),
+                });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    return {
+                        ok: false,
+                        error:
+                            (data as { error?: string }).error ??
+                            "Could not create account",
+                    };
+                }
+                const { token } = (await res.json()) as { token: string };
+                const next: AuthUser = { fullName, email };
+                setUser(next);
+                persistUser(next, token);
+                return { ok: true };
+            } catch {
+                return { ok: false, error: "Network error" };
+            }
         },
         [],
     );
 
     const logout = useCallback(() => {
+        const token = getAuthToken();
+        if (token) {
+            fetch("/auth/logout", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            }).catch(() => {});
+        }
         setUser(null);
-        persist(null);
+        persistUser(null);
     }, []);
 
     const value = useMemo<AuthContextValue>(
-        () => ({ user, login, register, logout }),
-        [user, login, register, logout],
+        () => ({ user, login, register, logout, loginWithToken }),
+        [user, login, register, logout, loginWithToken],
     );
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    );
 }
 
 export function useAuth(): AuthContextValue {

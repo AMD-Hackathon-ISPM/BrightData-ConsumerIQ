@@ -258,7 +258,7 @@ def scrapeMarketSignals(category: str, keywords: list[str]) -> dict[str, Any]:
 
 
 @celeryApp.task(name='runAgentTask', bind=True, queue='inference')
-def runAgentTask(self, prompt: str, max_steps: int = 6) -> dict[str, Any]:
+def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | None = None) -> dict[str, Any]:
     from backend.agent.reactAgent import runReactAgent
     from backend.agent.session import getRedisClient
 
@@ -272,6 +272,7 @@ def runAgentTask(self, prompt: str, max_steps: int = 6) -> dict[str, Any]:
             max_steps=max_steps,
             redis_client=redis_client,
             session_id=session_id,
+            user_context=user_context,
         )
     finally:
         del llm

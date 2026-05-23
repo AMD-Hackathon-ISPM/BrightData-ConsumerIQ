@@ -39,12 +39,16 @@ _AST_OPEN = '<|start_header_id|>assistant<|end_header_id|>\n\n'
 _EOT = '<|eot_id|>'
 
 
-def _buildSystemPrompt() -> str:
+def _buildSystemPrompt(user_context: dict | None = None) -> str:
     lines: list[str] = []
     for name, meta in TOOL_SCHEMAS.items():
         params = ', '.join(f'{k}: {v}' for k, v in meta['input'].items())
         lines.append(f'  {name}({params})\n    → {meta["description"]}')
-    return _SYSTEM.format(tools='\n'.join(lines))
+    base = _SYSTEM.format(tools='\n'.join(lines))
+    if user_context:
+        from backend.agent.prompts import buildOmniPrompt
+        return base + '\n\n' + buildOmniPrompt(user_context)
+    return base
 
 
 def _initialPrompt(system: str, user: str) -> str:
@@ -111,12 +115,13 @@ def runReactAgent(
     max_steps: int = 6,
     redis_client: redis_lib.Redis | None = None,
     session_id: str | None = None,
+    user_context: dict | None = None,
 ) -> dict[str, Any]:
     use_redis = redis_client is not None and session_id is not None
     if use_redis:
         initSession(redis_client, session_id, user_prompt)
 
-    system = _buildSystemPrompt()
+    system = _buildSystemPrompt(user_context)
     prompt = _initialPrompt(system, user_prompt)
     steps: list[dict[str, Any]] = []
     parse_failures = 0

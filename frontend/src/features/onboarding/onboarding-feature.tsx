@@ -17,7 +17,7 @@ export function ConsumerIQOnboarding({
 }: {
   onComplete: () => void
 }) {
-  const { user } = useAuth()
+  const { user, loginWithToken } = useAuth()
   const [step, setStep] = useState(1)
   const [submitStatus, setSubmitStatus] = useState<
     'idle' | 'submitting' | 'success' | 'error'
@@ -77,12 +77,16 @@ export function ConsumerIQOnboarding({
     try {
       const response = await submitFounderForm(payload)
       setSubmittedFormId(response.id)
+      loginWithToken(
+        { fullName: formState.fullName, email: formState.workEmail },
+        response.token,
+      )
       setSubmitStatus('success')
     } catch (_error) {
       setSubmitStatus('error')
       toast.error('Unable to submit the founder form')
     }
-  }, [formState, onComplete, submitStatus])
+  }, [formState, loginWithToken, onComplete, submitStatus])
 
   const isBusinessSetupValid =
     formState.workspaceName.trim().length > 0 &&
