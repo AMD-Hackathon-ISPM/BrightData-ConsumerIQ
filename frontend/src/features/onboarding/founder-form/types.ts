@@ -19,7 +19,6 @@ export type FounderFormState = {
   mainFeatures: string
   competitiveAdvantage: string
   priceRangeMin: number
-  priceRangeMid: number
   priceRangeMax: number
 
   researchGoals: string[]

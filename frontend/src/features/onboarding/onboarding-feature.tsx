@@ -43,9 +43,8 @@ export function ConsumerIQOnboarding({
     uniqueSellingPoint: '',
     mainFeatures: '',
     competitiveAdvantage: '',
-    priceRangeMin: 89_000,
-    priceRangeMid: 125_000,
-    priceRangeMax: 159_000,
+    priceRangeMin: 125_000,
+    priceRangeMax: 125_000,
 
     researchGoals: [],
   })
@@ -150,9 +149,7 @@ export function ConsumerIQOnboarding({
               uniqueSellingPoint={formState.uniqueSellingPoint}
               mainFeatures={formState.mainFeatures}
               competitiveAdvantage={formState.competitiveAdvantage}
-              priceRangeMin={formState.priceRangeMin}
-              priceRangeMid={formState.priceRangeMid}
-              priceRangeMax={formState.priceRangeMax}
+              price={formState.priceRangeMin}
               onProblemChange={(value) => updateField('problemToSolve', value)}
               onProductNameChange={(value) =>
                 updateField('productName', value)
@@ -169,10 +166,9 @@ export function ConsumerIQOnboarding({
               onCompetitiveAdvantageChange={(value) =>
                 updateField('competitiveAdvantage', value)
               }
-              onPriceRangeChange={(min, mid, max) => {
-                updateField('priceRangeMin', min)
-                updateField('priceRangeMid', mid)
-                updateField('priceRangeMax', max)
+              onPriceChange={(value) => {
+                updateField('priceRangeMin', value)
+                updateField('priceRangeMax', value)
               }}
               isNextDisabled={!isProductContextValid}
             />
