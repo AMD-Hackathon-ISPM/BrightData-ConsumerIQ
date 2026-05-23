@@ -14,7 +14,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
   Scatter,
   ScatterChart,
   XAxis,
@@ -29,7 +32,6 @@ import {
   MetricCard,
   Panel,
   PlatformShareChart,
-  PriceMovementChart,
   RegionBars,
   SmallStat,
 } from "./dashboard-primitives";
@@ -670,8 +672,6 @@ export function CompetitorMirror() {
 
   return (
     <div className="grid min-w-0 gap-3">
-      <CompetitorAiRecommendation />
-
       <Panel title="Top Competitor Matrix">
         <div className="grid gap-3 md:hidden">
           {competitorRows.map((row) => (
@@ -808,27 +808,115 @@ export function CompetitorMirror() {
         </div>
       </Panel>
 
-      <Panel title="Avg Sales Movement">
-        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-foreground" /> You
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-chart-4" /> Amazon Avg
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-destructive" /> Temu Avg
-          </span>
-        </div>
-        <div className="mt-3 h-32 w-full rounded-lg border bg-muted/30 p-3">
-          <PriceMovementChart />
-        </div>
-      </Panel>
+      <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+        <PricingSweetSpotPanel />
+        <AvgSalesMovementPanel />
+      </div>
+
+      <CompetitorRecommendation />
     </div>
   );
 }
 
-function CompetitorAiRecommendation() {
+function PricingSweetSpotPanel() {
+  const rows = [
+    {
+      label: "50-80K",
+      note: "saturated",
+      demand: "28% demand",
+      width: "28%",
+      tone: "bg-destructive",
+      textTone: "text-foreground",
+    },
+    {
+      label: "100-130K",
+      note: "sweet spot",
+      demand: "23% demand",
+      width: "23%",
+      tone: "bg-emerald-500",
+      textTone: "text-emerald-500",
+    },
+    {
+      label: "150-200K",
+      note: "premium opp",
+      demand: "15% demand",
+      width: "15%",
+      tone: "bg-amber-500",
+      textTone: "text-foreground",
+    },
+  ];
+
+  return (
+    <Panel title="Pricing Sweet Spot">
+      <div className="grid gap-3">
+        {rows.map((row) => (
+          <div className="grid gap-2" key={row.label}>
+            <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
+              <p
+                className={cn(
+                  "min-w-0 break-words font-semibold",
+                  row.textTone,
+                )}
+              >
+                {row.label} - {row.note}
+              </p>
+              <p className="shrink-0 font-semibold text-muted-foreground">
+                {row.demand}
+              </p>
+            </div>
+            <div className="h-2.5 rounded-full bg-muted/70">
+              <span
+                className={cn("block h-full rounded-full", row.tone)}
+                style={{ width: row.width }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-sm font-medium text-muted-foreground">
+        Hero RP 119K - 23% demand, only 8% of competitors
+      </p>
+    </Panel>
+  );
+}
+
+function AvgSalesMovementPanel() {
+  return (
+    <Panel title="Avg Sales Movement">
+      <div className="h-44 w-full overflow-hidden rounded-lg border bg-muted/30">
+        <svg
+          aria-label="Average sales movement chart"
+          className="h-full w-full"
+          preserveAspectRatio="none"
+          viewBox="0 0 640 180"
+        >
+          <defs>
+            <linearGradient id="salesMovementFill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="var(--chart-blue)" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="var(--chart-blue)" stopOpacity="0.04" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M0 145 C48 128 78 118 112 112 C148 106 166 130 204 118 C244 105 250 91 296 86 C344 80 360 66 414 61 C456 57 480 10 506 27 C536 47 524 87 566 101 C596 111 618 115 640 123 L640 180 L0 180 Z"
+            fill="url(#salesMovementFill)"
+          />
+          <path
+            d="M0 145 C48 128 78 118 112 112 C148 106 166 130 204 118 C244 105 250 91 296 86 C344 80 360 66 414 61 C456 57 480 10 506 27 C536 47 524 87 566 101 C596 111 618 115 640 123"
+            fill="none"
+            stroke="var(--chart-blue)"
+            strokeLinecap="round"
+            strokeWidth="4"
+          />
+        </svg>
+      </div>
+      <p className="mt-3 text-sm font-medium text-muted-foreground">
+        Category +18% YoY - stable upward
+      </p>
+    </Panel>
+  );
+}
+
+function CompetitorRecommendation() {
   const items = [
     {
       label: "Key Advantage",
@@ -859,7 +947,7 @@ function CompetitorAiRecommendation() {
           </span>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              AI Recommendation
+              Recommendation
             </p>
             <h3 className="mt-2 break-words text-lg font-semibold">
               Win by owning the trust gap between Amazon and Temu.
@@ -872,10 +960,6 @@ function CompetitorAiRecommendation() {
             </p>
           </div>
         </div>
-        <Button className="h-auto w-full shrink-0 justify-center whitespace-normal bg-foreground px-4 py-2 text-center text-background hover:bg-foreground/90 sm:w-auto">
-          Export Strategy
-          <ArrowRight className="size-4" />
-        </Button>
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
@@ -902,19 +986,119 @@ export function LaunchCompass() {
   return (
     <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden">
       <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden xl:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)]">
-        <Panel
-          title="Interactive Heatmap"
-          subtitle="Demand area by sales and expansion opportunity by competitor position"
-        >
-          <LaunchHeatmap />
+        <Panel>
+          <div className="mb-3 min-w-0">
+            <h3 className="break-words font-semibold">Interactive Heatmap</h3>
+            <p className="mt-1 break-words text-sm text-muted-foreground">
+              Demand area by sales and expansion opportunity by competitor
+              position
+            </p>
+          </div>
+
+          <div className="grid min-w-0 gap-5">
+            <LaunchHeatmap />
+
+            <div className="border-t pt-4">
+              <LaunchSeasonalityCalendar />
+            </div>
+          </div>
         </Panel>
 
-        <Panel title="City Sales Signals" subtitle="Amazon and Temu only">
+        <Panel>
           <LaunchCitySales />
         </Panel>
       </div>
 
       <LaunchAiRecommendation />
+    </div>
+  );
+}
+
+function LaunchSeasonalityCalendar() {
+  const chartData = [
+    { id: "jan", month: "J", index: 72, status: "normal" },
+    { id: "feb", month: "F", index: 134, status: "peak" },
+    { id: "mar", month: "M", index: 96, status: "peak" },
+    { id: "apr", month: "A", index: 66, status: "normal" },
+    { id: "may", month: "M", index: 54, status: "normal" },
+    { id: "jun", month: "J", index: 76, status: "normal" },
+    { id: "jul", month: "J", index: 146, status: "peak" },
+    { id: "aug", month: "A", index: 98, status: "peak" },
+    { id: "sep", month: "S", index: 74, status: "normal" },
+    { id: "oct", month: "O", index: 138, status: "peak" },
+    { id: "nov", month: "N", index: -46, status: "avoid" },
+    { id: "dec", month: "D", index: -38, status: "avoid" },
+  ];
+
+  const chartConfig = {
+    index: { label: "Demand index", color: "var(--chart-blue)" },
+  };
+
+  const fillByStatus: Record<string, string> = {
+    avoid: "var(--destructive)",
+    normal: "color-mix(in srgb, var(--chart-blue) 45%, white)",
+    peak: "var(--chart-blue)",
+  };
+
+  return (
+    <div className="grid min-w-0 gap-3">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+        <h3 className="min-w-0 break-words text-sm font-semibold">
+          Seasonality Calendar - Demand Index by Month
+        </h3>
+        <div className="flex shrink-0 flex-wrap gap-3 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-chart-blue" />
+            Peak launch window
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-destructive" />
+            Avoid - mega-sale months
+          </span>
+        </div>
+      </div>
+
+      <ChartContainer
+        className="h-36 w-full min-w-0 max-w-full overflow-hidden rounded-lg bg-muted/20 px-1 pt-2"
+        config={chartConfig}
+        initialDimension={{ height: 144, width: 520 }}
+      >
+        <BarChart
+          data={chartData}
+          margin={{ bottom: 14, left: 0, right: 0, top: 8 }}
+        >
+          <XAxis
+            axisLine={false}
+            dataKey="month"
+            interval={0}
+            tickLine={false}
+          />
+          <YAxis domain={[-60, 160]} hide type="number" />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                hideLabel
+                formatter={(value, _name, item) => {
+                  const payload = item.payload as (typeof chartData)[number];
+                  const label =
+                    payload.status === "avoid"
+                      ? "avoid - mega-sale month"
+                      : payload.status === "peak"
+                        ? "peak launch window"
+                        : "steady demand";
+
+                  return `${payload.month}: ${Math.abs(Number(value))} - ${label}`;
+                }}
+              />
+            }
+          />
+          <Bar dataKey="index" radius={[4, 4, 4, 4]}>
+            {chartData.map((entry) => (
+              <Cell fill={fillByStatus[entry.status]} key={entry.id} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ChartContainer>
     </div>
   );
 }
@@ -1044,58 +1228,104 @@ function LaunchCitySales() {
   const rows = [
     {
       city: "Los Angeles",
-      amazon: "18.4K",
-      temu: "7.2K",
+      score: "92 fit",
+      sales: "25.6K units",
+      growth: "+18%",
+      channels: "Amazon 72% - Temu 28%",
+      rating: "4.3 stars (1,240 reviews)",
+      searchDemand: "Index 132 (high)",
+      personaFit: "68% - 480K target pop",
+      gdpPerCapita: "$74K",
       signal: "Best first city",
     },
     {
       city: "New York",
-      amazon: "16.1K",
-      temu: "6.8K",
+      score: "86 fit",
+      sales: "22.9K units",
+      growth: "+11%",
+      channels: "Amazon 70% - Temu 30%",
+      rating: "4.2 stars (980 reviews)",
+      searchDemand: "Index 118 (high)",
+      personaFit: "61% - 520K target pop",
+      gdpPerCapita: "$82K",
       signal: "High intent",
     },
     {
       city: "Dallas",
-      amazon: "9.4K",
-      temu: "12.8K",
+      score: "81 fit",
+      sales: "22.2K units",
+      growth: "+24%",
+      channels: "Amazon 42% - Temu 58%",
+      rating: "4.1 stars (710 reviews)",
+      searchDemand: "Index 104 (medium)",
+      personaFit: "64% - 390K target pop",
+      gdpPerCapita: "$69K",
       signal: "Expansion pocket",
     },
     {
       city: "Phoenix",
-      amazon: "6.7K",
-      temu: "9.6K",
+      score: "74 fit",
+      sales: "16.3K units",
+      growth: "+21%",
+      channels: "Amazon 41% - Temu 59%",
+      rating: "4.0 stars (560 reviews)",
+      searchDemand: "Index 96 (medium)",
+      personaFit: "59% - 310K target pop",
+      gdpPerCapita: "$66K",
       signal: "Low competition",
     },
   ];
 
   return (
     <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden">
-      {rows.map((row) => (
-        <div
-          className="w-full min-w-0 max-w-full overflow-hidden rounded-lg border bg-muted/25 p-3"
-          key={row.city}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="break-words font-semibold">{row.city}</p>
-              <p className="text-xs text-muted-foreground">{row.signal}</p>
-            </div>
-            <span className="rounded bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]">
-              Sales
-            </span>
-          </div>
-          <div className="mt-3 grid w-full min-w-0 max-w-full gap-2 text-sm sm:grid-cols-2">
-            <div className="min-w-0 rounded-md border bg-card p-2">
-              <p className="text-xs text-muted-foreground">Amazon</p>
-              <p className="font-semibold">{row.amazon}</p>
-            </div>
-            <div className="min-w-0 rounded-md border bg-card p-2">
-              <p className="text-xs text-muted-foreground">Temu</p>
-              <p className="font-semibold">{row.temu}</p>
-            </div>
-          </div>
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="break-words font-semibold">City Sales Signals</h3>
+          <p className="mt-1 break-words text-sm text-muted-foreground">
+            Amazon and Temu only
+          </p>
         </div>
-      ))}
+        <span className="shrink-0 rounded-full border bg-muted/40 px-2.5 py-1 text-[10px] font-semibold">
+          1 bulan terakhir
+        </span>
+      </div>
+
+      <div className="max-h-[40.5rem] space-y-3 overflow-y-auto pr-1 [scrollbar-width:thin]">
+        {rows.map((row) => (
+          <div
+            className="w-full min-w-0 max-w-full overflow-hidden rounded-lg border bg-muted/20 p-3 transition-colors hover:bg-muted/30"
+            key={row.city}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="break-words font-semibold">{row.city}</p>
+                <p className="text-xs text-muted-foreground">{row.signal}</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-foreground px-2.5 py-1 text-[10px] font-semibold text-background">
+                {row.score}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 text-sm">
+              {[
+                ["Sales", `${row.sales} ${row.growth}`],
+                ["Channels", row.channels],
+                ["Rating", row.rating],
+                ["Search Demand", row.searchDemand],
+                ["Persona Fit", row.personaFit],
+                ["GDP Per Capita", row.gdpPerCapita],
+              ].map(([label, value]) => (
+                <div
+                  className="grid min-w-0 grid-cols-[7.5rem_minmax(0,1fr)] gap-2"
+                  key={label}
+                >
+                  <p className="font-medium text-muted-foreground">{label}</p>
+                  <p className="min-w-0 break-words font-semibold">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1110,7 +1340,7 @@ function LaunchAiRecommendation() {
           </span>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              AI Recommendation
+              Recommendation
             </p>
             <h3 className="mt-2 break-words text-xl font-semibold">
               Start in Los Angeles on Amazon, then expand Temu into Dallas and
