@@ -19,11 +19,14 @@ export const navGroups = [
     { id: "compass", label: "Launch Compass", icon: Compass },
     { id: "pulse", label: "Demand Pulse", icon: TrendingUp },
     { id: "competitor", label: "Competitor Mirror", icon: Target },
-    { id: "settings", label: "Settings", icon: Settings },
   ],
 ] as const;
 
-export const navItems = navGroups.flat();
+export const footerNavItems = [
+  { id: "settings", label: "Settings", icon: Settings },
+] as const;
+
+export const navItems = [...navGroups.flat(), ...footerNavItems];
 
 export const pipelineSteps = [
   { label: "Marketplaces", icon: Globe2, caption: "External Source" },

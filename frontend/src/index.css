@@ -184,7 +184,7 @@
   --sidebar-accent: var(--background-selection);
   --sidebar-accent-foreground: var(--foreground-default);
   --sidebar-border: var(--border-default);
-  --sidebar-ring: var(--brand-default);
+  --sidebar-ring: var(--foreground-lighter);
   --sidebar-muted: var(--foreground-muted);
   --radius: 0.45rem;
   --borderradius-sm: 0.35rem;
@@ -208,7 +208,7 @@
   --destructive: var(--destructive-default);
   --border: var(--border-default);
   --input: var(--border-control);
-  --ring: var(--brand-default);
+  --ring: var(--foreground-lighter);
 }
 
 .dark {
@@ -280,7 +280,7 @@
   --sidebar-accent: var(--background-selection);
   --sidebar-accent-foreground: var(--foreground-default);
   --sidebar-border: var(--border-default);
-  --sidebar-ring: var(--brand-400);
+  --sidebar-ring: var(--foreground-lighter);
   --sidebar-muted: var(--foreground-muted);
   --background: var(--background-default);
   --foreground: var(--foreground-default);
@@ -299,7 +299,7 @@
   --destructive: var(--destructive-default);
   --border: var(--border-default);
   --input: var(--border-control);
-  --ring: var(--brand-400);
+  --ring: var(--foreground-lighter);
 }
 
 @layer base {

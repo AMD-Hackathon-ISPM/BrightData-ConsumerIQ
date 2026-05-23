@@ -1,5 +1,4 @@
 import { IconChevronRight } from "@tabler/icons-react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { SectionFade } from "@/components/animated-page";
 import { type DashboardSection, navItems } from "./constants";
@@ -29,18 +28,11 @@ export function ConsumerIQDashboard({
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-12 items-center justify-between border-b border-border-default bg-background-default px-4">
-          <div className="flex items-center gap-3">
-            <SidebarTrigger className="md:hidden" />
-          </div>
-
-        </header>
-
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="min-w-0 w-full px-3 py-3 sm:px-4 lg:px-4 xl:px-5">
-            <div className="mb-4 flex min-w-0 flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 w-full px-6 py-5 sm:px-8 sm:py-7 lg:px-10 lg:py-9 xl:px-12 xl:py-9">
+            <div className="mb-10 flex min-w-0 flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="mb-1.5 flex items-center gap-2 text-xs text-foreground-muted">
+                <p className="mb-5 flex items-center gap-2 text-xs text-foreground-muted">
                   Analysis <IconChevronRight className="size-3" stroke={1.8} />
                   <span className="font-medium text-foreground-default">
                     {navItems.find((item) => item.id === active)?.label}

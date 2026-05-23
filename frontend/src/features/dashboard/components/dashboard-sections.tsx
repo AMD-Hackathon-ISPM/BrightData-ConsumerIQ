@@ -5,6 +5,7 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   ChartContainer,
@@ -1522,6 +1523,8 @@ export function DataSettings() {
         </Panel>
       </div>
 
+      <ToastDebugPanel />
+
       <Panel title="Bright Data Integrations">
         <div className="overflow-hidden rounded-lg border">
           {[
@@ -1586,5 +1589,64 @@ export function DataSettings() {
         </div>
       </Panel>
     </div>
+  );
+}
+
+function ToastDebugPanel() {
+  const fireDefault = () => toast("Default notification message");
+  const fireSuccess = () =>
+    toast.success("Data sync completed successfully");
+  const fireInfo = () => toast.info("Fresh insights are available");
+  const fireWarning = () =>
+    toast.warning("Rate limit approaching for SERP API");
+  const fireError = () => toast.error("Failed to refresh dataset");
+  const fireLoading = () => {
+    const id = toast.loading("Crunching numbers…");
+    setTimeout(() => toast.success("Done", { id }), 1800);
+  };
+  const fireDescription = () =>
+    toast.success("Persona snapshot saved", {
+      description: "All 3 personas were exported to the shared workspace.",
+    });
+  const fireAction = () =>
+    toast("New release deployed", {
+      action: {
+        label: "View",
+        onClick: () => toast.info("Pretend we navigated to the release"),
+      },
+    });
+
+  return (
+    <Panel
+      title="Toast Debug"
+      subtitle="Trigger each Sonner variant to inspect styling"
+    >
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" onClick={fireDefault}>
+          Default
+        </Button>
+        <Button variant="outline" size="sm" onClick={fireSuccess}>
+          Success
+        </Button>
+        <Button variant="outline" size="sm" onClick={fireInfo}>
+          Info
+        </Button>
+        <Button variant="outline" size="sm" onClick={fireWarning}>
+          Warning
+        </Button>
+        <Button variant="outline" size="sm" onClick={fireError}>
+          Error
+        </Button>
+        <Button variant="outline" size="sm" onClick={fireLoading}>
+          Loading → Success
+        </Button>
+        <Button variant="outline" size="sm" onClick={fireDescription}>
+          With description
+        </Button>
+        <Button variant="outline" size="sm" onClick={fireAction}>
+          With action
+        </Button>
+      </div>
+    </Panel>
   );
 }

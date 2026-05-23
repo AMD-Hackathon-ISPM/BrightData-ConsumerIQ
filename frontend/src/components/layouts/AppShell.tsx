@@ -17,7 +17,7 @@ export function AppShell({ sidebar, brand, header, topBanner, children }: AppShe
             {topBanner}
             <SidebarProvider className="min-h-0 flex-1 overflow-hidden" defaultOpen>
                 {sidebar}
-                <SidebarInset className="min-h-0 min-w-0 overflow-hidden bg-background-default">
+                <SidebarInset className="min-h-0 min-w-0 overflow-hidden bg-background-default md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border-default md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-0">
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                         <MobileShellHeader brand={brand} />
                         {header}

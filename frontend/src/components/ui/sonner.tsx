@@ -11,6 +11,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
     return (
         <Sonner
             theme="light"
+            position="top-right"
             className="toaster group"
             closeButton
             toastOptions={{
@@ -32,22 +33,24 @@ const Toaster = ({ ...props }: ToasterProps) => {
                     "--normal-bg": "var(--background-dialog-default)",
                     "--normal-text": "var(--foreground-default)",
                     "--normal-border": "var(--border-default)",
-                    /* Success */
-                    "--success-bg": "var(--brand-200)",
-                    "--success-text": "var(--brand-600)",
-                    "--success-border": "var(--brand-300)",
-                    /* Error */
-                    "--error-bg": "var(--destructive-200)",
-                    "--error-text": "var(--destructive-600)",
-                    "--error-border": "var(--destructive-400)",
-                    /* Warning */
-                    "--warning-bg": "var(--warning-200)",
-                    "--warning-text": "var(--warning-600)",
-                    "--warning-border": "var(--warning-400)",
-                    /* Info */
-                    "--info-bg": "var(--brand-200)",
-                    "--info-text": "var(--brand-600)",
-                    "--info-border": "var(--brand-300)",
+                    /* Success — gruvbox green accent on dialog bg */
+                    "--success-bg": "var(--background-dialog-default)",
+                    "--success-text": "var(--chart-4)",
+                    "--success-border":
+                        "color-mix(in oklab, var(--chart-4) 40%, transparent)",
+                    /* Error — gruvbox red bg, white text */
+                    "--error-bg": "var(--destructive-500)",
+                    "--error-text": "#fff",
+                    "--error-border": "var(--destructive-600)",
+                    /* Warning — gruvbox yellow bg, white text */
+                    "--warning-bg": "var(--warning-500)",
+                    "--warning-text": "#fff",
+                    "--warning-border": "var(--warning-600)",
+                    /* Info — gruvbox blue accent on dialog bg */
+                    "--info-bg": "var(--background-dialog-default)",
+                    "--info-text": "var(--chart-5)",
+                    "--info-border":
+                        "color-mix(in oklab, var(--chart-5) 40%, transparent)",
                     /* Shape */
                     "--border-radius": "var(--radius)",
                     /* Close button: sit flush inside the top-right corner */

@@ -20,16 +20,16 @@ export function getSectionTitle(section: DashboardSection) {
 export function getSectionLabel(section: DashboardSection) {
   switch (section) {
     case "dashboard":
-      return "Pusat kendali data pasar dengan metrik Trend Velocity, Estimated Demand, dan Market Gaps.";
+      return "Market data control center with Trend Velocity, Estimated Demand, and Market Gaps metrics.";
     case "pulse":
-      return "Analisis real-time pergerakan tren dan sinyal pencarian konsumen (SERP data).";
+      return "Real-time analysis of trend movements and consumer search signals (SERP data).";
     case "persona":
-      return "Segmentasi mendalam dan pemetaan perilaku pembeli berdasarkan ekstraksi ulasan.";
+      return "In-depth segmentation and buyer behavior mapping based on review extraction.";
     case "competitor":
-      return "Monitoring performa relatif, harga, dan Share of Voice dibandingkan pesaing.";
+      return "Monitor relative performance, pricing, and Share of Voice against competitors.";
     case "compass":
-      return "Strategi peluncuran optimal dengan rekomendasi Go-to-Market berbasis data.";
+      return "Optimal launch strategy with data-driven Go-to-Market recommendations.";
     case "settings":
-      return "Transparansi teknis infrastruktur Bright Data (Web Unlocker, Scraper API, dll).";
+      return "Technical transparency for Bright Data infrastructure (Web Unlocker, Scraper API, etc.).";
   }
 }

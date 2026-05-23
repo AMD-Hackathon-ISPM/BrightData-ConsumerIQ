@@ -10,11 +10,10 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
-    SidebarRail,
     SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
-import { navGroups, type DashboardSection } from "@/features/dashboard/constants";
+import { footerNavItems, navGroups, type DashboardSection } from "@/features/dashboard/constants";
 
 interface DashboardAppSidebarProps {
     active: DashboardSection;
@@ -30,8 +29,8 @@ export function DashboardAppSidebar({
     const { logout } = useAuth();
 
     return (
-        <Sidebar collapsible="icon">
-            <SidebarHeader className="border-b border-sidebar-border px-2 py-2">
+        <Sidebar collapsible="icon" variant="inset">
+            <SidebarHeader className="px-2 py-2">
                 <div className="flex h-8 items-center gap-2 pl-2 pr-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
                     <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-foreground-default group-data-[collapsible=icon]:hidden">
                         ConsumerIQ
@@ -44,11 +43,7 @@ export function DashboardAppSidebar({
                 {navGroups.map((group, groupIndex) => (
                     <SidebarGroup
                         key={group[0].id}
-                        className={
-                            groupIndex === 0
-                                ? "pt-3 font-medium text-foreground-lighter"
-                                : "font-medium text-foreground-lighter"
-                        }
+                        className="px-2 pt-3 font-medium text-foreground-lighter"
                     >
                         <SidebarGroupContent>
                             <SidebarMenu>
@@ -74,9 +69,25 @@ export function DashboardAppSidebar({
                 ))}
             </SidebarContent>
 
-            <SidebarFooter className="border-t border-sidebar-border">
-                {onToggleChat ? (
-                    <SidebarMenu>
+            <SidebarFooter className="px-2">
+                <SidebarMenu>
+                    {footerNavItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = active === item.id;
+                        return (
+                            <SidebarMenuItem key={item.id}>
+                                <SidebarMenuButton
+                                    isActive={isActive}
+                                    onClick={() => onActiveChange(item.id)}
+                                    tooltip={item.label}
+                                >
+                                    <Icon className="size-4" />
+                                    <span>{item.label}</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        );
+                    })}
+                    {onToggleChat ? (
                         <SidebarMenuItem>
                             <SidebarMenuButton
                                 onClick={onToggleChat}
@@ -86,9 +97,7 @@ export function DashboardAppSidebar({
                                 <span>Founder Chat</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
-                    </SidebarMenu>
-                ) : null}
-                <SidebarMenu>
+                    ) : null}
                     <SidebarMenuItem>
                         <SidebarMenuButton onClick={logout} tooltip="Log out">
                             <IconLogout className="size-4" stroke={1.8} />
@@ -97,8 +106,6 @@ export function DashboardAppSidebar({
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarFooter>
-
-            <SidebarRail />
         </Sidebar>
     );
 }
