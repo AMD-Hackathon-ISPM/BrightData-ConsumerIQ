@@ -9,7 +9,7 @@
 ### 2 — Create cluster + registry
 ```
 k3d registry create consumeriq-registry --port 5001
-k3d cluster create consumeriq-local --registry-use k3d-consumeriq-registry:5001 --api-port 127.0.0.1:6550
+k3d cluster create --config infra/k3d/k3d.yaml
 k3d kubeconfig merge consumeriq-local --kubeconfig-switch-context
 ```
 
@@ -20,6 +20,7 @@ kubectl apply -k infra/k8s/redis
 ```
 
 ### 4 — Build and push all images
+Push uses `localhost:5001` (host-side port). Pods pull via `k3d-consumeriq-registry:5000` (Docker-network name — already set in the k8s manifests).
 ```
 # Python backend
 docker build -t localhost:5001/consumeriq-backend:local -f backend/Dockerfile .
@@ -51,8 +52,7 @@ docker push localhost:5001/consumeriq-translator:local
 ```
 cp infra/k8s/backend/.env.example infra/k8s/backend/.env
 # fill in SCRAPINGBEE_API_KEY in infra/k8s/backend/.env
-kubectl create secret generic consumeriq-scrapingbee -n consumeriq \
-  --from-env-file=infra/k8s/backend/.env --dry-run=client -o yaml | kubectl apply -f -
+kubectl create secret generic consumeriq-scrapingbee -n consumeriq --from-env-file=infra/k8s/backend/.env --dry-run=client -o yaml | kubectl apply -f -
 ```
 
 ### 6 — Deploy everything

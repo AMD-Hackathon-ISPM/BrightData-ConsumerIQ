@@ -15,6 +15,6 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: localhost:5001/consumeriq-frontend:local
+          image: k3d-consumeriq-registry:5000/consumeriq-frontend:local
           ports:
             - containerPort: 80

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: embeddings
-          image: localhost:5001/consumeriq-embeddings:local
+          image: k3d-consumeriq-registry:5000/consumeriq-embeddings:local
           ports:
             - containerPort: 8080
           resources:
