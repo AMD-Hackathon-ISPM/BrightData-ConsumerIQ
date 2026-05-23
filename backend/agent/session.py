@@ -36,15 +36,12 @@ def saveStep(client: redis_lib.Redis, session_id: str, step: dict[str, Any]) -> 
 
 def appendFinding(client: redis_lib.Redis, session_id: str, finding: str) -> None:
     key = _key(session_id, 'findings')
-    raw = client.get(key)
-    findings: list[str] = json.loads(raw) if raw else []
-    findings.append(finding)
-    client.set(key, json.dumps(findings, ensure_ascii=False), ex=_TTL)
+    client.rpush(key, finding)
+    client.expire(key, _TTL)
 
 
 def getFindings(client: redis_lib.Redis, session_id: str) -> list[str]:
-    raw = client.get(_key(session_id, 'findings'))
-    return json.loads(raw) if raw else []
+    return client.lrange(_key(session_id, 'findings'), 0, -1)
 
 
 def closeSession(client: redis_lib.Redis, session_id: str, *, success: bool) -> None:
@@ -58,7 +55,6 @@ def closeSession(client: redis_lib.Redis, session_id: str, *, success: bool) -> 
 
 def getFullSession(client: redis_lib.Redis, session_id: str) -> dict[str, Any]:
     meta_raw = client.get(_key(session_id, 'meta'))
-    findings_raw = client.get(_key(session_id, 'findings'))
 
     steps: list[dict] = []
     for i in range(1, 20):
@@ -70,6 +66,6 @@ def getFullSession(client: redis_lib.Redis, session_id: str) -> dict[str, Any]:
     return {
         'session_id': session_id,
         'meta': json.loads(meta_raw) if meta_raw else {},
-        'findings': json.loads(findings_raw) if findings_raw else [],
+        'findings': client.lrange(_key(session_id, 'findings'), 0, -1),
         'steps': steps,
     }

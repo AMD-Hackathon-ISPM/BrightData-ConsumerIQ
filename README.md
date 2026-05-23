@@ -1,4 +1,4 @@
-﻿# BrightData-ConsumerIQ
+# BrightData-ConsumerIQ
 
 ## Local k3d setup
 1) Install Docker Desktop and ensure it is running.
@@ -14,9 +14,10 @@
    - `docker build -t consumeriq-backend:local -f backend/Dockerfile .`
    - `k3d image import consumeriq-backend:local -c consumeriq-local`
 6) Build and load the Go service image:
+   - `cd backend/go-service && go mod tidy && cd ../..`
    - `docker build -t consumeriq-go:local backend/go-service/`
    - `k3d image import consumeriq-go:local -c consumeriq-local`
-7) Deploy backend (Python API + Celery worker + Go auth/forms service):
+7) Deploy backend (Python API + all workers + Go service):
    - `kubectl apply -k infra/k8s/backend`
 8) Build and load the frontend image:
    - `docker build -t consumeriq-frontend:local -f frontend/Dockerfile frontend`
@@ -33,18 +34,54 @@
 - Auth: `http://localhost:30080/auth`
 - Forms (Go): `http://localhost:30080/go-api`
 
-## Service responsibilities
+## Services
 | Service | Language | Handles |
 |---|---|---|
-| `consumeriq-api` | Python | GGUF inference, LlamaCPP, ReAct agent, embeddings |
-| `consumeriq-worker` | Python | Celery background tasks (scraping, LLM jobs) |
-| `consumeriq-go` | Go | Auth (register/login/logout), opaque session tokens, founder forms |
-| `consumeriq-nginx` | NGINX | Reverse proxy, token validation via `auth_request` |
+| `consumeriq-api` | Python | GGUF inference, LlamaCPP, ReAct agent, embeddings, scraping endpoints |
+| `consumeriq-worker-inference` | Python / Celery | `inference` queue — ReAct agent tasks (concurrency 1) |
+| `consumeriq-worker-inference` | Python / Celery | `synthesis` queue — LLM batch synthesis (concurrency 1, lower priority) |
+| `consumeriq-worker-scraping` | Python / Celery | `scraping` queue — ScrapingBee API calls (concurrency 4) |
+| `consumeriq-go` | Go | Auth, opaque session tokens, founder form submission |
+| `consumeriq-go-worker` | Go / asynq | `background` queue — pipeline orchestration, dispatches to Python queues |
+| `consumeriq-nginx` | NGINX | Reverse proxy, `auth_request` token validation |
+
+## Worker queues
+| Queue | Processed by | Task types | Priority |
+|---|---|---|---|
+| `inference` | `consumeriq-worker-inference` | `runAgentTask` | HIGH — drained first |
+| `synthesis` | `consumeriq-worker-inference` | `processLlmInsights` | LOW — drained after inference |
+| `scraping` | `consumeriq-worker-scraping` | `scrapeMarketSignals`, `scrapeMarketplacePage`, `scrapeMarketplacePageBatch`, `scrapeMarketplaceDiscovery`, `scrapeSocialPage`, `scrapeSocialDiscovery` | — |
+| `background` | `consumeriq-go-worker` | `background:form_received` | — |
+
+**Pipeline triggered on founder form submit:**
+```
+POST /go-api/founder-form/submit
+  → Go enqueues background:form_received
+    → go-worker checks inference queue depth (limit: 10)
+    → go-worker calls POST /api/scrape-market-signals  (→ scraping queue)
+    → go-worker calls POST /api/scan-market/{category} (→ synthesis queue)
+```
+
+**Scraping endpoints (all return 202 Accepted):**
+```
+POST /api/marketplace-scrape        → scraping queue → scrapeMarketplacePage
+POST /api/marketplace-batch-scrape  → scraping queue → scrapeMarketplacePageBatch
+POST /api/marketplace-discovery     → scraping queue → scrapeMarketplaceDiscovery
+POST /api/social-scrape             → scraping queue → scrapeSocialPage
+POST /api/social-discovery          → scraping queue → scrapeSocialDiscovery
+GET  /api/task-status/{task_id}     → poll for result
+```
+
+## Backpressure
+- Python API `/api/agent/run` rejects with `503` when the `inference` queue depth ≥ 5.
+- Go worker skips `triggerInference` when the `inference` Redis list length ≥ 10.
+- This prevents queue pile-up and latency explosion on 4-core systems.
 
 ## Auth flow
-1. `POST /auth/register` or `POST /auth/login` → returns an opaque session token
-2. Pass the token as `Authorization: Bearer <token>` on all subsequent requests
-3. NGINX validates the token against the Go service before proxying to Python — Python only ever sees `X-User-Id`, never raw tokens
+1. `POST /go-api/founder-form/submit` — registers + submits onboarding form, returns opaque session token
+2. `POST /auth/login` — returns opaque session token for existing users
+3. Pass the token as `Authorization: Bearer <token>` on all subsequent requests
+4. NGINX validates the token via `auth_request` before proxying — Python only ever sees `X-User-Id`, never raw tokens
 
 ## Troubleshooting
 - If `postgres-0` is stuck in `ContainerCreating`, re-run:
@@ -54,6 +91,10 @@
    - `kubectl apply -k infra/k8s/backend`
    - `kubectl apply -k infra/k8s/nginx`
    - `kubectl rollout restart -n consumeriq deploy/consumeriq-nginx`
+- Worker not picking up jobs: check the correct queue name is set
+   - Inference/synthesis worker: `kubectl logs -n consumeriq deploy/consumeriq-worker-inference`
+   - Scraping worker: `kubectl logs -n consumeriq deploy/consumeriq-worker-scraping`
+   - Go worker: `kubectl logs -n consumeriq deploy/consumeriq-go-worker`
 - Go service not ready: check `kubectl logs -n consumeriq deploy/consumeriq-go`
   - Common cause: `REDIS_ADDR` or `DATABASE_URL` env var wrong, or `users` table not migrated yet
 

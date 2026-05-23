@@ -5,7 +5,6 @@ from typing import Any
 import psycopg2
 from celery import Celery
 from kombu import Queue
-
 from backend.models.embeddings import createEmbedder, embedTexts
 from backend.models.llm import createLlm
 from backend.models.translator import translateTextsIfNeeded
@@ -24,14 +23,20 @@ celeryApp = Celery(
 
 celeryApp.conf.update(
     task_queues=(
-        Queue('inference'),  # LLM inference, embeddings, translation — concurrency 1, memory-heavy
-        Queue('scraping'),   # ScrapingBee API calls — concurrency 4+, network-bound
+        Queue('inference'),
+        Queue('synthesis'),
+        Queue('scraping'),
     ),
     task_default_queue='inference',
     task_routes={
         'runAgentTask': {'queue': 'inference'},
-        'processLlmInsights': {'queue': 'inference'},
+        'processLlmInsights': {'queue': 'synthesis'},
         'scrapeMarketSignals': {'queue': 'scraping'},
+        'scrapeMarketplacePage': {'queue': 'scraping'},
+        'scrapeMarketplacePageBatch': {'queue': 'scraping'},
+        'scrapeMarketplaceDiscovery': {'queue': 'scraping'},
+        'scrapeSocialPage': {'queue': 'scraping'},
+        'scrapeSocialDiscovery': {'queue': 'scraping'},
     },
 )
 
@@ -205,28 +210,16 @@ def _saveCategoryInsights(categoryName: str, insights: dict[str, Any]) -> None:
             )
 
 
-def _storeSignal(text: str, sourceType: str, sourceUrl: str) -> None:
-    if not text.strip():
-        return
-    with psycopg2.connect(DATABASE_URL) as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                'INSERT INTO marketSignals (signalText, sourceType, sourceUrl, signalDate) '
-                'VALUES (%s, %s, %s, CURRENT_DATE)',
-                (text[:1000], sourceType, sourceUrl),
-            )
-
-
 @celeryApp.task(name='scrapeMarketSignals', queue='scraping')
 def scrapeMarketSignals(category: str, keywords: list[str]) -> dict[str, Any]:
     from backend.api.scrapingbeeClient import searchGoogle, normalizeSerpResults
     from backend.api.marketplaceScrape import buildMarketplaceDiscoveryQuery, MarketplaceDiscoveryRequest
 
     print(f'[scraping] Starting signal scrape for category={category}, keywords={keywords}')
-    stored = 0
+
+    rows: list[tuple[str, str, str]] = []
 
     for keyword in keywords[:5]:
-        # Social signals (Reddit / Twitter)
         socialData, err = searchGoogle(
             query=f'site:reddit.com OR site:twitter.com {keyword}',
             country_code='us',
@@ -234,14 +227,10 @@ def scrapeMarketSignals(category: str, keywords: list[str]) -> dict[str, Any]:
         )
         if not err:
             for result in normalizeSerpResults(socialData)[:3]:
-                _storeSignal(
-                    text=f"{result.get('title', '')} — {result.get('description', '')}",
-                    sourceType=result.get('source', 'social'),
-                    sourceUrl=result.get('url', ''),
-                )
-                stored += 1
+                text = f"{result.get('title', '')} — {result.get('description', '')}"
+                if text.strip():
+                    rows.append((text[:1000], result.get('source', 'social'), result.get('url', '')))
 
-        # Marketplace signals (Amazon)
         req = MarketplaceDiscoveryRequest(
             keyword=keyword, marketplace='amazon', limit=3, include_scrape=False,
         )
@@ -250,20 +239,27 @@ def scrapeMarketSignals(category: str, keywords: list[str]) -> dict[str, Any]:
         )
         if not err:
             for result in normalizeSerpResults(marketData)[:2]:
-                _storeSignal(
-                    text=f"{result.get('title', '')} — {result.get('description', '')}",
-                    sourceType='marketplace',
-                    sourceUrl=result.get('url', ''),
-                )
-                stored += 1
+                text = f"{result.get('title', '')} — {result.get('description', '')}"
+                if text.strip():
+                    rows.append((text[:1000], 'marketplace', result.get('url', '')))
 
+    if rows:
+        with psycopg2.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.executemany(
+                    'INSERT INTO marketSignals (signalText, sourceType, sourceUrl, signalDate) '
+                    'VALUES (%s, %s, %s, CURRENT_DATE)',
+                    rows,
+                )
+
+    stored = len(rows)
     print(f'[scraping] Done. Stored {stored} signals for category={category}')
     return {'category': category, 'keywords': keywords, 'signals_stored': stored, 'status': 'completed'}
 
 
 @celeryApp.task(name='runAgentTask', bind=True, queue='inference')
 def runAgentTask(self, prompt: str, max_steps: int = 6) -> dict[str, Any]:
-    from backend.agent.react_agent import runReactAgent
+    from backend.agent.reactAgent import runReactAgent
     from backend.agent.session import getRedisClient
 
     session_id = self.request.id
@@ -284,7 +280,7 @@ def runAgentTask(self, prompt: str, max_steps: int = 6) -> dict[str, Any]:
     return result
 
 
-@celeryApp.task(name='processLlmInsights', queue='inference')
+@celeryApp.task(name='processLlmInsights', queue='synthesis')
 def processLlmInsights(categoryName: str):
     print(f'Worker picked up job for category: {categoryName}')
 
@@ -305,3 +301,71 @@ def processLlmInsights(categoryName: str):
         **insights,
         'contextSignals': translatedSignals,
     }
+
+
+@celeryApp.task(name='scrapeMarketplacePage', queue='scraping')
+def scrapeMarketplacePage(
+    url: str,
+    keyword: str | None = None,
+    country_code: str = 'cn',
+    render_js: bool = True,
+    include_reviews: bool = True,
+    max_review_pages: int = 1,
+    wait_ms: int = 0,
+    wait_for: str | None = None,
+    scroll: bool = False,
+    block_resources: bool | None = None,
+) -> dict[str, Any]:
+    from backend.api.marketplaceScrape import runMarketplaceScrape
+    return runMarketplaceScrape(
+        url, keyword, country_code, render_js, include_reviews,
+        max_review_pages, wait_ms, wait_for, scroll, block_resources,
+    )
+
+
+@celeryApp.task(name='scrapeMarketplacePageBatch', queue='scraping')
+def scrapeMarketplacePageBatch(
+    urls: list[str],
+    keyword: str | None = None,
+    country_code: str = 'cn',
+    render_js: bool = True,
+) -> dict[str, Any]:
+    from backend.api.marketplaceScrape import runMarketplaceScrape
+    results = [runMarketplaceScrape(url, keyword, country_code, render_js) for url in urls]
+    return {'status': 'success', 'count': len(results), 'results': results}
+
+
+@celeryApp.task(name='scrapeMarketplaceDiscovery', queue='scraping')
+def scrapeMarketplaceDiscovery(
+    keyword: str,
+    marketplace: str = 'taobao',
+    country_code: str = 'cn',
+    language: str = 'en',
+    limit: int = 5,
+    include_scrape: bool = True,
+) -> dict[str, Any]:
+    from backend.api.marketplaceScrape import runMarketplaceDiscovery
+    return runMarketplaceDiscovery(keyword, marketplace, country_code, language, limit, include_scrape)
+
+
+@celeryApp.task(name='scrapeSocialPage', queue='scraping')
+def scrapeSocialPage(
+    url: str,
+    keyword: str | None = None,
+    country_code: str = 'us',
+    render_js: bool = True,
+) -> dict[str, Any]:
+    from backend.api.socialScrape import runSocialScrape
+    return runSocialScrape(url, keyword, country_code, render_js)
+
+
+@celeryApp.task(name='scrapeSocialDiscovery', queue='scraping')
+def scrapeSocialDiscovery(
+    keyword: str,
+    country_code: str = 'us',
+    language: str = 'en',
+    limit: int = 5,
+    include_scrape: bool = True,
+) -> dict[str, Any]:
+    from backend.api.socialScrape import runSocialDiscovery
+    return runSocialDiscovery(keyword, country_code, language, limit, include_scrape)

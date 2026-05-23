@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 var pythonAPIBase = strings.TrimRight(
@@ -25,6 +26,14 @@ var pythonAPIBase = strings.TrimRight(
 )
 
 var httpClient = &http.Client{Timeout: 10 * time.Second}
+
+const inferenceQueueLimit = 10
+
+var rdb *goredis.Client
+
+func Init(redisAddr string) {
+	rdb = goredis.NewClient(&goredis.Options{Addr: redisAddr})
+}
 
 type FormReceivedPayload struct {
 	FormID   string   `json:"form_id"`
@@ -80,6 +89,14 @@ func triggerScrape(ctx context.Context, category string, keywords []string) erro
 }
 
 func triggerInference(ctx context.Context, category string) error {
+	if rdb != nil {
+		depth, err := rdb.LLen(ctx, "inference").Result()
+		if err == nil && depth >= inferenceQueueLimit {
+			log.Printf("[background] inference queue at limit (%d), skipping category=%s", depth, category)
+			return nil
+		}
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		pythonAPIBase+"/api/scan-market/"+category, http.NoBody)
 	if err != nil {

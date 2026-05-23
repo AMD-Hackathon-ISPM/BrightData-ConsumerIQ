@@ -12,13 +12,15 @@ import (
 func main() {
 	redisAddr := mustEnv("REDIS_ADDR")
 
+	worker.Init(redisAddr)
+
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{Addr: redisAddr},
 		asynq.Config{
 			Queues: map[string]int{
-				worker.QueueBackground: 10, // priority weight
+				worker.QueueBackground: 10,
 			},
-			Concurrency: 20, // Go goroutines are cheap — handle many background jobs at once
+			Concurrency: 20,
 		},
 	)
 

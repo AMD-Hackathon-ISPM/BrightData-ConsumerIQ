@@ -2,9 +2,19 @@ from __future__ import annotations
 import json
 import re
 from typing import Any
+
+import redis as redis_lib
 from llama_cpp import Llama
 
 from backend.agent.tools import TOOL_SCHEMAS, callTool
+from backend.agent.summarizer import summarizeObservation, keyFinding
+from backend.agent.session import (
+    initSession,
+    saveStep,
+    appendFinding,
+    getFindings,
+    closeSession,
+)
 
 _SYSTEM = '''\
 You are a market intelligence agent. Use tools to gather real data, then produce a final analysis.
@@ -22,7 +32,6 @@ STRICT RULES — read carefully:
 5. Never invent data — only use what the observations return.\
 '''
 
-# Llama 3 instruct chat template tokens
 _BOS = '<|begin_of_text|>'
 _SYS_OPEN = '<|start_header_id|>system<|end_header_id|>\n\n'
 _USR_OPEN = '<|start_header_id|>user<|end_header_id|>\n\n'
@@ -34,8 +43,7 @@ def _buildSystemPrompt() -> str:
     lines: list[str] = []
     for name, meta in TOOL_SCHEMAS.items():
         params = ', '.join(f'{k}: {v}' for k, v in meta['input'].items())
-        description = meta['description']
-        lines.append(f'  {name}({params})\n    → {description}')
+        lines.append(f'  {name}({params})\n    → {meta["description"]}')
     return _SYSTEM.format(tools='\n'.join(lines))
 
 
@@ -48,13 +56,25 @@ def _initialPrompt(system: str, user: str) -> str:
     )
 
 
-def _appendObservation(prompt: str, model_raw: str, observation: dict) -> str:
-    obs = json.dumps(observation, ensure_ascii=False)
+def _appendObservation(
+    prompt: str,
+    model_raw: str,
+    obs_summary: str,
+    findings: list[str],
+) -> str:
+    findings_block = ''
+    if findings:
+        bullets = '\n'.join(f'  • {f}' for f in findings[-6:])
+        findings_block = f'\n\nRunning findings so far:\n{bullets}'
+
     return (
         prompt
         + model_raw
         + _EOT
-        + _USR_OPEN + f'Observation: {obs}' + _EOT
+        + _USR_OPEN
+        + f'Observation:\n{obs_summary}'
+        + findings_block
+        + _EOT
         + _AST_OPEN
     )
 
@@ -89,17 +109,13 @@ def runReactAgent(
     llm: Llama,
     *,
     max_steps: int = 6,
+    redis_client: redis_lib.Redis | None = None,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
-    '''
-    Run the ReAct (Reason + Act) loop with the given Llama instance.
+    use_redis = redis_client is not None and session_id is not None
+    if use_redis:
+        initSession(redis_client, session_id, user_prompt)
 
-    Each iteration:
-      1. Generate — model outputs JSON with thought + action or final_answer
-      2. Act      — call the named tool with action_input
-      3. Observe  — feed the tool result back into the prompt
-
-    Returns a dict with keys: steps, final_answer, success.
-    '''
     system = _buildSystemPrompt()
     prompt = _initialPrompt(system, user_prompt)
     steps: list[dict[str, Any]] = []
@@ -111,14 +127,12 @@ def runReactAgent(
 
         if parsed is None:
             parse_failures += 1
-            steps.append({
-                'step': step_num,
-                'error': 'model output was not valid JSON',
-                'raw': raw,
-            })
+            step_record = {'step': step_num, 'error': 'model output was not valid JSON', 'raw': raw}
+            steps.append(step_record)
+            if use_redis:
+                saveStep(redis_client, session_id, step_record)
             if parse_failures >= 2:
                 break
-            # nudge the model back on track
             prompt += (
                 raw + _EOT
                 + _USR_OPEN
@@ -131,37 +145,62 @@ def runReactAgent(
         final_answer = parsed.get('final_answer')
 
         if final_answer is not None:
-            steps.append({
-                'step': step_num,
-                'thought': thought,
-                'final_answer': final_answer,
-            })
-            return {'steps': steps, 'final_answer': str(final_answer), 'success': True}
+            step_record = {'step': step_num, 'thought': thought, 'final_answer': final_answer}
+            steps.append(step_record)
+            if use_redis:
+                saveStep(redis_client, session_id, step_record)
+                closeSession(redis_client, session_id, success=True)
+            return {
+                'session_id': session_id,
+                'steps': steps,
+                'final_answer': str(final_answer),
+                'success': True,
+            }
 
         action = parsed.get('action')
         if not action:
-            steps.append({
+            step_record = {
                 'step': step_num,
                 'thought': thought,
-                'error': 'JSON had neither \'action\' nor \'final_answer\'',
+                'error': "JSON had neither 'action' nor 'final_answer'",
                 'raw': parsed,
-            })
+            }
+            steps.append(step_record)
+            if use_redis:
+                saveStep(redis_client, session_id, step_record)
             break
 
         action_input: dict = parsed.get('action_input') or {}
-        observation = callTool(action, action_input)
 
-        steps.append({
+        full_observation = callTool(action, action_input)
+
+        obs_summary = summarizeObservation(action, full_observation)
+        finding = keyFinding(action, action_input, full_observation)
+
+        step_record = {
             'step': step_num,
             'thought': thought,
             'action': action,
             'action_input': action_input,
-            'observation': observation,
-        })
+            'observation_summary': obs_summary,
+            'observation_full': full_observation,
+        }
+        steps.append({k: v for k, v in step_record.items() if k != 'observation_full'})
 
-        prompt = _appendObservation(prompt, raw, observation)
+        if use_redis:
+            saveStep(redis_client, session_id, step_record)
+            appendFinding(redis_client, session_id, finding)
+            findings = getFindings(redis_client, session_id)
+        else:
+            findings = [s.get('observation_summary', '')[:80] for s in steps if 'observation_summary' in s]
+
+        prompt = _appendObservation(prompt, raw, obs_summary, findings)
+
+    if use_redis:
+        closeSession(redis_client, session_id, success=False)
 
     return {
+        'session_id': session_id,
         'steps': steps,
         'final_answer': None,
         'success': False,

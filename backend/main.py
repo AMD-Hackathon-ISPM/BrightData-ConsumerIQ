@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, HTTPException, Path
 from pydantic import BaseModel
 from celery.result import AsyncResult
@@ -5,6 +7,17 @@ from backend.redis.worker import celeryApp, processLlmInsights
 from backend.api.marketplaceScrape import router as marketplaceRouter
 from backend.api.serpSearch import router as serpRouter
 from backend.api.socialScrape import router as socialRouter
+
+_REDIS_URL = os.getenv('REDIS_URL', 'redis://redis.consumeriq.svc.cluster.local:6379/0')
+_INFERENCE_QUEUE_LIMIT = 5
+
+
+def _inferenceQueueDepth() -> int:
+    import redis as redis_lib
+    try:
+        return redis_lib.from_url(_REDIS_URL).llen('inference')
+    except Exception:
+        return 0
 
 
 app = FastAPI(title='ConsumerIQ API')
@@ -24,6 +37,9 @@ class ScrapeMarketSignalsRequest(BaseModel):
 
 @app.post('/api/agent/run')
 async def agentRun(payload: AgentRunRequest):
+    if _inferenceQueueDepth() >= _INFERENCE_QUEUE_LIMIT:
+        raise HTTPException(status_code=503, detail='Inference queue full, try again later')
+
     try:
         from backend.redis.worker import runAgentTask
     except ModuleNotFoundError as error:

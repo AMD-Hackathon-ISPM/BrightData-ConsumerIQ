@@ -23,7 +23,7 @@ spec:
             - backend.redis.worker.celeryApp
             - worker
             - -Q
-            - inference
+            - inference,synthesis
             - --concurrency=1
             - -l
             - info
