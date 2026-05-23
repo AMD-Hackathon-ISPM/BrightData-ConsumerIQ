@@ -104,7 +104,7 @@ export function ConsumerIQOnboarding({
     <main className="relative min-h-screen bg-background-default text-foreground-default">
       {import.meta.env.DEV ? (
         <Button
-          className="fixed right-4 top-4 z-50 text-xs text-foreground-lighter"
+          className="fixed right-4 top-4 z-50 text-xs text-foreground-light"
           onClick={onComplete}
           size="sm"
           variant="ghost"

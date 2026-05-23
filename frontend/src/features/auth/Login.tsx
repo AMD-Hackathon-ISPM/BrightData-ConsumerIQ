@@ -48,7 +48,7 @@ export function Login({ onSwitchToRegister }: LoginProps) {
         <form className="flex flex-col" onSubmit={submit} noValidate>
             {import.meta.env.DEV ? (
                 <Button
-                    className="fixed right-4 top-4 z-50 text-xs text-foreground-lighter"
+                    className="fixed right-4 top-4 z-50 text-xs text-foreground-light"
                     onClick={skipLogin}
                     size="sm"
                     type="button"

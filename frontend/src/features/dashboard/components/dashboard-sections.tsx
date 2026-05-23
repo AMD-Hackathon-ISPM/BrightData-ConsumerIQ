@@ -11,7 +11,6 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   CartesianGrid,
@@ -355,8 +354,11 @@ export function PersonaDecode() {
       tone: "high" as const,
       description:
         "Urban Gen Z women aged 18-26 who prioritize reliable daily hair solutions, value affordability, and respond to barrier-repair claims.",
-      painPoints:
-        "Hair feels dry and damaged from heat styling and pollution; limited time for elaborate routines; tight budget that rules out premium products.",
+      painPoints: [
+        "Hair feels dry and damaged from heat styling and daily pollution exposure.",
+        "Limited time for elaborate routines on a tight workday schedule.",
+        "Premium products feel out of reach on an early-career budget.",
+      ],
       goals:
         "Visible results within the first week, a reliable daily routine that fits a busy schedule, and affordable refills they can buy without overthinking.",
     },
@@ -366,8 +368,11 @@ export function PersonaDecode() {
       tone: "medium" as const,
       description:
         "Early adopters who follow social trends and switch brands quickly when price/value feels right.",
-      painPoints:
-        "Brand fatigue and FOMO when missing a viral product; full-size purchases feel risky at the wrong price; afraid of getting stuck with something that doesn't deliver.",
+      painPoints: [
+        "Brand fatigue and FOMO when a viral product takes off without them.",
+        "Full-size purchases feel risky when the price doesn't match the hype.",
+        "Afraid of getting stuck with a half-used product that disappoints.",
+      ],
       goals:
         "Try whatever is trending without overspending, swap brands fast if the result disappoints, and share unboxing-worthy finds with their feed.",
     },
@@ -377,8 +382,11 @@ export function PersonaDecode() {
       tone: "growth" as const,
       description:
         "Household decision makers who prefer gentle daily solutions with proven safety and easy availability.",
-      painPoints:
-        "Worry about harsh ingredients near kids; juggling care for multiple family members; hard to keep restocking when local shelves run spotty.",
+      painPoints: [
+        "Constant worry about harsh ingredients ending up near the kids.",
+        "Juggling personal care needs across multiple family members.",
+        "Hard to keep restocking when local shelves run spotty.",
+      ],
       goals:
         "One gentle product the whole family can share, transparent ingredient labels, and reliable availability at nearby stores.",
     },
@@ -400,11 +408,10 @@ export function PersonaDecode() {
       "border-[#98971a]/40 bg-[#98971a]/15 text-[#98971a] dark:border-[#b8bb26]/40 dark:bg-[#b8bb26]/15 dark:text-[#b8bb26]",
   };
 
-  const cardToneClass: Record<"high" | "medium" | "growth", string> = {
-    high: "border-destructive-500/40 bg-destructive-500/[0.03]",
-    medium: "border-warning-500/40 bg-warning-500/[0.03]",
-    growth:
-      "border-[#98971a]/40 bg-[#98971a]/[0.03] dark:border-[#b8bb26]/40 dark:bg-[#b8bb26]/[0.03]",
+  const cardHoverBorderClass: Record<"high" | "medium" | "growth", string> = {
+    high: "hover:border-destructive-500/50",
+    medium: "hover:border-warning-500/50",
+    growth: "hover:border-[#98971a]/50 dark:hover:border-[#b8bb26]/50",
   };
 
   return (
@@ -413,15 +420,22 @@ export function PersonaDecode() {
         <div className="mb-3 min-w-0">
           <h2 className="break-words text-base font-semibold">User Personas</h2>
         </div>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-3 md:grid-rows-[auto_auto_auto_auto_auto_auto]">
           {personaCards.map((persona) => (
             <article
               className={cn(
-                "grid gap-3 rounded-xl border bg-card p-3.5 shadow-sm",
-                cardToneClass[persona.tone],
+                "relative grid gap-3 rounded-xl border bg-card p-3.5 shadow-sm transition-colors md:row-span-6 md:grid-rows-subgrid",
+                cardHoverBorderClass[persona.tone],
               )}
               key={persona.name}
             >
+              {persona.tone === "high" ? (
+                <span className="absolute right-3 top-0 -translate-y-1/2 rounded-full bg-background-default px-px py-px">
+                  <span className="block rounded-full bg-destructive-500/15 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-destructive-500">
+                    High Priority
+                  </span>
+                </span>
+              ) : null}
               <div className="flex items-start gap-3">
                 <div
                   className={cn(
@@ -440,64 +454,67 @@ export function PersonaDecode() {
                   </p>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm leading-relaxed text-foreground-light">
                 {persona.description}
               </p>
-              <Tabs defaultValue="pain">
-                <TabsList className="w-full">
-                  <TabsTrigger value="pain">Pain Points</TabsTrigger>
-                  <TabsTrigger value="goals">Goals</TabsTrigger>
-                </TabsList>
-                <TabsContent
-                  className="text-sm leading-relaxed text-muted-foreground"
-                  value="pain"
-                >
-                  {persona.painPoints}
-                </TabsContent>
-                <TabsContent
-                  className="text-sm leading-relaxed text-muted-foreground"
-                  value="goals"
-                >
-                  {persona.goals}
-                </TabsContent>
-              </Tabs>
+              <p className="-mx-3.5 border-y bg-background-default px-3.5 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Pain Points
+              </p>
+              <ul className="grid gap-1.5 pl-4 text-sm leading-relaxed text-foreground-light [&>li]:list-disc [&>li]:marker:text-muted-foreground">
+                {persona.painPoints.map((point) => (
+                  <li key={point}>{point}</li>
+                ))}
+              </ul>
+              <p className="-mx-3.5 border-y bg-background-default px-3.5 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Goals
+              </p>
+              <p className="text-sm leading-relaxed text-foreground-light">
+                {persona.goals}
+              </p>
             </article>
           ))}
         </div>
       </section>
 
       <div className="grid gap-3 xl:grid-cols-2">
-        <Panel title="STP" subtitle="Segmentation, Targeting, Positioning">
-          <div className="grid gap-3">
-            <div className="rounded-lg border bg-muted/40 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Segmentation
-              </p>
-              <p className="mt-2 text-sm">
-                Urban Gen Z women in Indonesia seeking affordable daily hair
-                solutions with practical benefits.
-              </p>
-            </div>
-            <div className="rounded-lg border bg-muted/40 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Targeting
-              </p>
-              <p className="mt-2 text-sm">
-                Price-sensitive consumers who buy shampoo frequently and are
-                open to switching brands that feel trustworthy and convenient.
-              </p>
-            </div>
-            <div className="rounded-lg border bg-muted/40 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Positioning
-              </p>
-              <p className="mt-2 text-sm">
-                A reliable, affordable daily shampoo that solves dryness and
-                hair damage without premium price tradeoffs.
-              </p>
-            </div>
+        <Panel title="Segmentation, Targeting, and Positioning">
+          <div className="grid gap-2">
+            {[
+              {
+                letter: "S",
+                title: "Segmentation",
+                text: "Urban Gen Z women in Indonesia seeking affordable daily hair solutions with practical benefits.",
+              },
+              {
+                letter: "T",
+                title: "Targeting",
+                text: "Price-sensitive consumers who buy shampoo frequently and are open to switching brands that feel trustworthy and convenient.",
+              },
+              {
+                letter: "P",
+                title: "Positioning",
+                text: "A reliable, affordable daily shampoo that solves dryness and hair damage without premium price tradeoffs.",
+              },
+            ].map((row) => (
+              <div
+                className="grid grid-cols-[2.25rem_1fr] items-center gap-3"
+                key={row.letter}
+              >
+                <span className="text-center font-mono text-4xl font-bold leading-none text-destructive-500">
+                  {row.letter}
+                </span>
+                <div className="rounded-lg border bg-background-default px-3 py-2.5">
+                  <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    {row.title}
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-foreground-light">
+                    {row.text}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="mt-4 grid gap-2">
+          <div className="mt-4 grid gap-1.5">
             {[
               {
                 title: "Geographic",
@@ -515,80 +532,68 @@ export function PersonaDecode() {
                 title: "Behavioral",
                 text: "High usage frequency, low switching cost, open to social recommendations.",
               },
+              {
+                title: "Needs",
+                text: "Hair solutions that feel compatible, are easy to access, budget-friendly, and suitable for long-term daily use.",
+              },
             ].map((item) => (
-              <details
-                className="group rounded-lg border bg-muted/40 p-3 transition-all duration-200 ease-out open:bg-card"
+              <div
+                className="grid grid-cols-[8rem_1fr] items-stretch gap-2"
                 key={item.title}
               >
-                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold">
-                  <span>{item.title}</span>
-                  <span className="text-xs text-muted-foreground transition-transform duration-200 group-open:rotate-180">
-                    ▼
-                  </span>
-                </summary>
-                <p className="mt-3 text-sm text-muted-foreground">
+                <div className="flex items-center rounded-lg bg-destructive-500/15 px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-destructive-500">
+                  {item.title}
+                </div>
+                <p className="rounded-lg border bg-background-default px-3 py-2 text-sm leading-relaxed text-foreground-light">
                   {item.text}
                 </p>
-              </details>
+              </div>
             ))}
           </div>
         </Panel>
 
-        <Panel title="TAM / SAM / SOM" subtitle="Market Sizing">
-          <div className="grid gap-3">
-            <div className="rounded-lg border bg-muted/40 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                TAM
-              </p>
-              <p className="mt-2 text-2xl font-semibold">37,032,414</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Total addressable market
-              </p>
-            </div>
-            <div className="rounded-lg border bg-muted/40 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                SAM
-              </p>
-              <p className="mt-2 text-2xl font-semibold">21,775,060</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Serviceable available market
-              </p>
-            </div>
-            <div className="rounded-lg border bg-muted/40 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                SOM
-              </p>
-              <p className="mt-2 text-2xl font-semibold">1,307,407</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Serviceable obtainable market
-              </p>
-            </div>
+        <section className="flex min-h-0 flex-col rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
+          <div className="mb-3 min-w-0">
+            <h3 className="break-words font-semibold">TAM / SAM / SOM</h3>
           </div>
-          <div className="mt-4 grid gap-2 text-sm text-muted-foreground">
-            <div className="rounded-lg border bg-muted/40 p-3">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="grid flex-1 content-center gap-4">
+              <MarketSizingCircles />
+            </div>
+            <div className="mt-auto grid gap-2 pt-6 text-sm text-muted-foreground">
+            <div className="rounded-lg border border-destructive-500/40 bg-destructive-500/25 p-3 text-foreground">
               All Women Gen Z in Indonesia (BPS, 2025)
             </div>
-            <div className="rounded-lg border bg-muted/40 p-3">
+            <div className="rounded-lg border border-destructive-500/50 bg-destructive-500/50 p-3 text-foreground">
               Urban Gen Z women in Indonesia
             </div>
-            <div className="rounded-lg border bg-muted/40 p-3">
+            <div className="rounded-lg border border-destructive-500/70 bg-destructive-500/90 p-3 text-white">
               The new attainable loyal segment for Sunsilk
             </div>
-            <div className="rounded-lg border bg-muted/40 p-3 text-xs">
-              Sunsilk can tap into an attainable market of 1.3 million urban Gen
-              Z women in Indonesia who seek affordable and flexible solutions
-              for daily hair problems.
-            </div>
           </div>
-        </Panel>
+          </div>
+        </section>
       </div>
 
-      <Panel subtitle="Primary target market summary">
+      <section className="relative bg-card p-3.5 pl-4 shadow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-gradient-to-b before:from-brand-400 before:via-brand-500 before:to-brand-600 xl:p-4 xl:pl-5">
         <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-muted-foreground" />
-          <h3 className="text-base font-semibold">AI Recommendation</h3>
+          <Sparkles
+            className="size-4"
+            color="url(#persona-ai-recommendation-gradient)"
+          >
+            <defs>
+              <linearGradient id="persona-ai-recommendation-gradient">
+                <stop stopColor="var(--brand-400)" />
+                <stop offset="50%" stopColor="var(--brand-500)" />
+                <stop offset="100%" stopColor="var(--brand-600)" />
+              </linearGradient>
+            </defs>
+          </Sparkles>
+          <p className="bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600 bg-clip-text text-base font-semibold text-transparent">
+            Advisor Intelligence
+          </p>
         </div>
-        <p className="mt-3 text-sm text-muted-foreground">
+        <p className="mt-3 text-sm text-foreground-light">
           Focus the first wave on urban Gen Z women who prioritize affordable
           daily hair solutions and respond to clear efficacy claims. Emphasize
           barrier-repair messaging, push social proof around consistent results,
@@ -596,28 +601,131 @@ export function PersonaDecode() {
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg border bg-muted/40 p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Main Channel
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground-light">
+              Key Pain Point
             </p>
             <p className="mt-2 text-sm font-semibold">Amazon + Temu</p>
           </div>
           <div className="rounded-lg border bg-muted/40 p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Core Message
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground-light">
+              Brand Message
             </p>
             <p className="mt-2 text-sm font-semibold">
               Daily relief, real results
             </p>
           </div>
           <div className="rounded-lg border bg-muted/40 p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              KPI Focus
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground-light">
+              Market Opportunity
             </p>
             <p className="mt-2 text-sm font-semibold">Repeat purchase rate</p>
           </div>
         </div>
-      </Panel>
+      </section>
     </div>
+  );
+}
+
+function MarketSizingCircles() {
+  const layers = [
+    {
+      key: "TAM",
+      value: 37_032_414,
+      label: "Total addressable market",
+      opacity: 0.25,
+      radius: 128,
+    },
+    {
+      key: "SAM",
+      value: 21_775_060,
+      label: "Serviceable available market",
+      opacity: 0.5,
+      radius: 96,
+    },
+    {
+      key: "SOM",
+      value: 1_307_407,
+      label: "Serviceable obtainable market",
+      opacity: 0.9,
+      radius: 64,
+    },
+  ];
+
+  const formatCount = (n: number) =>
+    n >= 1_000_000
+      ? `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M`
+      : n.toLocaleString();
+
+  const width = 360;
+  const height = 300;
+  const cx = width / 2;
+  const baseline = height - 8;
+  const radii = layers.map((l) => l.radius);
+
+  return (
+    <>
+      <svg
+        aria-hidden="true"
+        className="mx-auto block w-full max-w-[360px]"
+        role="img"
+        viewBox={`0 0 ${width} ${height}`}
+      >
+        {radii.map((r, i) => (
+          <circle
+            cx={cx}
+            cy={baseline - r}
+            fill="var(--destructive-500)"
+            fillOpacity={layers[i].opacity}
+            key={layers[i].key}
+            r={r}
+            stroke="var(--destructive-500)"
+            strokeOpacity={0.4}
+            strokeWidth={1}
+          />
+        ))}
+        {radii.map((r, i) => {
+          const y =
+            i === radii.length - 1
+              ? baseline - r
+              : baseline - 2 * r + 28;
+          return (
+            <g key={`${layers[i].key}-label`}>
+              <text
+                className="fill-foreground font-mono text-[11px] font-semibold"
+                textAnchor="middle"
+                x={cx}
+                y={y}
+              >
+                {layers[i].key}
+              </text>
+              <text
+                className={cn(
+                  "text-[11px]",
+                  layers[i].key === "SOM"
+                    ? "fill-white"
+                    : "fill-foreground-light"
+                )}
+                textAnchor="middle"
+                x={cx}
+                y={y + 14}
+              >
+                {formatCount(layers[i].value)} people
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="grid grid-cols-3 gap-2 text-center text-[11px] text-muted-foreground">
+        {layers.map((l) => (
+          <div key={l.key}>
+            <p className="font-mono font-semibold uppercase tracking-[0.16em] text-foreground-light">
+              {l.key}
+            </p>
+            <p className="mt-1 leading-tight">{l.label}</p>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 

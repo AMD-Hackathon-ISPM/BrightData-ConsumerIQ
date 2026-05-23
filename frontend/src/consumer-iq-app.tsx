@@ -20,7 +20,7 @@ const FounderChat = lazy(() =>
 
 export function ConsumerIQExperience() {
   const [isOnboarded, setIsOnboarded] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeSection, setActiveSection] =
     useState<DashboardSection>("dashboard");
   const isTabletUp = useMediaQuery("(min-width: 768px)");
