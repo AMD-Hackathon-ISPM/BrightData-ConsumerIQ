@@ -3,6 +3,8 @@ kind: Kustomization
 resources:
   - api-deployment.yaml
   - api-service.yaml
-  - worker-deployment.yaml
+  - worker-inference-deployment.yaml
+  - worker-scraping-deployment.yaml
   - go-deployment.yaml
   - go-service.yaml
+  - go-worker-deployment.yaml

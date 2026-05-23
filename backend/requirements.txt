@@ -2,6 +2,7 @@ llama-cpp-python
 fastapi
 uvicorn
 celery
+kombu
 redis
 psycopg2-binary
 

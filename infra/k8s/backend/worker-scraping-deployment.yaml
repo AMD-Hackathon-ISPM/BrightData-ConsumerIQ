@@ -1,22 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: consumeriq-worker
+  name: consumeriq-worker-scraping
   namespace: consumeriq
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: consumeriq-worker
+      app: consumeriq-worker-scraping
   template:
     metadata:
       labels:
-        app: consumeriq-worker
+        app: consumeriq-worker-scraping
     spec:
       containers:
         - name: worker
           image: consumeriq-backend:local
-          command: ["celery", "-A", "backend.redis.worker.celeryApp", "worker", "-l", "info"]
+          # concurrency=4: scraping is network-bound, multiple jobs run fine in parallel.
+          command:
+            - celery
+            - -A
+            - backend.redis.worker.celeryApp
+            - worker
+            - -Q
+            - scraping
+            - --concurrency=4
+            - -l
+            - info
           env:
             - name: REDIS_URL
               value: redis://redis.consumeriq.svc.cluster.local:6379/0

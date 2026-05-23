@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
@@ -30,8 +31,11 @@ func main() {
 	}
 	defer pool.Close()
 
+	taskQueue := asynq.NewClient(asynq.RedisClientOpt{Addr: mustEnv("REDIS_ADDR")})
+	defer taskQueue.Close()
+
 	authH := auth.NewHandler(rdb, pool)
-	formsH := forms.NewHandler(pool, rdb)
+	formsH := forms.NewHandler(pool, rdb, taskQueue)
 
 	mux := http.NewServeMux()
 

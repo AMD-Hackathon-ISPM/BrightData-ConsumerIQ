@@ -4,6 +4,7 @@ import os
 from typing import Any
 import psycopg2
 from celery import Celery
+from kombu import Queue
 
 from backend.models.embeddings import createEmbedder, embedTexts
 from backend.models.llm import createLlm
@@ -19,6 +20,19 @@ celeryApp = Celery(
     'consumeriq_worker',
     broker=REDIS_URL,
     backend=REDIS_URL,
+)
+
+celeryApp.conf.update(
+    task_queues=(
+        Queue('inference'),  # LLM inference, embeddings, translation — concurrency 1, memory-heavy
+        Queue('scraping'),   # ScrapingBee API calls — concurrency 4+, network-bound
+    ),
+    task_default_queue='inference',
+    task_routes={
+        'runAgentTask': {'queue': 'inference'},
+        'processLlmInsights': {'queue': 'inference'},
+        'scrapeMarketSignals': {'queue': 'scraping'},
+    },
 )
 
 
@@ -191,7 +205,63 @@ def _saveCategoryInsights(categoryName: str, insights: dict[str, Any]) -> None:
             )
 
 
-@celeryApp.task(name='runAgentTask', bind=True)
+def _storeSignal(text: str, sourceType: str, sourceUrl: str) -> None:
+    if not text.strip():
+        return
+    with psycopg2.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                'INSERT INTO marketSignals (signalText, sourceType, sourceUrl, signalDate) '
+                'VALUES (%s, %s, %s, CURRENT_DATE)',
+                (text[:1000], sourceType, sourceUrl),
+            )
+
+
+@celeryApp.task(name='scrapeMarketSignals', queue='scraping')
+def scrapeMarketSignals(category: str, keywords: list[str]) -> dict[str, Any]:
+    from backend.api.scrapingbeeClient import searchGoogle, normalizeSerpResults
+    from backend.api.marketplaceScrape import buildMarketplaceDiscoveryQuery, MarketplaceDiscoveryRequest
+
+    print(f'[scraping] Starting signal scrape for category={category}, keywords={keywords}')
+    stored = 0
+
+    for keyword in keywords[:5]:
+        # Social signals (Reddit / Twitter)
+        socialData, err = searchGoogle(
+            query=f'site:reddit.com OR site:twitter.com {keyword}',
+            country_code='us',
+            nb_results=5,
+        )
+        if not err:
+            for result in normalizeSerpResults(socialData)[:3]:
+                _storeSignal(
+                    text=f"{result.get('title', '')} — {result.get('description', '')}",
+                    sourceType=result.get('source', 'social'),
+                    sourceUrl=result.get('url', ''),
+                )
+                stored += 1
+
+        # Marketplace signals (Amazon)
+        req = MarketplaceDiscoveryRequest(
+            keyword=keyword, marketplace='amazon', limit=3, include_scrape=False,
+        )
+        marketData, err = searchGoogle(
+            query=buildMarketplaceDiscoveryQuery(req), country_code='us', nb_results=3,
+        )
+        if not err:
+            for result in normalizeSerpResults(marketData)[:2]:
+                _storeSignal(
+                    text=f"{result.get('title', '')} — {result.get('description', '')}",
+                    sourceType='marketplace',
+                    sourceUrl=result.get('url', ''),
+                )
+                stored += 1
+
+    print(f'[scraping] Done. Stored {stored} signals for category={category}')
+    return {'category': category, 'keywords': keywords, 'signals_stored': stored, 'status': 'completed'}
+
+
+@celeryApp.task(name='runAgentTask', bind=True, queue='inference')
 def runAgentTask(self, prompt: str, max_steps: int = 6) -> dict[str, Any]:
     from backend.agent.react_agent import runReactAgent
     from backend.agent.session import getRedisClient
@@ -214,7 +284,7 @@ def runAgentTask(self, prompt: str, max_steps: int = 6) -> dict[str, Any]:
     return result
 
 
-@celeryApp.task(name='processLlmInsights')
+@celeryApp.task(name='processLlmInsights', queue='inference')
 def processLlmInsights(categoryName: str):
     print(f'Worker picked up job for category: {categoryName}')
 

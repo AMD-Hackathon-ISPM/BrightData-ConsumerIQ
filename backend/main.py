@@ -17,6 +17,11 @@ class AgentRunRequest(BaseModel):
     max_steps: int = 6
 
 
+class ScrapeMarketSignalsRequest(BaseModel):
+    category: str
+    keywords: list[str]
+
+
 @app.post('/api/agent/run')
 async def agentRun(payload: AgentRunRequest):
     try:
@@ -38,6 +43,13 @@ async def agentSession(session_id: str = Path(..., alias='session_id')):
 
     redis_client = getRedisClient()
     return getFullSession(redis_client, session_id)
+
+
+@app.post('/api/scrape-market-signals')
+async def scrapeMarketSignals(payload: ScrapeMarketSignalsRequest):
+    from backend.redis.worker import scrapeMarketSignals as scrapeTask
+    task = scrapeTask.delay(payload.category, payload.keywords)
+    return {'taskId': task.id, 'status': 'processing', 'queue': 'scraping'}
 
 
 @app.post('/api/scan-market/{category_name}')

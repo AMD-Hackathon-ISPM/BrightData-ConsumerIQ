@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumeriq-go-worker
+  namespace: consumeriq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumeriq-go-worker
+  template:
+    metadata:
+      labels:
+        app: consumeriq-go-worker
+    spec:
+      containers:
+        - name: go-worker
+          image: consumeriq-go:local
+          command: ["/go-worker"]
+          env:
+            - name: REDIS_ADDR
+              value: redis.consumeriq.svc.cluster.local:6379
+            - name: PYTHON_API_URL
+              value: http://consumeriq-api.consumeriq.svc.cluster.local:8000

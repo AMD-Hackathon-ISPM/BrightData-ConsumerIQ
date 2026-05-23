@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumeriq-worker-inference
+  namespace: consumeriq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumeriq-worker-inference
+  template:
+    metadata:
+      labels:
+        app: consumeriq-worker-inference
+    spec:
+      containers:
+        - name: worker
+          image: consumeriq-backend:local
+          # concurrency=1: LLM and embedding models are memory-heavy; one job at a time.
+          command:
+            - celery
+            - -A
+            - backend.redis.worker.celeryApp
+            - worker
+            - -Q
+            - inference
+            - --concurrency=1
+            - -l
+            - info
+          env:
+            - name: REDIS_URL
+              value: redis://redis.consumeriq.svc.cluster.local:6379/0
+            - name: DATABASE_URL
+              value: postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.local:5432/consumeriq

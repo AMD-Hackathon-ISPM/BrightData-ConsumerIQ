@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/consumeriq/goservice/internal/auth"
+	"github.com/consumeriq/goservice/internal/worker"
 )
 
 type FounderFormPayload struct {
@@ -30,12 +32,13 @@ type FounderFormPayload struct {
 }
 
 type Handler struct {
-	pool *pgxpool.Pool
-	rdb  *redis.Client
+	pool      *pgxpool.Pool
+	rdb       *redis.Client
+	taskQueue *asynq.Client
 }
 
-func NewHandler(pool *pgxpool.Pool, rdb *redis.Client) *Handler {
-	return &Handler{pool: pool, rdb: rdb}
+func NewHandler(pool *pgxpool.Pool, rdb *redis.Client, taskQueue *asynq.Client) *Handler {
+	return &Handler{pool: pool, rdb: rdb, taskQueue: taskQueue}
 }
 
 func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +99,10 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Enqueue background orchestration: Go worker will trigger the Python
+	// scraping queue, then the inference queue, using the form's keywords.
+	h.enqueueFormReceived(formID, userID, p.Industry, p.SearchIntentKeywords)
+
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"id":      formID,
 		"status":  "received",
@@ -128,6 +135,23 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		"createdAt": createdAt.Format(time.RFC3339),
 		"payload":   payloadRaw,
 	})
+}
+
+func (h *Handler) enqueueFormReceived(formID string, userID int64, category string, keywords []string) {
+	payload, err := json.Marshal(worker.FormReceivedPayload{
+		FormID:   formID,
+		UserID:   userID,
+		Category: category,
+		Keywords: keywords,
+	})
+	if err != nil {
+		log.Printf("enqueueFormReceived marshal: %v", err)
+		return
+	}
+	task := asynq.NewTask(worker.TaskFormReceived, payload)
+	if _, err := h.taskQueue.Enqueue(task, asynq.Queue(worker.QueueBackground)); err != nil {
+		log.Printf("enqueueFormReceived: %v", err)
+	}
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
