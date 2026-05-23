@@ -7,8 +7,12 @@
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-sans:
+    "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-mono:
+    "Geist Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
   --color-sidebar-background: var(--sidebar-background);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -112,11 +116,11 @@
 }
 
 :root {
-  --background-default: #fbf1c7;
+  --background-default: #171717;
   --background-200: #f2e5bc;
-  --background-muted: #f2e5bc;
+  --background-muted: #1a1a1a;
   --background-surface-75: #fdf6d3;
-  --background-surface-100: #f9f5d7;
+  --background-surface-100: var(--background-muted);
   --background-surface-200: #ebdbb2;
   --background-surface-300: #d5c4a1;
   --background-surface-400: #bdae93;
@@ -135,16 +139,16 @@
   --foreground-lighter: #7c6f64;
   --foreground-muted: #928374;
   --foreground-contrast: #fbf1c7;
-  --border-default: #d5c4a1;
-  --border-strong: #bdae93;
-  --border-stronger: #a89984;
+  --border-default: #2e2e2e;
+  --border-strong: #363636;
+  --border-stronger: #454545;
   --border-button-default: #d5c4a1;
   --border-button-hover: #bdae93;
-  --border-alternative: #ebdbb2;
-  --border-control: #bdae93;
-  --border-overlay: #ebdbb2;
-  --border-secondary: #ebdbb2;
-  --border-muted: #ebdbb2;
+  --border-alternative: #444444;
+  --border-control: #393939;
+  --border-overlay: #333333;
+  --border-secondary: #242424;
+  --border-muted: #242424;
   --brand-default: #cc241d;
   --brand-600: #9d0006;
   --brand-500: #cc241d;
@@ -173,7 +177,7 @@
   --chart-blue: #458588;
   --chart-warning: var(--warning-default);
   --chart-destructive: var(--destructive-default);
-  --sidebar-background: #f2e5bc;
+  --sidebar-background: var(--background-muted);
   --sidebar-foreground: var(--foreground-default);
   --sidebar-primary: var(--brand-default);
   --sidebar-primary-foreground: var(--foreground-contrast);
@@ -189,7 +193,7 @@
   --borderradius-xl: 0.75rem;
   --background: var(--background-default);
   --foreground: var(--foreground-default);
-  --card: var(--background-dialog-default);
+  --card: var(--background-muted);
   --card-foreground: var(--foreground-default);
   --popover: var(--background-dialog-default);
   --popover-foreground: var(--foreground-default);
@@ -208,11 +212,11 @@
 }
 
 .dark {
-  --background-default: #1d2021;
+  --background-default: #171717;
   --background-200: #282828;
-  --background-muted: #282828;
+  --background-muted: #1a1a1a;
   --background-surface-75: #1d2021;
-  --background-surface-100: #282828;
+  --background-surface-100: var(--background-muted);
   --background-surface-200: #3c3836;
   --background-surface-300: #504945;
   --background-surface-400: #665c54;
@@ -226,21 +230,21 @@
   --background-overlay-default: #282828;
   --background-control: #3c3836;
   --background-selection: #3c3836;
-  --foreground-default: #ebdbb2;
-  --foreground-light: #d5c4a1;
-  --foreground-lighter: #bdae93;
-  --foreground-muted: #a89984;
-  --foreground-contrast: #1d2021;
-  --border-default: #504945;
-  --border-strong: #665c54;
-  --border-stronger: #7c6f64;
+  --foreground-default: #fafafa;
+  --foreground-light: #b4b4b4;
+  --foreground-lighter: #898989;
+  --foreground-muted: #4d4d4d;
+  --foreground-contrast: #161616;
+  --border-default: #2e2e2e;
+  --border-strong: #363636;
+  --border-stronger: #454545;
   --border-button-default: #504945;
   --border-button-hover: #665c54;
-  --border-alternative: #3c3836;
-  --border-control: #665c54;
-  --border-overlay: #3c3836;
-  --border-secondary: #3c3836;
-  --border-muted: #3c3836;
+  --border-alternative: #444444;
+  --border-control: #393939;
+  --border-overlay: #333333;
+  --border-secondary: #242424;
+  --border-muted: #242424;
   --brand-default: #cc241d;
   --brand-600: #9d0006;
   --brand-500: #cc241d;
@@ -269,7 +273,7 @@
   --chart-blue: #83a598;
   --chart-warning: var(--warning-default);
   --chart-destructive: var(--destructive-default);
-  --sidebar-background: #282828;
+  --sidebar-background: var(--background-muted);
   --sidebar-foreground: var(--foreground-default);
   --sidebar-primary: var(--brand-default);
   --sidebar-primary-foreground: var(--foreground-contrast);
@@ -280,7 +284,7 @@
   --sidebar-muted: var(--foreground-muted);
   --background: var(--background-default);
   --foreground: var(--foreground-default);
-  --card: var(--background-dialog-default);
+  --card: var(--background-muted);
   --card-foreground: var(--foreground-default);
   --popover: var(--background-dialog-default);
   --popover-foreground: var(--foreground-default);
@@ -314,7 +318,8 @@
     @apply bg-background text-foreground;
     letter-spacing: -0.003em;
   }
-  strong, b {
+  strong,
+  b {
     font-weight: 600;
   }
   /* All field placeholders use the muted text color, full opacity */
