@@ -1,4 +1,4 @@
-import { ChevronRight, Search } from "lucide-react";
+import { IconChevronRight, IconSearch } from "@tabler/icons-react";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -96,17 +96,17 @@ export function ConsumerIQDashboard({
   return (
     <section
       className={cn(
-        "flex h-full min-h-0 overflow-hidden bg-background text-foreground",
+        "flex h-full min-h-0 overflow-hidden bg-background-default text-foreground-default",
         className
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-12 items-center justify-between border-b px-4">
+        <header className="flex h-12 items-center justify-between border-b border-border-default bg-background-default px-4">
           <div className="flex w-full max-w-md items-center gap-3">
             <SidebarTrigger className="md:hidden" />
             <form className="relative w-full" onSubmit={handleSearchSubmit}>
               <Input
-                className="h-9 border-border bg-muted/40 pr-10"
+                className="h-9 border-border-default bg-background-muted/40 pr-10"
                 onChange={(event) => setSearchQuery(event.target.value)}
                 onFocus={() => setIsSearchOpen(true)}
                 onBlur={() => {
@@ -122,18 +122,18 @@ export function ConsumerIQDashboard({
                 type="submit"
                 variant="ghost"
               >
-                <Search className="size-4" />
+                <IconSearch className="size-4" stroke={1.8} />
               </Button>
               {isSearchOpen && normalizedQuery ? (
                 <div
-                  className="absolute top-full z-30 mt-2 w-full rounded-lg border bg-popover p-1 text-sm shadow-lg"
+                  className="absolute top-full z-30 mt-2 w-full rounded-lg border border-border-default bg-background-dialog-default p-1 text-sm shadow-lg"
                   onMouseDown={(event) => event.preventDefault()}
                   role="listbox"
                 >
                   {filteredSuggestions.length > 0 ? (
                     filteredSuggestions.slice(0, 6).map((entry) => (
                       <button
-                        className="flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-left hover:bg-muted"
+                        className="flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-left hover:bg-background-muted"
                         key={`${entry.source}-${entry.section}-${entry.label}`}
                         onClick={() =>
                           handleSearchSelect(entry.section, entry.label)
@@ -141,7 +141,7 @@ export function ConsumerIQDashboard({
                         type="button"
                       >
                         <span className="min-w-0 truncate">
-                          <span className="text-muted-foreground">
+                          <span className="text-foreground-muted">
                             {
                               navItems.find(
                                 (item) => item.id === entry.section
@@ -154,7 +154,7 @@ export function ConsumerIQDashboard({
                       </button>
                     ))
                   ) : (
-                    <div className="px-3 py-2 text-xs text-muted-foreground">
+                    <div className="px-3 py-2 text-xs text-foreground-muted">
                       No matches yet.
                     </div>
                   )}
@@ -169,16 +169,16 @@ export function ConsumerIQDashboard({
           <div className="min-w-0 w-full px-3 py-3 sm:px-4 lg:px-4 xl:px-5">
             <div className="mb-4 flex min-w-0 flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-                  Analysis <ChevronRight className="size-3" />
-                  <span className="font-medium text-foreground">
+                <p className="mb-1.5 flex items-center gap-2 text-xs text-foreground-muted">
+                  Analysis <IconChevronRight className="size-3" stroke={1.8} />
+                  <span className="font-medium text-foreground-default">
                     {navItems.find((item) => item.id === active)?.label}
                   </span>
                 </p>
                 <h2 className="break-words text-2xl font-semibold tracking-tight">
                   {getSectionTitle(active)}
                 </h2>
-                <p className="mt-1.5 max-w-3xl break-words text-sm text-muted-foreground">
+                <p className="mt-1.5 max-w-3xl break-words text-sm text-foreground-light">
                   {getSectionLabel(active)}
                 </p>
               </div>

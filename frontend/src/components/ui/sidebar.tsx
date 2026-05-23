@@ -393,7 +393,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
         <main
             data-slot="sidebar-inset"
             className={cn(
-                "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
+                "relative flex w-full flex-1 flex-col bg-background-default md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
                 className,
             )}
             {...props}
@@ -410,7 +410,7 @@ function SidebarInput({
             data-slot="sidebar-input"
             data-sidebar="input"
             className={cn(
-                "h-8 w-full border-border bg-muted/20 dark:bg-muted/30",
+                "h-8 w-full border-control bg-background-muted/20 dark:bg-background-muted/30",
                 className,
             )}
             {...props}
@@ -562,14 +562,14 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-    "peer/menu-button group/menu-button flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-[calc(var(--radius-sm)+2px)] p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,gap] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-1.5! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-accent data-open:hover:text-sidebar-accent-foreground data-active:bg-primary/10 data-active:font-semibold data-active:text-primary data-active:hover:bg-primary/15 data-active:hover:text-primary [&_svg:not([class*='size-'])]:size-[20px] [&_svg]:shrink-0 [&_svg]:text-[var(--muted-foreground)] hover:[&_svg]:text-sidebar-accent-foreground active:[&_svg]:text-sidebar-accent-foreground data-open:hover:[&_svg]:text-sidebar-accent-foreground data-active:[&_svg]:text-primary data-active:hover:[&_svg]:text-primary [&>span]:truncate [&>span]:transition-[opacity,transform] [&>span]:duration-200 [&>span]:ease-out motion-reduce:[&>span]:duration-0 group-data-[collapsible=icon]:[&>span]:-translate-x-1 group-data-[collapsible=icon]:[&>span]:opacity-0",
+    "peer/menu-button group/menu-button flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-[calc(var(--radius-sm)+2px)] p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,gap] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-1.5! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-accent data-open:hover:text-sidebar-accent-foreground data-active:bg-brand-default/10 data-active:font-semibold data-active:text-brand-default data-active:hover:bg-brand-default/15 data-active:hover:text-brand-default [&_svg:not([class*='size-'])]:size-[20px] [&_svg]:shrink-0 [&_svg]:text-[var(--sidebar-item-icon)] hover:[&_svg]:text-sidebar-accent-foreground active:[&_svg]:text-sidebar-accent-foreground data-open:hover:[&_svg]:text-sidebar-accent-foreground data-active:[&_svg]:text-brand-default data-active:hover:[&_svg]:text-brand-default [&>span]:truncate [&>span]:transition-[opacity,transform] [&>span]:duration-200 [&>span]:ease-out motion-reduce:[&>span]:duration-0 group-data-[collapsible=icon]:[&>span]:-translate-x-1 group-data-[collapsible=icon]:[&>span]:opacity-0",
     {
         variants: {
             variant: {
                 default:
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 outline:
-                    "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
+                    "bg-background-default shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
             },
             size: {
                 default: "h-8 text-sm",
@@ -685,13 +685,13 @@ function SidebarMenuButtonTooltip({
                 align="center"
                 side="right"
                 sideOffset={6}
-                className="w-fit rounded-md border border-sidebar-border bg-popover px-2.5 py-2 shadow-md ring-0 gap-0"
+                className="w-fit rounded-md border border-sidebar-border bg-background-dialog-default px-2.5 py-2 shadow-md ring-0 gap-0"
                 onInteractOutside={(e) => e.preventDefault()}
                 onOpenAutoFocus={(e) => e.preventDefault()}
                 {...tooltipProps}
             >
                 {tooltipText && (
-                    <span className="block whitespace-nowrap text-xs font-medium leading-none text-foreground">
+                    <span className="block whitespace-nowrap text-xs font-medium leading-none text-foreground-default">
                         {tooltipText}
                     </span>
                 )}
@@ -832,7 +832,7 @@ function SidebarMenuSubButton({
             data-size={size}
             data-active={isActive}
             className={cn(
-                "ml-3 flex h-8 w-[calc(100%-0.75rem)] min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md pr-2 pl-2 text-muted-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-sm data-[size=sm]:text-sm data-active:relative data-active:z-20 data-active:-ml-[calc(1rem+1px)] data-active:w-[calc(100%+1rem+1px)] data-active:rounded-lg data-active:bg-primary/10 data-active:pr-3 data-active:pl-[calc(2rem+5px)] data-active:font-semibold data-active:text-primary data-active:hover:bg-primary/15 data-active:hover:text-primary data-active:before:absolute data-active:before:inset-y-2 data-active:before:left-[calc(1rem+0.23px)] data-active:before:w-0.5 data-active:before:rounded-lg data-active:before:bg-foreground data-active:[&_svg]:text-primary data-active:hover:[&_svg]:text-primary [&>span:last-child]:truncate [&>svg:not([class*='size-'])]:size-[16px] [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
+                "ml-3 flex h-8 w-[calc(100%-0.75rem)] min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md pr-2 pl-2 text-foreground-lighter ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-sm data-[size=sm]:text-sm data-active:relative data-active:z-20 data-active:-ml-[calc(1rem+1px)] data-active:w-[calc(100%+1rem+1px)] data-active:rounded-lg data-active:bg-brand-default/10 data-active:pr-3 data-active:pl-[calc(2rem+5px)] data-active:font-semibold data-active:text-brand-default data-active:hover:bg-brand-default/15 data-active:hover:text-brand-default data-active:before:absolute data-active:before:inset-y-2 data-active:before:left-[calc(1rem+0.23px)] data-active:before:w-0.5 data-active:before:rounded-lg data-active:before:bg-foreground-default data-active:[&_svg]:text-brand-default data-active:hover:[&_svg]:text-brand-default [&>span:last-child]:truncate [&>svg:not([class*='size-'])]:size-[16px] [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
                 className,
             )}
             {...props}

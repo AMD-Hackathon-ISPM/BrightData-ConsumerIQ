@@ -17,7 +17,7 @@ export function AppShell({ sidebar, brand, header, topBanner, children }: AppShe
             {topBanner}
             <SidebarProvider className="min-h-0 flex-1 overflow-hidden" defaultOpen>
                 {sidebar}
-                <SidebarInset className="min-h-0 min-w-0 overflow-hidden bg-background">
+                <SidebarInset className="min-h-0 min-w-0 overflow-hidden bg-background-default">
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                         <MobileShellHeader brand={brand} />
                         {header}
@@ -33,8 +33,8 @@ export function AppShell({ sidebar, brand, header, topBanner, children }: AppShe
 
 function MobileShellHeader({ brand }: { brand: ReactNode }) {
     return (
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border bg-background/80 px-2 backdrop-blur md:hidden">
-            <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border bg-background-default/80 px-2 backdrop-blur md:hidden">
+            <SidebarTrigger className="-ml-1 text-foreground-muted hover:text-foreground-default" />
             <Separator className="mr-2 data-[orientation=vertical]:h-4 data-[orientation=vertical]:self-auto" orientation="vertical" />
             <div className="min-w-0 flex-1">{brand}</div>
         </header>

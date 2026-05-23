@@ -55,24 +55,24 @@ export function GeneratingStep({
         className="relative mx-auto mb-12 grid size-24 place-items-center"
       >
         <span
-          className="absolute inset-0 rounded-full bg-foreground/[0.04]"
+          className="absolute inset-0 rounded-full bg-foreground-default/[0.04]"
           style={{ animation: 'pulse 2.4s ease-in-out infinite' }}
         />
         <span
-          className="absolute inset-[14px] rounded-full bg-foreground/[0.08]"
+          className="absolute inset-[14px] rounded-full bg-foreground-default/[0.08]"
           style={{
             animation: 'pulse 2.4s ease-in-out infinite',
             animationDelay: '0.4s',
           }}
         />
-        <span className="size-3 rounded-full bg-foreground/80" />
+        <span className="size-3 rounded-full bg-foreground-default/80" />
       </div>
 
       <div className="text-center">
-        <h1 className="text-2xl font-medium tracking-tight text-foreground">
+        <h1 className="text-2xl font-medium tracking-tight text-foreground-default">
           Assembling your notebook
         </h1>
-        <p className="mt-3 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">
+        <p className="mt-3 font-mono text-xs uppercase tracking-[0.16em] text-foreground-muted">
           Usually takes 60–90 seconds
         </p>
       </div>
@@ -96,9 +96,9 @@ export function GeneratingStep({
 
       <div className="mt-14 flex flex-col items-center gap-4">
         {submitStatus === 'success' && formId ? (
-          <p className="font-mono text-xs text-muted-foreground">
+          <p className="font-mono text-xs text-foreground-muted">
             <span className="opacity-70">Run id</span>{' '}
-            <span className="text-foreground">{formId}</span>
+            <span className="text-foreground-default">{formId}</span>
           </p>
         ) : null}
         {submitStatus === 'error' ? (

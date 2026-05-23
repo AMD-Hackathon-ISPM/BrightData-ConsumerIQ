@@ -344,7 +344,7 @@ export function FounderChat({
   )
 
   return (
-    <div className={cn('h-full min-h-0 bg-background', className)}>
+    <div className={cn('h-full min-h-0 bg-background-default', className)}>
       <ChatPanel
         className={cn(
           '!h-full !min-h-0 transition-[width] duration-200 ease-out',

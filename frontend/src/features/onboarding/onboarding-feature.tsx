@@ -32,7 +32,7 @@ export function ConsumerIQOnboarding({
     industry: '',
     region: '',
     country: '',
-    targetAge: '',
+    targetGen: '',
     targetGender: '',
     targetMarketDetail: '',
     salesChannel: '',
@@ -96,7 +96,7 @@ export function ConsumerIQOnboarding({
   const isResearchGoalsValid = formState.researchGoals.length > 0
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen bg-background-default text-foreground-default">
       <div className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-6 py-10">
         <AnimatedPage
           className="flex w-full justify-center"
@@ -115,7 +115,7 @@ export function ConsumerIQOnboarding({
               industry={formState.industry}
               region={formState.region}
               country={formState.country}
-              targetAge={formState.targetAge}
+              targetGen={formState.targetGen}
               targetGender={formState.targetGender}
               targetMarketDetail={formState.targetMarketDetail}
               salesChannel={formState.salesChannel}
@@ -125,7 +125,7 @@ export function ConsumerIQOnboarding({
               onIndustryChange={(value) => updateField('industry', value)}
               onRegionChange={(value) => updateField('region', value)}
               onCountryChange={(value) => updateField('country', value)}
-              onTargetAgeChange={(value) => updateField('targetAge', value)}
+              onTargetGenChange={(value) => updateField('targetGen', value)}
               onTargetGenderChange={(value) =>
                 updateField('targetGender', value)
               }

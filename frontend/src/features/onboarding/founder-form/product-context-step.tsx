@@ -79,7 +79,7 @@ export function ProductContextStep({
             <h1 className="text-3xl font-medium tracking-tight">
               Product context
             </h1>
-            <p className="text-sm text-balance text-muted-foreground">
+            <p className="text-sm text-balance text-foreground-light">
               What you're building, who it's for, and what makes it different.
             </p>
           </div>
@@ -100,12 +100,12 @@ export function ProductContextStep({
             <FieldError />
           </Field>
 
-          <FieldGroup className="rounded-lg border bg-muted/20 p-5">
+          <FieldGroup className="rounded-lg border border-border-default bg-background-muted/20 p-5">
             <div className="-mt-1 mb-1">
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium text-foreground-default">
                 Product / service description
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-foreground-muted">
                 The core details we'll reference throughout your research.
               </p>
             </div>

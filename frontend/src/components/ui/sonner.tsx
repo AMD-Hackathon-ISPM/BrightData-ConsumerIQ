@@ -10,13 +10,13 @@ import {
 const Toaster = ({ ...props }: ToasterProps) => {
     return (
         <Sonner
-            theme="system"
+            theme="light"
             className="toaster group"
             closeButton
             toastOptions={{
                 classNames: {
                     closeButton:
-                        "!bg-transparent !border-0 !text-muted-foreground hover:!text-foreground hover:!bg-transparent",
+                        "!bg-transparent !border-0 !text-foreground-light hover:!text-foreground-default hover:!bg-transparent",
                 },
             }}
             icons={{
@@ -28,22 +28,29 @@ const Toaster = ({ ...props }: ToasterProps) => {
             }}
             style={
                 {
-                    "--normal-bg": "var(--popover)",
-                    "--normal-text": "var(--foreground)",
+                    /* Base */
+                    "--normal-bg": "var(--background-dialog-default)",
+                    "--normal-text": "var(--foreground-default)",
                     "--normal-border": "var(--border-default)",
-                    "--success-bg": "var(--primary)",
-                    "--success-text": "var(--primary)",
-                    "--success-border": "var(--primary)",
+                    /* Success */
+                    "--success-bg": "var(--brand-200)",
+                    "--success-text": "var(--brand-600)",
+                    "--success-border": "var(--brand-300)",
+                    /* Error */
                     "--error-bg": "var(--destructive-200)",
                     "--error-text": "var(--destructive-600)",
                     "--error-border": "var(--destructive-400)",
-                    "--warning-bg": "#fef9c3",
-                    "--warning-text": "#a16207",
-                    "--warning-border": "#facc15",
-                    "--info-bg": "var(--primary)",
-                    "--info-text": "var(--primary)",
-                    "--info-border": "var(--primary)",
+                    /* Warning */
+                    "--warning-bg": "var(--warning-200)",
+                    "--warning-text": "var(--warning-600)",
+                    "--warning-border": "var(--warning-400)",
+                    /* Info */
+                    "--info-bg": "var(--brand-200)",
+                    "--info-text": "var(--brand-600)",
+                    "--info-border": "var(--brand-300)",
+                    /* Shape */
                     "--border-radius": "var(--radius)",
+                    /* Close button: sit flush inside the top-right corner */
                     "--toast-close-button-start": "unset",
                     "--toast-close-button-end": "8px",
                     "--toast-close-button-transform": "translate(0, 8px)",

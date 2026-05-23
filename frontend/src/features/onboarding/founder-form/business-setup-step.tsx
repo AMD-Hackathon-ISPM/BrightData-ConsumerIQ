@@ -107,7 +107,7 @@ export function BusinessSetupStep({
             <h1 className="text-3xl font-medium tracking-tight">
               Business setup
             </h1>
-            <p className="text-sm text-balance text-muted-foreground">
+            <p className="text-sm text-balance text-foreground-light">
               A few framing details so we know where to point the lens.
             </p>
           </div>
@@ -153,12 +153,12 @@ export function BusinessSetupStep({
             <FieldError />
           </Field>
 
-          <FieldGroup className="rounded-lg border bg-muted/20 p-5">
+          <FieldGroup className="rounded-lg border border-border-default bg-background-muted/20 p-5">
             <div className="-mt-1 mb-1">
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium text-foreground-default">
                 Target region / market
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-foreground-muted">
                 Country + demographic detail. Also sets your dashboard
                 currency.
               </p>
@@ -238,7 +238,7 @@ export function BusinessSetupStep({
             <Field>
               <FieldLabel htmlFor="targetMarketDetail">
                 Added details{' '}
-                <span className="text-muted-foreground">(optional)</span>
+                <span className="text-foreground-muted">(optional)</span>
               </FieldLabel>
               <Textarea
                 id="targetMarketDetail"

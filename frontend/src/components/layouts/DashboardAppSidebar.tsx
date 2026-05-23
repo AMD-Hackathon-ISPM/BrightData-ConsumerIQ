@@ -1,5 +1,4 @@
-import { IconLogout } from "@tabler/icons-react";
-import { MessageSquare } from "lucide-react";
+import { IconLogout, IconMessageCircle } from "@tabler/icons-react";
 
 import {
     Sidebar,
@@ -34,18 +33,18 @@ export function DashboardAppSidebar({
         <Sidebar collapsible="icon">
             <SidebarHeader className="border-b border-sidebar-border px-2 py-2">
                 <div className="flex h-8 items-center gap-2 pl-2 pr-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-                    <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-foreground group-data-[collapsible=icon]:hidden">
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-foreground-default group-data-[collapsible=icon]:hidden">
                         ConsumerIQ
                     </span>
-                    <SidebarTrigger className="shrink-0 rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8" />
+                    <SidebarTrigger className="shrink-0 rounded-md text-foreground-lighter hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8" />
                 </div>
-                <p className="px-2 pb-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground group-data-[collapsible=icon]:hidden">
+                <p className="px-2 pb-1 text-[10px] uppercase tracking-[0.16em] text-foreground-lighter group-data-[collapsible=icon]:hidden">
                     Market Intelligence
                 </p>
             </SidebarHeader>
 
             <SidebarContent>
-                <SidebarGroup className="pt-2 font-medium text-muted-foreground">
+                <SidebarGroup className="pt-2 font-medium text-foreground-lighter">
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {navItems.map((item) => {
@@ -77,7 +76,7 @@ export function DashboardAppSidebar({
                                 onClick={onToggleChat}
                                 tooltip="Founder Chat"
                             >
-                                <MessageSquare className="size-4" />
+                                <IconMessageCircle className="size-4" stroke={1.8} />
                                 <span>Founder Chat</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

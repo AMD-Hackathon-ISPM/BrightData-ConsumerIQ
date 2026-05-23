@@ -60,7 +60,7 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 flex w-[calc(100vw-2rem)] max-w-[420px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-border/80 bg-popover text-foreground shadow-lg duration-200 outline-none data-[size=sm]:max-w-80 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 flex w-[calc(100vw-2rem)] max-w-[420px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-border-default/80 bg-background-dialog-default text-foreground-default shadow-lg duration-200 outline-none data-[size=sm]:max-w-80 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
@@ -68,7 +68,7 @@ function AlertDialogContent({
         {children}
         <AlertDialogPrimitive.Cancel data-slot="alert-dialog-close" asChild>
           <Button
-            className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+            className="absolute top-3 right-3 text-foreground-muted hover:text-foreground-default"
             size="icon-sm"
             type="button"
             variant="ghost"
@@ -90,7 +90,7 @@ function AlertDialogHeader({
     <div
       data-slot="alert-dialog-header"
       className={cn(
-        "border-b border-border/80 px-4 py-4 pr-12 text-left md:px-6",
+        "border-b border-border-default/80 px-4 py-4 pr-12 text-left md:px-6",
         className
       )}
       {...props}
@@ -106,7 +106,7 @@ function AlertDialogFooter({
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 border-t border-border/80 bg-popover px-4 py-4 md:px-5 sm:flex-row sm:justify-end",
+        "flex flex-col-reverse gap-2 border-t border-border-default/80 bg-background-dialog-default px-4 py-4 md:px-5 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -138,7 +138,7 @@ function AlertDialogTitle({
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
       className={cn(
-        "font-heading text-base font-medium text-foreground",
+        "font-heading text-base font-medium text-foreground-default",
         className
       )}
       {...props}
@@ -154,7 +154,7 @@ function AlertDialogDescription({
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
       className={cn(
-        "px-4 py-4 text-sm text-default md:px-5 *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        "px-4 py-4 text-sm text-default md:px-5 *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground-default",
         className
       )}
       {...props}

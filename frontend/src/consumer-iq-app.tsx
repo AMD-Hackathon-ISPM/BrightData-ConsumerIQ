@@ -75,7 +75,7 @@ export function ConsumerIQExperience() {
         }}
         panelRef={chatPanelRef}
       >
-        <Suspense fallback={<div className="h-full bg-background" />}>
+        <Suspense fallback={<div className="h-full bg-background-default" />}>
           <FounderChat isOpen={isChatOpen} onToggle={handleToggleChat} />
         </Suspense>
       </ResizablePanel>
@@ -105,7 +105,7 @@ export function ConsumerIQExperience() {
         }}
         panelRef={chatPanelRef}
       >
-        <Suspense fallback={<div className="h-full bg-background" />}>
+        <Suspense fallback={<div className="h-full bg-background-default" />}>
           <FounderChat
             className="border-t border-l-0"
             isOpen={isChatOpen}
@@ -127,7 +127,7 @@ export function ConsumerIQExperience() {
         />
       }
       brand={
-        <span className="text-sm font-semibold tracking-tight text-foreground">
+        <span className="text-sm font-semibold tracking-tight text-foreground-default">
           ConsumerIQ
         </span>
       }

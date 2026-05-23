@@ -59,7 +59,7 @@ function DialogContent({
             <DialogPrimitive.Content
                 data-slot="dialog-content"
                 className={cn(
-                    "fixed top-1/2 left-1/2 z-50 w-[calc(100vw-2rem)] max-w-[420px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-border/80 bg-popover text-foreground shadow-lg duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+                    "fixed top-1/2 left-1/2 z-50 w-[calc(100vw-2rem)] max-w-[420px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-border-default/80 bg-background-dialog-default text-foreground-default shadow-lg duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
                     className,
                 )}
                 {...props}
@@ -68,7 +68,7 @@ function DialogContent({
                 {showCloseButton ? (
                     <DialogPrimitive.Close data-slot="dialog-close" asChild>
                         <Button
-                            className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+                            className="absolute top-3 right-3 text-foreground-muted hover:text-foreground-default"
                             size="icon-sm"
                             type="button"
                             variant="ghost"
@@ -88,7 +88,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
         <div
             data-slot="dialog-header"
             className={cn(
-                "border-b border-border/80 px-4 py-4 md:px-6",
+                "border-b border-border-default/80 px-4 py-4 md:px-6",
                 className,
             )}
             {...props}
@@ -114,7 +114,7 @@ function DialogTitle({
         <DialogPrimitive.Title
             data-slot="dialog-title"
             className={cn(
-                "font-heading text-base font-medium text-foreground",
+                "font-heading text-base font-medium text-foreground-default",
                 className,
             )}
             {...props}
@@ -129,7 +129,7 @@ function DialogDescription({
     return (
         <DialogPrimitive.Description
             data-slot="dialog-description"
-            className={cn("text-sm text-muted-foreground", className)}
+            className={cn("text-sm text-foreground-muted", className)}
             {...props}
         />
     );

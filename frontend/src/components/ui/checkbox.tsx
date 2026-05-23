@@ -12,7 +12,7 @@ function Checkbox({
         <CheckboxPrimitive.Root
             data-slot="checkbox"
             className={cn(
-                "peer size-4 shrink-0 rounded-[4px] border border-border bg-card shadow-sm outline-none transition-[color,box-shadow,border-color] focus-visible:border-sidebar-ring focus-visible:ring-3 focus-visible:ring-sidebar-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 cursor-pointer",
+                "peer size-4 shrink-0 rounded-[4px] border border-border-default bg-background-surface-100 shadow-sm outline-none transition-[color,box-shadow,border-color] focus-visible:border-sidebar-ring focus-visible:ring-3 focus-visible:ring-sidebar-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-brand-default data-[state=checked]:bg-brand-default data-[state=checked]:text-foreground-contrast aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 cursor-pointer",
                 className,
             )}
             {...props}
