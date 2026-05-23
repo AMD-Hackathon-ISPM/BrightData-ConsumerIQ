@@ -14,7 +14,7 @@ import {
     SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
-import { navItems, type DashboardSection } from "@/features/dashboard/constants";
+import { navGroups, type DashboardSection } from "@/features/dashboard/constants";
 
 interface DashboardAppSidebarProps {
     active: DashboardSection;
@@ -41,28 +41,37 @@ export function DashboardAppSidebar({
             </SidebarHeader>
 
             <SidebarContent>
-                <SidebarGroup className="pt-2 font-medium text-foreground-lighter">
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {navItems.map((item) => {
-                                const Icon = item.icon;
-                                const isActive = active === item.id;
-                                return (
-                                    <SidebarMenuItem key={item.id}>
-                                        <SidebarMenuButton
-                                            isActive={isActive}
-                                            onClick={() => onActiveChange(item.id)}
-                                            tooltip={item.label}
-                                        >
-                                            <Icon className="size-4" />
-                                            <span>{item.label}</span>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                );
-                            })}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
+                {navGroups.map((group, groupIndex) => (
+                    <SidebarGroup
+                        key={group[0].id}
+                        className={
+                            groupIndex === 0
+                                ? "pt-3 font-medium text-foreground-lighter"
+                                : "font-medium text-foreground-lighter"
+                        }
+                    >
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {group.map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = active === item.id;
+                                    return (
+                                        <SidebarMenuItem key={item.id}>
+                                            <SidebarMenuButton
+                                                isActive={isActive}
+                                                onClick={() => onActiveChange(item.id)}
+                                                tooltip={item.label}
+                                            >
+                                                <Icon className="size-4" />
+                                                <span>{item.label}</span>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                    );
+                                })}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                ))}
             </SidebarContent>
 
             <SidebarFooter className="border-t border-sidebar-border">

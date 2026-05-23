@@ -8,6 +8,7 @@ import {
   SignupStep,
 } from "./founder-form";
 import { AnimatedPage } from "@/components/animated-page";
+import { Button } from "@/components/ui/button";
 import { submitFounderForm } from "./founder-form/api";
 import { useAuth } from "@/lib/auth";
 import type { FounderFormPayload, FounderFormState } from "./founder-form/types";
@@ -96,7 +97,17 @@ export function ConsumerIQOnboarding({
   const isResearchGoalsValid = formState.researchGoals.length > 0
 
   return (
-    <main className="min-h-screen bg-background-default text-foreground-default">
+    <main className="relative min-h-screen bg-background-default text-foreground-default">
+      {import.meta.env.DEV ? (
+        <Button
+          className="fixed right-4 top-4 z-50 text-xs text-foreground-lighter"
+          onClick={onComplete}
+          size="sm"
+          variant="ghost"
+        >
+          Skip (debug)
+        </Button>
+      ) : null}
       <div className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-6 py-10">
         <AnimatedPage
           className="flex w-full justify-center"
