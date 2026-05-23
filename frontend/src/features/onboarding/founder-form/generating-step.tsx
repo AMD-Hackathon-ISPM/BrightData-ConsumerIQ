@@ -1,198 +1,121 @@
-import { useEffect, useState } from 'react'
-import { CheckCircle2, Database, LoaderCircle, Zap } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { MiniMetric, ProgressBar } from './shared'
+import { StatusLine } from './shared'
 
 type GeneratingStepProps = {
   onComplete: () => void
   submitStatus: 'idle' | 'submitting' | 'success' | 'error'
   formId: string | null
+  region?: string
+  industry?: string
 }
 
 export function GeneratingStep({
   onComplete,
   submitStatus,
   formId,
+  region,
+  industry,
 }: GeneratingStepProps) {
-  const [progress, setProgress] = useState(18)
-  const [isVisible, setIsVisible] = useState(false)
+  const lines = useMemo(() => {
+    const scopeLabel = industry?.toLowerCase() ?? 'category'
+    const firstLine =
+      region && industry
+        ? `Scanning ${region} marketplaces for ${scopeLabel} listings…`
+        : 'Scanning marketplace listings…'
+    return [
+      firstLine,
+      '47 listings found across 23 brands',
+      'Reading 1,247 verified-purchase reviews…',
+      'Identifying customer patterns',
+      'Cross-referencing social demand signals',
+      'Detecting market gaps',
+      'Building your dashboard',
+    ]
+  }, [region, industry])
+
+  const [revealed, setRevealed] = useState(0)
 
   useEffect(() => {
-    const firstFrame = window.requestAnimationFrame(() => setIsVisible(true))
-    const progressTimer = window.setInterval(() => {
-      setProgress((current) => {
-        if (current >= 93) {
-          window.clearInterval(progressTimer)
-          return 93
-        }
+    if (revealed >= lines.length) return
+    const timeoutId = window.setTimeout(
+      () => setRevealed((current) => current + 1),
+      revealed === 0 ? 600 : 950,
+    )
+    return () => window.clearTimeout(timeoutId)
+  }, [revealed, lines.length])
 
-        return Math.min(93, current + 5)
-      })
-    }, 180)
-
-    return () => {
-      window.cancelAnimationFrame(firstFrame)
-      window.clearInterval(progressTimer)
-    }
-  }, [])
-
-  const processRows = [
-    'Establishing secure connection',
-    'Connecting API infrastructure',
-    'Syncing historical market data',
-    'Optimizing predictive algorithms',
-    'Running Bright Data synthesis',
-  ]
-  const activeIndex = Math.min(
-    processRows.length - 1,
-    Math.floor((progress / 100) * processRows.length),
-  )
-  const ringAngle = progress * 3.6
+  const allDone = revealed >= lines.length
 
   return (
-    <div className="w-full max-w-3xl text-center">
-      <ProgressBar value={progress} />
-      <h1
-        className={cn(
-          'mt-12 text-3xl font-semibold tracking-tight transition-all duration-500 ease-out',
-          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
-        )}
-      >
-        Building your Intelligence Engine...
-      </h1>
-      <p
-        className={cn(
-          'mx-auto mt-4 max-w-sm text-muted-foreground transition-all delay-100 duration-500 ease-out',
-          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
-        )}
-      >
-        We're synthesizing your custom market parameters into a live,
-        predictive data model.
-      </p>
-
+    <div className="mx-auto w-full max-w-xl">
       <div
-        className={cn(
-          'relative mx-auto mt-12 grid size-44 place-items-center transition-all delay-150 duration-700 ease-out will-change-transform',
-          isVisible ? 'scale-100 opacity-100' : 'scale-90 opacity-0',
-        )}
+        aria-hidden
+        className="relative mx-auto mb-12 grid size-24 place-items-center"
       >
-        <div
-          className="absolute inset-0 rounded-full transition-all duration-500 ease-out"
+        <span
+          className="absolute inset-0 rounded-full bg-foreground/[0.04]"
+          style={{ animation: 'pulse 2.4s ease-in-out infinite' }}
+        />
+        <span
+          className="absolute inset-[14px] rounded-full bg-foreground/[0.08]"
           style={{
-            background: `conic-gradient(var(--foreground) ${ringAngle}deg, var(--muted) ${ringAngle}deg 360deg)`,
+            animation: 'pulse 2.4s ease-in-out infinite',
+            animationDelay: '0.4s',
           }}
         />
-        <div className="absolute inset-[18px] rounded-full bg-background" />
-        <div
-          className="absolute -inset-2 rounded-full border border-transparent border-t-foreground/80"
-          style={{ animation: 'spin 1.6s linear infinite' }}
-        />
-        <div
-          className="absolute inset-5 rounded-full border border-border/70"
-          style={{ animation: 'pulse 1.8s ease-in-out infinite' }}
-        />
-        <span className="relative text-3xl font-semibold">93%</span>
+        <span className="size-3 rounded-full bg-foreground/80" />
       </div>
 
-      <div
-        className={cn(
-          'mx-auto mt-10 max-w-xl rounded-xl border bg-card p-5 text-left transition-all delay-200 duration-500 ease-out',
-          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0',
-        )}
-      >
-        <div className="mb-5 flex items-center justify-between">
-          <p className="text-xs font-medium uppercase tracking-[0.22em]">
-            System Processes
-          </p>
-          <p className="font-mono text-xs">{activeIndex + 1}/5 Active</p>
-        </div>
-        {processRows.map((label, index) => {
-          const status =
-            progress >= 93 || index < activeIndex
-              ? 'DONE'
-              : index === activeIndex
-                ? 'RUNNING'
-                : 'QUEUED'
+      <div className="text-center">
+        <h1 className="text-2xl font-medium tracking-tight text-foreground">
+          Assembling your notebook
+        </h1>
+        <p className="mt-3 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">
+          Usually takes 60–90 seconds
+        </p>
+      </div>
 
+      <div className="mx-auto mt-12 max-w-md space-y-3">
+        {lines.map((line, index) => {
+          if (index > revealed) return null
+          const state =
+            index < revealed - 1 || allDone
+              ? 'done'
+              : index === revealed - 1
+                ? 'running'
+                : 'queued'
           return (
-            <div
-              className={cn(
-                'flex items-center justify-between py-2 text-sm transition-all duration-500 ease-out',
-                isVisible ? 'translate-x-0 opacity-100' : '-translate-x-3 opacity-0',
-              )}
-              key={label}
-              style={{ transitionDelay: `${250 + index * 90}ms` }}
-            >
-              <span className="flex items-center gap-3">
-                {status === 'DONE' ? (
-                  <CheckCircle2 className="size-4" />
-                ) : (
-                  <LoaderCircle
-                    className="size-4"
-                    style={{ animation: 'spin 1s linear infinite' }}
-                  />
-                )}
-                {label}
-              </span>
-              <span
-                className={cn(
-                  'rounded bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground',
-                )}
-                style={
-                  status !== 'DONE'
-                    ? { animation: 'pulse 1.4s ease-in-out infinite' }
-                    : undefined
-                }
-              >
-                {status}
-              </span>
-            </div>
+            <StatusLine key={line} state={state}>
+              {line}
+            </StatusLine>
           )
         })}
       </div>
 
-      <div className="mt-9 grid justify-items-center gap-3">
+      <div className="mt-14 flex flex-col items-center gap-4">
         {submitStatus === 'success' && formId ? (
-          <div className="rounded-lg border bg-card px-4 py-3 text-sm">
-            <span className="text-muted-foreground">Form id</span>
-            <span className="ml-2 font-semibold text-foreground">{formId}</span>
-          </div>
+          <p className="font-mono text-xs text-muted-foreground">
+            <span className="opacity-70">Run id</span>{' '}
+            <span className="text-foreground">{formId}</span>
+          </p>
         ) : null}
         {submitStatus === 'error' ? (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            Submission failed. Please retry.
-          </div>
+          <p className="text-sm text-destructive">
+            Submission failed. You can still open the dashboard.
+          </p>
         ) : null}
         <Button
-          className={cn(
-            'h-12 min-w-56 bg-foreground text-background transition-all duration-300 hover:scale-[1.02] hover:bg-foreground/90 active:scale-[0.99]',
-            isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
-          )}
           onClick={onComplete}
-          disabled={submitStatus === 'submitting'}
+          disabled={submitStatus === 'submitting' || !allDone}
+          className={cn(
+            'h-11 min-w-48 gap-2 px-5 transition-opacity duration-500',
+            allDone ? 'opacity-100' : 'opacity-60',
+          )}
         >
-          {submitStatus === 'submitting'
-            ? 'Submitting...'
-            : submitStatus === 'success'
-              ? 'Continue to dashboard'
-              : submitStatus === 'error'
-                ? 'Retry submission'
-                : 'Launch Dashboard'}
+          {submitStatus === 'submitting' ? 'Submitting…' : 'Open dashboard'}
         </Button>
-      </div>
-      <div
-        className={cn(
-          'mx-auto mt-7 grid max-w-xl gap-4 transition-all delay-300 duration-500 ease-out sm:grid-cols-2',
-          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
-        )}
-      >
-        <MiniMetric icon={<Zap className="size-5" />} label="Speed" value="0.4s Latency" />
-        <MiniMetric
-          icon={<Database className="size-5" />}
-          label="Data Points"
-          value="12.4M Analyzed"
-        />
       </div>
     </div>
   )

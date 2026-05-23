@@ -1,4 +1,5 @@
-export { AnalysisStep } from './analysis-step'
+export { BusinessSetupStep } from './business-setup-step'
 export { GeneratingStep } from './generating-step'
+export { ProductContextStep } from './product-context-step'
+export { ResearchGoalsStep } from './research-goals-step'
 export { SignupStep } from './signup-step'
-export { WhiteSpaceStep } from './white-space-step'

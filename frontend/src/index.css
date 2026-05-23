@@ -60,7 +60,7 @@
   --secondary: #ffffff;
   --secondary-foreground: #3c3836;
   --muted: #ffffff;
-  --muted-foreground: #7c6f64;
+  --muted-foreground: #928374;
   --accent: #d5c4a1;
   --accent-foreground: #3c3836;
   --destructive: #cc241d;
@@ -95,7 +95,7 @@
   --secondary: #3c3836;
   --secondary-foreground: #ffffff;
   --muted: #3c3836;
-  --muted-foreground: #ffffff;
+  --muted-foreground: #a89984;
   --accent: #504945;
   --accent-foreground: #ffffff;
   --destructive: #fb4934;
@@ -135,6 +135,12 @@
   }
   strong, b {
     font-weight: 600;
+  }
+  /* All field placeholders use the muted text color, full opacity */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted-foreground);
+    opacity: 1;
   }
 }
 

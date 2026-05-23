@@ -4,6 +4,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { AuthProvider } from '@/lib/auth'
 import './index.css'
 import App from './App.tsx'
 
@@ -19,8 +20,10 @@ createRoot(rootElement).render(
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <App />
-          <Toaster richColors />
+          <AuthProvider>
+            <App />
+            <Toaster richColors />
+          </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

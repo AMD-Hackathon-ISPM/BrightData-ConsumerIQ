@@ -1,135 +1,184 @@
 import type { ReactNode } from 'react'
-import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 
 export function ProgressBar({ value }: { value: number }) {
   return (
-    <div className="h-1 overflow-hidden rounded-full bg-muted">
+    <div aria-hidden className="relative h-px w-full overflow-hidden bg-border">
       <div
-        className="h-full rounded-full bg-foreground transition-all duration-700 ease-out"
+        className="absolute inset-y-0 left-0 bg-foreground/70 transition-all duration-700 ease-out"
         style={{ width: `${value}%` }}
       />
     </div>
   )
 }
 
-export function Field({ children, label }: { children: ReactNode; label: string }) {
+export function StepContext({ items }: { items: string[] }) {
+  const filtered = items.filter((entry) => entry && entry.trim().length > 0)
+  if (filtered.length === 0) {
+    return null
+  }
   return (
-    <label className="grid gap-2">
-      <span className="text-xs font-medium uppercase tracking-[0.16em]">
-        {label}
-      </span>
-      {children}
-    </label>
-  )
-}
-
-export function BasicSelect({
-  placeholder,
-  values,
-  value,
-  onValueChange,
-}: {
-  placeholder: string
-  values: string[]
-  value?: string
-  onValueChange?: (value: string) => void
-}) {
-  return (
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className="h-11 w-full">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {values.map((value) => (
-          <SelectItem key={value} value={value}>
-            {value}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
-
-export function StepActions({
-  onBack,
-  onNext,
-  isNextDisabled,
-}: {
-  onBack: () => void
-  onNext: () => void
-  isNextDisabled?: boolean
-}) {
-  return (
-    <div className="mt-3 flex items-center justify-between border-t pt-6">
-      <Button onClick={onBack} variant="outline">
-        Back
-      </Button>
-      <Button
-        className="bg-foreground text-background hover:bg-foreground/90"
-        onClick={onNext}
-        disabled={isNextDisabled}
-      >
-        Continue
-        <ArrowRight className="size-4" />
-      </Button>
-    </div>
+    <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+      {filtered.map((entry, index) => (
+        <span key={entry}>
+          {index > 0 ? <span className="px-2 opacity-50">·</span> : null}
+          {entry}
+        </span>
+      ))}
+    </p>
   )
 }
 
 export function OnboardingShell({
   children,
-  footer,
+  step,
+  totalSteps,
   progress,
+  context,
 }: {
   children: ReactNode
-  footer: string
+  step?: number
+  totalSteps?: number
   progress: number
+  context?: ReactNode
 }) {
+  const showStep = typeof step === 'number' && typeof totalSteps === 'number'
   return (
-    <div className="w-full max-w-2xl overflow-hidden rounded-xl border bg-card shadow-sm">
-      <div className="p-10">
+    <div className="w-full max-w-2xl">
+      {showStep || context ? (
+        <div className="mb-6 flex items-center justify-between">
+          {showStep ? (
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              Step {String(step).padStart(2, '0')} /{' '}
+              {String(totalSteps).padStart(2, '0')}
+            </span>
+          ) : (
+            <span />
+          )}
+          {context}
+        </div>
+      ) : null}
+      <div className="overflow-hidden rounded-xl border bg-card">
         <ProgressBar value={progress} />
-        <div className="mt-8">{children}</div>
-      </div>
-      <div className="flex items-center justify-between border-t bg-muted/35 px-10 py-4 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-        <span className="flex items-center gap-2">
-          <span className="size-3 rounded-sm bg-muted-foreground" />
-          {footer}
-        </span>
-        <span>Secure Transmission</span>
+        <div className="px-8 py-10 sm:px-10 sm:py-12">{children}</div>
       </div>
     </div>
   )
 }
 
-export function MiniMetric({
-  icon,
-  label,
+export function ChipToggleGroup({
+  options,
   value,
+  onChange,
 }: {
-  icon: ReactNode
-  label: string
-  value: string
+  options: string[]
+  value: string[]
+  onChange: (next: string[]) => void
+}) {
+  const toggle = (option: string) => {
+    if (value.includes(option)) {
+      onChange(value.filter((entry) => entry !== option))
+    } else {
+      onChange([...value, option])
+    }
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => {
+        const selected = value.includes(option)
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => toggle(option)}
+            aria-pressed={selected}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm transition-colors',
+              selected
+                ? 'border-foreground bg-foreground text-background'
+                : 'border-border bg-card text-foreground hover:border-foreground/40 hover:bg-accent/30',
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'inline-block size-1.5 rounded-full',
+                selected ? 'bg-background' : 'bg-muted-foreground/40',
+              )}
+            />
+            {option}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export function StatusLine({
+  children,
+  state,
+  delayMs = 0,
+}: {
+  children: ReactNode
+  state: 'queued' | 'running' | 'done'
+  delayMs?: number
 }) {
   return (
-    <div className="flex items-center gap-4 rounded-lg border bg-card p-4 text-left">
-      <span className="grid size-10 place-items-center rounded-md bg-muted">
-        {icon}
+    <div
+      className={cn(
+        'flex items-baseline gap-3 font-mono text-sm transition-all duration-500 ease-out',
+        state === 'queued' && 'translate-y-1 opacity-30',
+        state === 'running' && 'translate-y-0 text-foreground opacity-100',
+        state === 'done' && 'translate-y-0 text-muted-foreground opacity-80',
+      )}
+      style={{ transitionDelay: `${delayMs}ms` }}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          state === 'done' ? 'text-foreground/70' : 'text-muted-foreground',
+        )}
+      >
+        →
       </span>
-      <div>
-        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-          {label}
-        </p>
-        <p className="font-semibold">{value}</p>
-      </div>
+      <span className="leading-relaxed">{children}</span>
+    </div>
+  )
+}
+
+export function StepFooter({
+  onBack,
+  isSubmitting,
+  isDisabled,
+  primaryLabel = 'Continue',
+}: {
+  onBack?: () => void
+  isSubmitting?: boolean
+  isDisabled?: boolean
+  primaryLabel?: string
+}) {
+  return (
+    <div className="mt-2 flex items-center justify-between gap-3 pt-2">
+      {onBack ? (
+        <Button
+          variant="outline"
+          type="button"
+          onClick={onBack}
+          disabled={isSubmitting}
+        >
+          Back
+        </Button>
+      ) : (
+        <span />
+      )}
+      <Button
+        variant="submit"
+        type="submit"
+        disabled={isDisabled || isSubmitting}
+      >
+        {primaryLabel}
+      </Button>
     </div>
   )
 }

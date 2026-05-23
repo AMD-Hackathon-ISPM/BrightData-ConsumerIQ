@@ -1,7 +1,6 @@
 import { nanoid } from "nanoid";
 import type { MessageType } from "../types";
 
-// isinya masih dummy data semua
 export const initialSources = [
   {
     href: "https://example.com/consumeriq/review-drivers",

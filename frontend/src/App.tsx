@@ -1,7 +1,10 @@
 import { ConsumerIQExperience } from '@/consumer-iq-app'
+import { AuthGate } from '@/features/auth/AuthGate'
+import { useAuth } from '@/lib/auth'
 
 function App() {
-  return <ConsumerIQExperience />
+  const { user } = useAuth()
+  return user ? <ConsumerIQExperience /> : <AuthGate />
 }
 
 export default App

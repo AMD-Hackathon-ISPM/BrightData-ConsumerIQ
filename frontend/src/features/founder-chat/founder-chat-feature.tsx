@@ -10,19 +10,13 @@ import {
   initialMessages,
   suggestions,
 } from '@/features/llm-chat/data/chat-content'
+import { delay, streamText } from '@/features/llm-chat/lib/streaming'
 import type { ChatStatus, MessageType } from '@/features/llm-chat/types'
 import { cn } from '@/lib/utils'
 import { getTaskStatus, startMarketScan } from './api'
 
-const STREAM_FRAME_MS = 16
-const STREAM_CHARS_PER_FRAME = 8
-const TASK_POLL_MS = 1200
+const TASK_POLL_INTERVALS_MS = [1200, 2000, 3500, 5000]
 const TASK_TIMEOUT_MS = 60000
-
-const delay = (ms: number) =>
-  new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms)
-  })
 
 const formatSection = (label: string, value: unknown) => {
   if (!value || (typeof value === 'object' && Object.keys(value as object).length === 0)) {
@@ -65,6 +59,8 @@ export function FounderChat({
 }) {
   const streamAbortRef = useRef(false)
   const pendingResponseTimeoutRef = useRef<number | null>(null)
+  const activeRequestIdRef = useRef(0)
+  const abortControllerRef = useRef<AbortController | null>(null)
   const [text, setText] = useState('')
   const [status, setStatus] = useState<ChatStatus>('ready')
   const [messages, setMessages] = useState<MessageType[]>(initialMessages)
@@ -93,27 +89,33 @@ export function FounderChat({
   )
 
   const streamResponse = useCallback(
-    async (messageId: string, content: string) => {
-      streamAbortRef.current = false
+    async (
+      messageId: string,
+      content: string,
+      requestId: number,
+      signal: AbortSignal,
+    ) => {
+      if (signal.aborted || requestId !== activeRequestIdRef.current) {
+        return
+      }
+
       setStatus('streaming')
       setStreamingMessageId(messageId)
 
-      let currentContent = ''
+      const completed = await streamText({
+        content,
+        signal,
+        isCanceled: () =>
+          streamAbortRef.current || requestId !== activeRequestIdRef.current,
+        onChunk: (chunk) => updateMessageContent(messageId, chunk),
+      })
 
-      for (
-        let index = STREAM_CHARS_PER_FRAME;
-        index <= content.length + STREAM_CHARS_PER_FRAME;
-        index += STREAM_CHARS_PER_FRAME
+      if (
+        !completed ||
+        signal.aborted ||
+        requestId !== activeRequestIdRef.current
       ) {
-        if (streamAbortRef.current) {
-          setStatus('ready')
-          setStreamingMessageId(null)
-          return
-        }
-
-        currentContent = content.slice(0, index)
-        updateMessageContent(messageId, currentContent)
-        await delay(STREAM_FRAME_MS)
+        return
       }
 
       setStatus('ready')
@@ -123,15 +125,20 @@ export function FounderChat({
   )
 
   const pollTaskResult = useCallback(
-    async (taskId: string) => {
+    async (taskId: string, requestId: number, signal: AbortSignal) => {
       const startedAt = Date.now()
+      let attempt = 0
 
       while (Date.now() - startedAt < TASK_TIMEOUT_MS) {
-        if (streamAbortRef.current) {
+        if (
+          streamAbortRef.current ||
+          signal.aborted ||
+          requestId !== activeRequestIdRef.current
+        ) {
           return null
         }
 
-        const response = await getTaskStatus(taskId)
+        const response = await getTaskStatus(taskId, signal)
         if (response.status === 'completed') {
           const result = response.result ?? null
           if (result && typeof result === 'object') {
@@ -144,7 +151,16 @@ export function FounderChat({
           return result
         }
 
-        await delay(TASK_POLL_MS)
+        const waitMs =
+          TASK_POLL_INTERVALS_MS[
+            Math.min(attempt, TASK_POLL_INTERVALS_MS.length - 1)
+          ]
+        attempt += 1
+
+        const completed = await delay(waitMs, signal)
+        if (!completed) {
+          return null
+        }
       }
 
       throw new Error('Request timed out')
@@ -182,33 +198,74 @@ export function FounderChat({
         versions: [{ content: prompt, id: nanoid() }],
       }
 
+      if (pendingResponseTimeoutRef.current !== null) {
+        window.clearTimeout(pendingResponseTimeoutRef.current)
+        pendingResponseTimeoutRef.current = null
+      }
+
+      abortControllerRef.current?.abort()
+      const requestId = activeRequestIdRef.current + 1
+      activeRequestIdRef.current = requestId
+      const abortController = new AbortController()
+      abortControllerRef.current = abortController
       streamAbortRef.current = false
       setMessages((previousMessages) => [...previousMessages, userMessage])
 
       pendingResponseTimeoutRef.current = window.setTimeout(() => {
         pendingResponseTimeoutRef.current = null
 
-        if (streamAbortRef.current) {
+        if (
+          streamAbortRef.current ||
+          abortController.signal.aborted ||
+          requestId !== activeRequestIdRef.current
+        ) {
           return
         }
 
         void (async () => {
           const assistantMessageId = createAssistantMessage()
           try {
-            const scanResponse = await startMarketScan(prompt)
-            const result = await pollTaskResult(scanResponse.taskId)
-            if (!result) {
+            const scanResponse = await startMarketScan(
+              prompt,
+              abortController.signal,
+            )
+            const result = await pollTaskResult(
+              scanResponse.taskId,
+              requestId,
+              abortController.signal,
+            )
+            if (
+              !result ||
+              abortController.signal.aborted ||
+              requestId !== activeRequestIdRef.current
+            ) {
               return
             }
             const formatted = formatInsights(result)
-            await streamResponse(assistantMessageId, formatted)
-          } catch (error) {
+            await streamResponse(
+              assistantMessageId,
+              formatted,
+              requestId,
+              abortController.signal,
+            )
+          } catch (_error) {
+            if (
+              abortController.signal.aborted ||
+              requestId !== activeRequestIdRef.current
+            ) {
+              return
+            }
+
             updateMessageContent(
               assistantMessageId,
               'Unable to fetch insights right now. Please try again.',
             )
             setStatus('ready')
             setStreamingMessageId(null)
+          } finally {
+            if (requestId === activeRequestIdRef.current) {
+              abortControllerRef.current = null
+            }
           }
         })()
       }, 300)
@@ -258,6 +315,9 @@ export function FounderChat({
 
   const handleStop = useCallback(() => {
     streamAbortRef.current = true
+    activeRequestIdRef.current += 1
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
 
     if (pendingResponseTimeoutRef.current !== null) {
       window.clearTimeout(pendingResponseTimeoutRef.current)
@@ -272,6 +332,9 @@ export function FounderChat({
   useEffect(
     () => () => {
       streamAbortRef.current = true
+      activeRequestIdRef.current += 1
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = null
 
       if (pendingResponseTimeoutRef.current !== null) {
         window.clearTimeout(pendingResponseTimeoutRef.current)

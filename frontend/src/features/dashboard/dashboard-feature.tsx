@@ -1,11 +1,11 @@
-import { ChevronRight, Menu, MessageSquare, Search } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { SectionFade } from "@/components/animated-page";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { type DashboardSection, navItems } from "./constants";
 import { getSectionLabel, getSectionTitle } from "./data/dashboard-copy";
 import { searchSuggestions } from "./data/dashboard-search";
@@ -17,18 +17,17 @@ import {
   MarketOverview,
   PersonaDecode,
 } from "./components/dashboard-sections";
-import { MobileSidebarNav } from "./components/mobile-sidebar-nav";
 
 export function ConsumerIQDashboard({
   className,
-  onToggleChat,
+  active,
+  onActiveChange,
 }: {
   className?: string;
-  onToggleChat?: () => void;
+  active: DashboardSection;
+  onActiveChange: (next: DashboardSection) => void;
 }) {
-  const [active, setActive] = useState<DashboardSection>("dashboard");
-  const isNavDesktop = useMediaQuery("(min-width: 768px)");
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const setActive = onActiveChange;
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -101,63 +100,10 @@ export function ConsumerIQDashboard({
         className
       )}
     >
-      {isNavDesktop ? (
-        <aside className="flex h-full w-56 shrink-0 flex-col border-r bg-sidebar px-4 py-5 text-sidebar-foreground">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">ConsumerIQ</h1>
-            <p className="mt-0.5 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              Market Intelligence
-            </p>
-          </div>
-
-          <nav className="mt-8 grid gap-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = active === item.id;
-
-              return (
-                <button
-                  className={cn(
-                    "flex h-10 items-center gap-3 rounded-lg px-3 text-left text-sm transition-colors duration-200 ease-out",
-                    isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                  key={item.id}
-                  onClick={() => setActive(item.id)}
-                  type="button"
-                >
-                  <Icon className="size-4" />
-                  <span className="font-medium">{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="mt-auto border-t pt-6">
-            <Button
-              className="w-full bg-foreground text-background hover:bg-foreground/90"
-              onClick={onToggleChat}
-              type="button"
-            >
-              <MessageSquare className="size-4" />
-              Founder Chat
-            </Button>
-          </div>
-        </aside>
-      ) : (
-        <MobileSidebarNav
-          active={active}
-          isOpen={isMobileNavOpen}
-          onChange={setActive}
-          onClose={() => setIsMobileNavOpen(false)}
-          onToggleChat={onToggleChat}
-        />
-      )}
-
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-12 items-center justify-between border-b px-4">
           <div className="flex w-full max-w-md items-center gap-3">
+            <SidebarTrigger className="md:hidden" />
             <form className="relative w-full" onSubmit={handleSearchSubmit}>
               <Input
                 className="h-9 border-border bg-muted/40 pr-10"
@@ -217,19 +163,6 @@ export function ConsumerIQDashboard({
             </form>
           </div>
 
-          <div className="ml-4 flex items-center gap-3">
-            {!isNavDesktop ? (
-              <Button
-                aria-label="Open navigation"
-                onClick={() => setIsMobileNavOpen(true)}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <Menu className="size-5" />
-              </Button>
-            ) : null}
-          </div>
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">

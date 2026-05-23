@@ -9,11 +9,12 @@ type TaskStatusResponse = {
   result?: Record<string, unknown>
 }
 
-export async function startMarketScan(categoryName: string) {
+export async function startMarketScan(categoryName: string, signal?: AbortSignal) {
   const response = await fetch(
     `/api/scan-market/${encodeURIComponent(categoryName)}`,
     {
       method: 'POST',
+      signal,
     },
   )
 
@@ -25,8 +26,8 @@ export async function startMarketScan(categoryName: string) {
   return response.json() as Promise<ScanMarketResponse>
 }
 
-export async function getTaskStatus(taskId: string) {
-  const response = await fetch(`/api/task-status/${taskId}`)
+export async function getTaskStatus(taskId: string, signal?: AbortSignal) {
+  const response = await fetch(`/api/task-status/${taskId}`, { signal })
 
   if (!response.ok) {
     const message = await response.text()

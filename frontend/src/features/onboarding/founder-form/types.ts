@@ -2,30 +2,27 @@ export type FounderFormState = {
   fullName: string
   workEmail: string
   password: string
+
   workspaceName: string
   industry: string
   region: string
-  marketplace: string
-  competitors: string[]
-  searchIntentKeywords: string
-  customerSegment: string
-  painPoint: string
+  country: string
+  targetAge: string
+  targetGender: string
+  targetMarketDetail: string
+  salesChannel: string
+
+  problemToSolve: string
+  productName: string
+  productDescription: string
+  uniqueSellingPoint: string
+  mainFeatures: string
+  competitiveAdvantage: string
   priceRangeMin: number
+  priceRangeMid: number
   priceRangeMax: number
+
+  researchGoals: string[]
 }
 
-export type FounderFormPayload = {
-  fullName: string
-  workEmail: string
-  password: string
-  workspaceName: string
-  industry: string
-  region: string
-  marketplace: string
-  competitors: string[]
-  searchIntentKeywords: string[]
-  customerSegment: string
-  painPoint: string
-  priceRangeMin: number
-  priceRangeMax: number
-}
+export type FounderFormPayload = FounderFormState

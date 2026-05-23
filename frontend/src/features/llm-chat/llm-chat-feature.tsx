@@ -20,11 +20,9 @@ import { ChatConversation } from './components/chat-conversation'
 import { ChatPanel } from './components/chat-panel'
 import { SuggestionList } from './components/suggestion-list'
 import { initialMessages, suggestions } from './data/chat-content'
-import { buildMockResponse, delay } from './lib/mock-streaming'
+import { buildMockResponse } from './lib/mock-streaming'
+import { streamText } from './lib/streaming'
 import type { ChatStatus, MessageType } from './types'
-
-const STREAM_FRAME_MS = 16
-const STREAM_CHARS_PER_FRAME = 8
 
 export function LlmChatFeature() {
   const sidebarPanelRef = useRef<PanelImperativeHandle>(null)
@@ -64,22 +62,16 @@ export function LlmChatFeature() {
       setStatus('streaming')
       setStreamingMessageId(messageId)
 
-      let currentContent = ''
+      const completed = await streamText({
+        content,
+        isCanceled: () => streamAbortRef.current,
+        onChunk: (chunk) => updateMessageContent(messageId, chunk),
+      })
 
-      for (
-        let index = STREAM_CHARS_PER_FRAME;
-        index <= content.length + STREAM_CHARS_PER_FRAME;
-        index += STREAM_CHARS_PER_FRAME
-      ) {
-        if (streamAbortRef.current) {
-          setStatus('ready')
-          setStreamingMessageId(null)
-          return
-        }
-
-        currentContent = content.slice(0, index)
-        updateMessageContent(messageId, currentContent)
-        await delay(STREAM_FRAME_MS)
+      if (!completed) {
+        setStatus('ready')
+        setStreamingMessageId(null)
+        return
       }
 
       setStatus('ready')
