@@ -63,7 +63,7 @@ export function Login({ onSwitchToRegister }: LoginProps) {
                         Welcome back
                     </h1>
                     <p className="text-sm text-balance text-foreground-light">
-                        Sign in to continue
+                        Sign in to continue.
                     </p>
                 </div>
 
@@ -100,7 +100,7 @@ export function Login({ onSwitchToRegister }: LoginProps) {
                             autoComplete="current-password"
                             id="password"
                             onChange={(event) => setPassword(event.target.value)}
-                            placeholder="••••••••"
+                            placeholder="********"
                             required
                             type={showPassword ? "text" : "password"}
                             value={password}
@@ -134,7 +134,7 @@ export function Login({ onSwitchToRegister }: LoginProps) {
                     >
                         {processing ? <Spinner data-icon="inline-start" /> : null}
                         <span className="truncate">
-                            {processing ? "Signing in..." : "Sign In"}
+                            {processing ? "Signing in..." : "Sign in"}
                         </span>
                     </Button>
                     <FieldDescription className="pt-6 text-center text-sm text-foreground-light">
@@ -144,7 +144,7 @@ export function Login({ onSwitchToRegister }: LoginProps) {
                             className="cursor-pointer font-medium text-brand-default underline-offset-4 hover:underline"
                             onClick={onSwitchToRegister}
                         >
-                            Sign Up
+                            Sign up
                         </button>
                     </FieldDescription>
                 </Field>

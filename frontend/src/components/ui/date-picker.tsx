@@ -23,7 +23,7 @@ interface DatePickerProps {
 export function DatePicker({
     value,
     onChange,
-    placeholder = "Pick a date",
+    placeholder = "Choose a date",
     className,
     invalid = false,
 }: DatePickerProps) {

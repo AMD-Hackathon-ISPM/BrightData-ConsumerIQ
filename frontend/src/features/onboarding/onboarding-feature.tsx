@@ -44,8 +44,8 @@ export function ConsumerIQOnboarding({
     uniqueSellingPoint: '',
     mainFeatures: '',
     competitiveAdvantage: '',
-    priceRangeMin: 125_000,
-    priceRangeMax: 125_000,
+    priceRangeMin: 0,
+    priceRangeMax: 0,
 
     researchGoals: [],
   })

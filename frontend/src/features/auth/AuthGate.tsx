@@ -11,7 +11,7 @@ export function AuthGate() {
 
     useEffect(() => {
         document.title =
-            mode === "login" ? "Sign In · ConsumerIQ" : "Sign Up · ConsumerIQ";
+            mode === "login" ? "Sign in - ConsumerIQ" : "Sign up - ConsumerIQ";
     }, [mode]);
 
     return (

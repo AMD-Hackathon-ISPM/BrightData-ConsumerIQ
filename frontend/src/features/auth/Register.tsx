@@ -56,7 +56,7 @@ export function Register({ onSwitchToLogin }: RegisterProps) {
                         Create your account
                     </h1>
                     <p className="text-sm text-balance text-foreground-light">
-                        Fill your account details
+                        Enter your account details to get started.
                     </p>
                 </div>
 
@@ -70,7 +70,7 @@ export function Register({ onSwitchToLogin }: RegisterProps) {
                 ) : null}
 
                 <Field>
-                    <FieldLabel htmlFor="fullname">Full Name</FieldLabel>
+                    <FieldLabel htmlFor="fullname">Full name</FieldLabel>
                     <Input
                         autoComplete="name"
                         id="fullname"
@@ -106,7 +106,7 @@ export function Register({ onSwitchToLogin }: RegisterProps) {
                             id="password"
                             minLength={8}
                             onChange={(event) => setPassword(event.target.value)}
-                            placeholder="••••••••"
+                            placeholder="********"
                             required
                             type={showPassword ? "text" : "password"}
                             value={password}
@@ -133,7 +133,7 @@ export function Register({ onSwitchToLogin }: RegisterProps) {
 
                 <Field>
                     <FieldLabel htmlFor="confirmPassword">
-                        Confirm Password
+                        Confirm password
                     </FieldLabel>
                     <div className="relative">
                         <Input
@@ -143,7 +143,7 @@ export function Register({ onSwitchToLogin }: RegisterProps) {
                             onChange={(event) =>
                                 setConfirmPassword(event.target.value)
                             }
-                            placeholder="••••••••"
+                            placeholder="********"
                             required
                             type={showConfirmPassword ? "text" : "password"}
                             value={confirmPassword}
@@ -181,7 +181,7 @@ export function Register({ onSwitchToLogin }: RegisterProps) {
                         <span className="truncate">
                             {processing
                                 ? "Creating account..."
-                                : "Create Account"}
+                                : "Create account"}
                         </span>
                     </Button>
                 </Field>
@@ -194,7 +194,7 @@ export function Register({ onSwitchToLogin }: RegisterProps) {
                             className="cursor-pointer font-medium text-brand-default underline-offset-4 hover:underline"
                             onClick={onSwitchToLogin}
                         >
-                            Sign In
+                            Sign in
                         </button>
                     </FieldDescription>
                 </Field>

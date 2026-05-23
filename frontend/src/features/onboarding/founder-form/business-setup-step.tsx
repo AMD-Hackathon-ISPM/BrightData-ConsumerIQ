@@ -2,7 +2,6 @@ import type { FormEvent } from 'react'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -42,7 +41,6 @@ const REGIONS: MarketRegion[] = [
   'North America',
   'South America',
   'Oceania',
-  'Antarctica',
 ]
 
 const GEN_RANGES = [
@@ -209,19 +207,17 @@ export function BusinessSetupStep({
 
           <Field>
             <FieldLabel htmlFor="workspaceName">
-              Workspace / brand name
+              Workspace or brand name
             </FieldLabel>
             <Input
               id="workspaceName"
               autoComplete="organization"
+              className="bg-background-surface-100 placeholder:text-foreground-muted placeholder:opacity-100 dark:bg-background-surface-100"
               placeholder="e.g. Lina's Beauty Co."
               required
               value={workspaceName}
               onChange={(event) => onWorkspaceNameChange(event.target.value)}
             />
-            <FieldDescription>
-              Shows up in your sidebar — anything that makes sense to you.
-            </FieldDescription>
             <FieldError />
           </Field>
 
@@ -229,7 +225,7 @@ export function BusinessSetupStep({
             <FieldLabel htmlFor="industry">What are you launching?</FieldLabel>
             <Select value={industry} onValueChange={onIndustryChange}>
               <SelectTrigger className="h-11 w-full" id="industry">
-                <SelectValue placeholder="Pick a category" />
+                <SelectValue placeholder="Choose a product category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -242,20 +238,13 @@ export function BusinessSetupStep({
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <FieldDescription>
-              Categories most exposed to go-to-market failure.
-            </FieldDescription>
             <FieldError />
           </Field>
 
           <FieldGroup className="rounded-lg border border-border-default bg-background-muted/20 p-5">
             <div className="-mt-1 mb-1">
               <p className="text-sm font-medium text-foreground-default">
-                Target region / market
-              </p>
-              <p className="mt-1 text-xs text-foreground-muted">
-                Country + demographic detail. Also sets your dashboard
-                currency.
+                Target market
               </p>
             </div>
 
@@ -264,7 +253,7 @@ export function BusinessSetupStep({
                 <FieldLabel htmlFor="region">Region</FieldLabel>
                 <Select value={region} onValueChange={onRegionChange}>
                   <SelectTrigger className="h-11 w-full" id="region">
-                    <SelectValue placeholder="Pick a region" />
+                    <SelectValue placeholder="Choose a region" />
                   </SelectTrigger>
                   <SelectContent>
                     {REGIONS.map((entry) => (
@@ -287,7 +276,7 @@ export function BusinessSetupStep({
                   <SelectTrigger className="h-11 w-full" id="country">
                     <SelectValue
                       placeholder={
-                        region ? 'Pick a country' : 'Pick a region first'
+                        region ? 'Choose a country' : 'Choose a region first'
                       }
                     />
                   </SelectTrigger>
@@ -305,25 +294,25 @@ export function BusinessSetupStep({
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field>
-                <FieldLabel htmlFor="targetGen">Gen Target</FieldLabel>
+                <FieldLabel htmlFor="targetGen">Target age range</FieldLabel>
                 <MultiList
                   id="targetGen"
                   onChange={onTargetGenChange}
                   options={GEN_RANGES}
-                  placeholder="Pick gen ranges"
+                  placeholder="Choose your audience age range"
                   value={targetGen}
                 />
                 <FieldError />
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="targetGender">Gender</FieldLabel>
+                <FieldLabel htmlFor="targetGender">Target gender</FieldLabel>
                 <Select
                   value={targetGender}
                   onValueChange={onTargetGenderChange}
                 >
                   <SelectTrigger className="h-11 w-full" id="targetGender">
-                    <SelectValue placeholder="Pick a gender" />
+                    <SelectValue placeholder="Choose the target gender" />
                   </SelectTrigger>
                   <SelectContent>
                     {GENDERS.map((entry) => (
@@ -339,13 +328,13 @@ export function BusinessSetupStep({
 
             <Field>
               <FieldLabel htmlFor="targetMarketDetail">
-                Added details{' '}
+                Audience details{' '}
                 <span className="text-foreground-muted">(optional)</span>
               </FieldLabel>
               <Textarea
                 id="targetMarketDetail"
-                className="min-h-20"
-                placeholder="e.g. urban, mid-income, beauty-savvy early adopters…"
+                className="min-h-20 bg-background-surface-100 dark:bg-background-surface-100"
+                placeholder="Describe the audience context, such as location, income level, habits, or specific needs..."
                 value={targetMarketDetail}
                 onChange={(event) =>
                   onTargetMarketDetailChange(event.target.value)
@@ -359,7 +348,7 @@ export function BusinessSetupStep({
             <FieldLabel htmlFor="salesChannel">Sales channel</FieldLabel>
             <Select value={salesChannel} onValueChange={onSalesChannelChange}>
               <SelectTrigger className="h-11 w-full" id="salesChannel">
-                <SelectValue placeholder="Pick a channel" />
+                <SelectValue placeholder="Choose a sales channel" />
               </SelectTrigger>
               <SelectContent>
                 {SALES_CHANNELS.map((entry) => (
