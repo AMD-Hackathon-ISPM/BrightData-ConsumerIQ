@@ -1,9 +1,10 @@
 from fastapi import FastAPI, Path
 from celery.result import AsyncResult
 from backend.redis.worker import celeryApp, processLlmInsights
+from backend.api.marketplace_scrape import router as marketplaceRouter
 
 app = FastAPI(title='ConsumerIQ API')
-
+app.include_router(marketplaceRouter)
 
 @app.post("/api/scan-market/{category_name}")
 async def scanMarket(categoryName: str = Path(..., alias="category_name")):

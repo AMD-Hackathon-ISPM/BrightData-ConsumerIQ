@@ -1,4 +1,5 @@
 ﻿import os
+import re
 import json
 import time
 from pathlib import Path
@@ -12,7 +13,6 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 SCRAPINGBEE_BASE_URL = "https://app.scrapingbee.com/api/v1/"
 SCRAPINGBEE_GOOGLE_URL = "https://app.scrapingbee.com/api/v1/google"
-
 
 def getScrapingBeeApiKey():
     return os.getenv("SCRAPINGBEE_API_KEY")
@@ -71,6 +71,8 @@ def scrapePageText(
     wait_for: str | None = None,
     js_scenario: dict | None = None,
     extract_rules: dict | None = None,
+    block_resources: bool | None = None,
+    wait_browser: str | None = None,
 ):
     api_key, error = requireApiKey()
     if error:
@@ -82,10 +84,16 @@ def scrapePageText(
         "render_js": "true" if render_js else "false",
         "premium_proxy": "true",  # ⭐ Fixed: cuma satu key
         "country_code": country_code,
-        "return_page_text": "true",
+        # "return_page_text": "true",
         "wait": str(wait_ms),
     }
 
+    if block_resources is not None:
+        params["block_resources"] = "false" if block_resources is False else "true"
+
+    if wait_browser:
+        params["wait_browser"] = wait_browser
+   
     # JS scenario
     if js_scenario:
         params["js_scenario"] = json.dumps(js_scenario)
@@ -108,12 +116,14 @@ def scrapePageText(
     # Extract rules
     if extract_rules:
         params["extract_rules"] = json.dumps(extract_rules)
+    else:
+        params["return_page_text"] = "true"
 
     try:
         response = requests.get(
             SCRAPINGBEE_BASE_URL,
             params=params,
-            timeout=(10, 60),
+            timeout=(20, 120),
         )
     except requests.exceptions.ConnectTimeout:
         return None, {
@@ -154,56 +164,142 @@ def scrapeAndParse(url: str, **kwargs):
     
     return text, None
 
+def extractAmazonAsin(url: str):
+    match = re.search(r"/(?:dp|gp/product|product-reviews)/([A-Z0-9]{10})", url)
+    return match.group(1) if match else None
 
-def scrapeAmazonWithReviews(url: str, country_code: str = "us"):
-    """Optimized scraper untuk Amazon product + reviews."""
-    
-    js_scenario = {
-        "instructions": [
-            {"wait": 3000},
-            {"scroll_to": "#reviewsMedley"},
-            {"wait": 3000},
-            {"scroll_to": "#reviewsMedley"},
-            {"wait": 2000},
-            {"click": "[data-hook='see-all-reviews-link-foot']"},
-            {"wait": 3000},
-            {"scroll_to": "[data-hook='review']"},
-            {"wait": 2000},
-        ]
-    }
+def buildAmazonReviewsUrl(url: str, page: int = 1):
+    parsed = urlparse(url)
+    asin = extractAmazonAsin(url)
+
+    if not asin:
+        return None
+
+    host = parsed.netloc or "www.amazon.com"
+
+    return (
+        f"https://{host}/product-reviews/{asin}"
+        f"?reviewerType=all_reviews&sortBy=recent&pageNumber={page}"
+    )
+
+def isBlockedScrapeResult(result):
+    text = json.dumps(result).lower() if isinstance(result, dict) else str(result).lower()
+    blocked_markers = [
+        "captcha",
+        "enter the characters you see below",
+        "sorry, we just need to make sure you're not a robot",
+        "robot check",
+        "redirected to login",
+    ]
+    return any(marker in text for marker in blocked_markers)
+
+
+def isBlockedScrapeError(error):
+    return isBlockedScrapeResult(error)
+
+def scrapeAmazonReviewPage(url: str, country_code: str = "us", page: int = 1):
+    review_url = buildAmazonReviewsUrl(url, page)
+
+    if not review_url:
+        return None, {
+            "status": "error",
+            "message": "Could not extract Amazon ASIN from URL",
+            "source_url": url,
+        }
 
     extract_rules = {
         "reviews": {
             "selector": "[data-hook='review']",
             "type": "list",
             "output": {
-                "title": {"selector": "[data-hook='review-title'] span", "type": "text"},
-                "body": {"selector": "[data-hook='review-body'] span", "type": "text"},
-                "stars": {"selector": "[data-hook='review-star-rating'] span", "type": "text"},
-                "author": {"selector": ".a-profile-name", "type": "text"},
-                "date": {"selector": "[data-hook='review-date']", "type": "text"},
-                "verified": {"selector": "[data-hook='avp-badge']", "type": "text"}
-            }
+                "title": {"selector": "[data-hook='review-title']", "output": "text"},
+                "body": {"selector": "[data-hook='review-body']", "output": "text"},
+                "stars": {
+                    "selector": "[data-hook='review-star-rating'] span, [data-hook='cmps-review-star-rating'] span",
+                    "output": "text",
+                },
+                "author": {"selector": ".a-profile-name", "output": "text"},
+                "date": {"selector": "[data-hook='review-date']", "output": "text"},
+                "verified": {"selector": "[data-hook='avp-badge']", "output": "text"},
+            },
         },
-        "rating_summary": {
-            "selector": "#averageCustomerReviews",
-            "output": {
-                "avg_rating": {"selector": "[data-hook='rating-out-of-text']", "type": "text"},
-                "total_reviews": {"selector": "[data-hook='total-review-count']", "type": "text"}
-            }
-        },
-        "price": {"selector": ".a-price .a-offscreen", "type": "text"}
+        "average_rating": {"selector": "[data-hook='rating-out-of-text']", "output": "text"},
+        "total_reviews": {"selector": "[data-hook='total-review-count']", "output": "text"},
     }
 
-    return scrapeAndParse(
-        url=url,
+    js_scenario = {
+        "instructions": [
+            {"wait": 3000},
+            {"scroll_y": 1200},
+            {"wait": 1500},
+        ]
+    }
+
+    result, error = scrapeAndParse(
+        url=review_url,
         country_code=country_code,
-        render_js=True,
-        wait_ms=15000,
-        js_scenario=js_scenario,
+        render_js=False,
+        wait_ms=0,
         extract_rules=extract_rules,
     )
 
+    if not error and isinstance(result, dict) and result.get("reviews"):
+        return result, None
+
+    result, error = scrapeAndParse(
+        url=review_url,
+        country_code=country_code,
+        render_js=True,
+        wait_ms=8000,
+        wait_browser="load",
+        block_resources=False,
+        extract_rules=extract_rules,
+    )
+
+    return result, error
+
+def scrapeAmazonWithReviews(url: str, country_code: str = "us", max_pages: int = 3):
+    all_reviews = []
+    rating_summary = {}
+
+    for page in range(1, max_pages + 1):
+        result, error = scrapeAmazonReviewPage(url, country_code=country_code, page=page)
+
+        if error:
+            if isBlockedScrapeError(error):
+                return None, {
+                    "status": "blocked",
+                    "source_url": error.get("source_url", url) if isinstance(error, dict) else url,
+                    "message": "Amazon redirected ScrapingBee to login/CAPTCHA before reviews were available",
+                    "next_step": "Use a permitted data source fallback now, then switch this path to Bright Data Amazon reviews once credits are active.",
+                }
+            return None, error
+
+        if isBlockedScrapeResult(result):
+            return None, {
+                "status": "error",
+                "message": "Amazon CAPTCHA/block page detected",
+                "source_url": url,
+            }
+
+        reviews = result.get("reviews", []) if isinstance(result, dict) else []
+
+        if not reviews:
+            break
+
+        all_reviews.extend(reviews)
+
+        if page == 1:
+            rating_summary = {
+                "average_rating": result.get("average_rating"),
+                "total_reviews": result.get("total_reviews"),
+            }
+
+    return {
+        "reviews": all_reviews,
+        "rating_summary": rating_summary,
+        "review_count_scraped": len(all_reviews),
+    }, None
 
 def searchGoogle(query: str, country_code: str = "us", language: str = "en", nb_results: int = 10):
     api_key, error = requireApiKey()
