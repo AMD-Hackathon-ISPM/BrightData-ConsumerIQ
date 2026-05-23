@@ -20,7 +20,7 @@ export async function submitFounderForm(
     marketplace: state.salesChannel,
     competitors: [] as string[],
     searchIntentKeywords: state.researchGoals,
-    customerSegment: [state.targetAge, state.targetGender]
+    customerSegment: [state.targetGen, state.targetGender]
       .filter(Boolean)
       .join(', '),
     painPoint: state.problemToSolve,
@@ -33,7 +33,6 @@ export async function submitFounderForm(
     uniqueSellingPoint: state.uniqueSellingPoint,
     mainFeatures: state.mainFeatures,
     competitiveAdvantage: state.competitiveAdvantage,
-    priceRangeMid: state.priceRangeMid,
   }
 
   const response = await fetch('/go-api/founder-form/submit', {

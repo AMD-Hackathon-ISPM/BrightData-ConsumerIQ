@@ -369,13 +369,6 @@ export function PersonaDecode() {
       .slice(0, 3)
       .toUpperCase();
 
-  const priorityToneClass: Record<"high" | "medium" | "growth", string> = {
-    high: "bg-destructive-500/15 text-destructive-500",
-    medium: "bg-warning-500/20 text-warning-600 dark:text-warning-500",
-    growth:
-      "bg-[#98971a]/15 text-[#98971a] dark:bg-[#b8bb26]/15 dark:text-[#b8bb26]",
-  };
-
   return (
     <div className="grid gap-3">
       <section>
