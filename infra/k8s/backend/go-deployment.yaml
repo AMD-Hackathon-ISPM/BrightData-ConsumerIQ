@@ -16,6 +16,7 @@ spec:
       containers:
         - name: go-service
           image: k3d-consumeriq-registry:5000/consumeriq-go:local
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env:
@@ -26,8 +27,7 @@ spec:
             - name: PORT
               value: "8080"
           readinessProbe:
-            httpGet:
-              path: /internal/auth/validate
+            tcpSocket:
               port: 8080
             initialDelaySeconds: 3
             periodSeconds: 10

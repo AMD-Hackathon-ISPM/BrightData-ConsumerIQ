@@ -2,11 +2,13 @@ package forms
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
@@ -52,7 +54,8 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(p.Password), bcrypt.DefaultCost)
+	plainPassword := p.Password
+	hash, err := bcrypt.GenerateFromPassword([]byte(plainPassword), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("bcrypt: %v", err)
 		writeErr(w, http.StatusInternalServerError, "internal error")
@@ -72,8 +75,25 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		p.WorkEmail, string(hash),
 	).Scan(&userID)
 	if err != nil {
-		writeErr(w, http.StatusConflict, "email already registered")
-		return
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
+			log.Printf("insert user: %v", err)
+			writeErr(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		var existingHash string
+		if qErr := h.pool.QueryRow(r.Context(),
+			`SELECT id, password_hash FROM users WHERE email = $1`,
+			p.WorkEmail,
+		).Scan(&userID, &existingHash); qErr != nil {
+			log.Printf("select user: %v", qErr)
+			writeErr(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if bcrypt.CompareHashAndPassword([]byte(existingHash), []byte(plainPassword)) != nil {
+			writeErr(w, http.StatusUnauthorized, "email already registered with a different password")
+			return
+		}
 	}
 
 	var formID string
