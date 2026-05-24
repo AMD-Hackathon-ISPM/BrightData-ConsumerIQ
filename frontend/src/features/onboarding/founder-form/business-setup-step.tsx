@@ -187,6 +187,9 @@ export function BusinessSetupStep({
   isNextDisabled,
 }: BusinessSetupStepProps) {
   const countryOptions = COUNTRIES.filter((entry) => entry.region === region)
+  const allCountriesUnavailable =
+    countryOptions.length > 0 &&
+    countryOptions.every((entry) => entry.dataStatus === 'unavailable')
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -270,70 +273,105 @@ export function BusinessSetupStep({
 
               <Field>
                 <FieldLabel htmlFor="country">Country</FieldLabel>
-                <Select
-                  disabled={!region}
-                  value={country}
-                  onValueChange={(value) => {
-                    const selected = countryOptions.find(
-                      (entry) => entry.name === value,
-                    )
-
-                    if (!selected || selected.dataStatus === 'unavailable') {
-                      onCountryChange('')
-                      onCountryCodeChange('')
-                      return
-                    }
-
-                    onCountryChange(selected.name)
-                    onCountryCodeChange(selected.code)
-                  }}
-                >
-                  <SelectTrigger className="h-11 w-full" id="country">
-                    <SelectValue
-                      placeholder={
-                        region ? 'Choose a country' : 'Choose a region first'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {countryOptions.map((entry) => {
-                      const isUnavailable = entry.dataStatus === 'unavailable'
-
-                      return (
-                        <SelectItem
-                          className={cn(
-                            !isUnavailable &&
-                              'text-foreground-default focus:bg-background-overlay-hover focus:text-foreground-default',
-                            isUnavailable &&
-                              'cursor-not-allowed text-foreground-muted opacity-35',
-                          )}
-                          disabled={isUnavailable}
+                {allCountriesUnavailable ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        className="flex h-11 w-full cursor-pointer items-center justify-between gap-1.5 rounded-md border border-control bg-background-surface-100 px-3 py-2 text-left text-sm font-normal whitespace-nowrap transition-colors outline-none hover:border-border-stronger hover:bg-background-selection focus-visible:border-sidebar-ring focus-visible:ring-3 focus-visible:ring-sidebar-ring/50 data-[state=open]:border-border-stronger data-[state=open]:bg-background-selection"
+                        id="country"
+                        type="button"
+                      >
+                        <span className="min-w-0 truncate text-foreground-muted">
+                          No country data available
+                        </span>
+                        <ChevronsUpDown className="size-3.5 text-foreground-muted" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="w-(--radix-popover-trigger-width) gap-1 p-1"
+                    >
+                
+                      {countryOptions.map((entry) => (
+                        <div
+                          className="flex min-h-8 w-full cursor-not-allowed items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm text-foreground-muted opacity-45"
                           key={entry.name}
-                          value={entry.name}
                         >
-                          <span className="flex w-full min-w-0 items-center justify-between gap-3">
-                            <span className="min-w-0 truncate">
-                              {entry.name}
-                            </span>
-                            <span
-                              className={cn(
-                                'shrink-0 text-[11px]',
-                                isUnavailable
-                                  ? 'text-foreground-muted'
-                                  : 'text-emerald-400',
-                              )}
-                            >
-                              {entry.code.toUpperCase()} ·{' '}
-                              {isUnavailable
-                                ? 'No data'
-                                : 'Available'}
-                            </span>
+                          <span className="min-w-0 truncate">
+                            {entry.name}
                           </span>
-                        </SelectItem>
+                          <span className="shrink-0 text-[11px]">
+                            {entry.code.toUpperCase()} · No data
+                          </span>
+                        </div>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Select
+                    disabled={!region}
+                    value={country}
+                    onValueChange={(value) => {
+                      const selected = countryOptions.find(
+                        (entry) => entry.name === value,
                       )
-                    })}
-                  </SelectContent>
-                </Select>
+
+                      if (!selected || selected.dataStatus === 'unavailable') {
+                        onCountryChange('')
+                        onCountryCodeChange('')
+                        return
+                      }
+
+                      onCountryChange(selected.name)
+                      onCountryCodeChange(selected.code)
+                    }}
+                  >
+                    <SelectTrigger className="h-11 w-full" id="country">
+                      <SelectValue
+                        placeholder={
+                          region ? 'Choose a country' : 'Choose a region first'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countryOptions.map((entry) => {
+                        const isUnavailable =
+                          entry.dataStatus === 'unavailable'
+
+                        return (
+                          <SelectItem
+                            className={cn(
+                              !isUnavailable &&
+                                'text-foreground-default focus:bg-background-overlay-hover focus:text-foreground-default',
+                              isUnavailable &&
+                                'cursor-not-allowed text-foreground-muted opacity-35',
+                            )}
+                            disabled={isUnavailable}
+                            key={entry.name}
+                            value={entry.name}
+                          >
+                            <span className="flex w-full min-w-0 items-center justify-between gap-3">
+                              <span className="min-w-0 truncate">
+                                {entry.name}
+                              </span>
+                              <span
+                                className={cn(
+                                  'shrink-0 text-[11px]',
+                                  isUnavailable
+                                    ? 'text-foreground-muted'
+                                    : 'text-emerald-400',
+                                )}
+                              >
+                                {entry.code.toUpperCase()} ·{' '}
+                                {isUnavailable ? 'No data' : 'Available'}
+                              </span>
+                            </span>
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
+                )}
                 <FieldError />
               </Field>
             </div>
