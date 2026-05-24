@@ -5,8 +5,6 @@ from functools import partial
 
 from fastapi import FastAPI, HTTPException, Path, Request
 from pydantic import BaseModel
-from celery.result import AsyncResult
-from backend.redis.worker import celeryApp, processLlmInsights
 
 _DATABASE_URL = os.getenv(
     'DATABASE_URL',
@@ -63,6 +61,13 @@ class AgentRunRequest(BaseModel):
 class ScrapeMarketSignalsRequest(BaseModel):
     category: str
     keywords: list[str]
+    country: str = 'us'
+    marketplace: str = 'amazon'
+
+
+class ScanMarketRequest(BaseModel):
+    category: str
+    country: str = ''
 
 
 @app.post('/api/agent/run')
@@ -97,12 +102,12 @@ async def agentSession(session_id: str = Path(..., alias='session_id')):
 @app.post('/api/scrape-market-signals')
 async def scrapeMarketSignals(payload: ScrapeMarketSignalsRequest):
     from backend.redis.worker import scrapeMarketSignals as scrapeTask
-    task = scrapeTask.delay(payload.category, payload.keywords)
+    task = scrapeTask.delay(payload.category, payload.keywords, payload.country, payload.marketplace)
     return {'taskId': task.id, 'status': 'processing', 'queue': 'scraping'}
 
 
-@app.post('/api/scan-market/{category_name}')
-async def scanMarket(categoryName: str = Path(..., alias='category_name')):
+@app.post('/api/scan-market')
+async def scanMarket(payload: ScanMarketRequest):
     try:
         from backend.redis.worker import processLlmInsights
     except ModuleNotFoundError as error:
@@ -111,9 +116,9 @@ async def scanMarket(categoryName: str = Path(..., alias='category_name')):
             detail=f'LLM worker dependency is not installed: {error.name}',
         ) from error
 
-    task = processLlmInsights.delay(categoryName)
+    task = processLlmInsights.delay(payload.category, payload.country)
 
-    return {'message': f'Successfully queued LLM analysis for {categoryName}', 'taskId': task.id, 'status': 'processing'}
+    return {'message': f'Successfully queued LLM analysis for {payload.category}', 'taskId': task.id, 'status': 'processing'}
 
 
 @app.get('/api/task-status/{task_id}')

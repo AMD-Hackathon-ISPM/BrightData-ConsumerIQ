@@ -16,6 +16,7 @@ spec:
       containers:
         - name: go-worker
           image: k3d-consumeriq-registry:5000/consumeriq-go:local
+          imagePullPolicy: Always
           command: ["/go-worker"]
           env:
             - name: REDIS_ADDR

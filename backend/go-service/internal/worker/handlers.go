@@ -36,10 +36,12 @@ func Init(redisAddr string) {
 }
 
 type FormReceivedPayload struct {
-	FormID   string   `json:"form_id"`
-	UserID   int64    `json:"user_id"`
-	Category string   `json:"category"`
-	Keywords []string `json:"keywords"`
+	FormID      string   `json:"form_id"`
+	UserID      int64    `json:"user_id"`
+	Category    string   `json:"category"`
+	Keywords    []string `json:"keywords"`
+	Country     string   `json:"country"`
+	Marketplace string   `json:"marketplace"`
 }
 
 func HandleFormReceived(ctx context.Context, t *asynq.Task) error {
@@ -48,22 +50,27 @@ func HandleFormReceived(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("unmarshal FormReceivedPayload: %w", err)
 	}
 
-	log.Printf("[background] form_received form_id=%s user_id=%d category=%s keywords=%v",
-		p.FormID, p.UserID, p.Category, p.Keywords)
+	log.Printf("[background] form_received form_id=%s user_id=%d category=%s country=%s keywords=%v",
+		p.FormID, p.UserID, p.Category, p.Country, p.Keywords)
 
-	if err := triggerScrape(ctx, p.Category, p.Keywords); err != nil {
+	if err := triggerScrape(ctx, p.Category, p.Keywords, p.Country, p.Marketplace); err != nil {
 		log.Printf("[background] scrape trigger failed: %v", err)
 	}
 
-	if err := triggerInference(ctx, p.Category); err != nil {
+	if err := triggerInference(ctx, p.Category, p.Country); err != nil {
 		log.Printf("[background] inference trigger failed: %v", err)
 	}
 
 	return nil
 }
 
-func triggerScrape(ctx context.Context, category string, keywords []string) error {
-	body, err := json.Marshal(map[string]any{"category": category, "keywords": keywords})
+func triggerScrape(ctx context.Context, category string, keywords []string, country string, marketplace string) error {
+	body, err := json.Marshal(map[string]any{
+		"category":    category,
+		"keywords":    keywords,
+		"country":     country,
+		"marketplace": marketplace,
+	})
 	if err != nil {
 		return fmt.Errorf("marshal scrape body: %w", err)
 	}
@@ -84,11 +91,11 @@ func triggerScrape(ctx context.Context, category string, keywords []string) erro
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("scrape endpoint returned %d", resp.StatusCode)
 	}
-	log.Printf("[background] scrape queued category=%s", category)
+	log.Printf("[background] scrape queued category=%s country=%s", category, country)
 	return nil
 }
 
-func triggerInference(ctx context.Context, category string) error {
+func triggerInference(ctx context.Context, category string, country string) error {
 	if rdb != nil {
 		depth, err := rdb.LLen(ctx, "inference").Result()
 		if err == nil && depth >= inferenceQueueLimit {
@@ -97,11 +104,17 @@ func triggerInference(ctx context.Context, category string) error {
 		}
 	}
 
+	body, err := json.Marshal(map[string]any{"category": category, "country": country})
+	if err != nil {
+		return fmt.Errorf("marshal inference body: %w", err)
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		pythonAPIBase+"/api/scan-market/"+category, http.NoBody)
+		pythonAPIBase+"/api/scan-market", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -112,6 +125,6 @@ func triggerInference(ctx context.Context, category string) error {
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("inference endpoint returned %d", resp.StatusCode)
 	}
-	log.Printf("[background] inference queued category=%s", category)
+	log.Printf("[background] inference queued category=%s country=%s", category, country)
 	return nil
 }

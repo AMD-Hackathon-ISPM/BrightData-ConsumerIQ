@@ -16,5 +16,6 @@ spec:
       containers:
         - name: frontend
           image: k3d-consumeriq-registry:5000/consumeriq-frontend:local
+          imagePullPolicy: Always
           ports:
             - containerPort: 80

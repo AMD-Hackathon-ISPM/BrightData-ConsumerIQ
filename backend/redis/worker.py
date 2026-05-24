@@ -45,7 +45,7 @@ def _formatVector(values: list[float]) -> str:
     return '[' + ','.join(f'{value:.6f}' for value in values) + ']'
 
 
-def _fetchRelevantSignals(categoryName: str, *, limit: int = 50) -> list[dict[str, Any]]:
+def _fetchRelevantSignals(categoryName: str, country: str = '', *, limit: int = 50) -> list[dict[str, Any]]:
     embedder = createEmbedder()
     try:
         queryVector = embedTexts(embedder, [categoryName])[0]
@@ -57,16 +57,28 @@ def _fetchRelevantSignals(categoryName: str, *, limit: int = 50) -> list[dict[st
 
     with psycopg2.connect(DATABASE_URL) as connection:
         with connection.cursor() as cursor:
-            cursor.execute(
-                '''
-                SELECT signalText, sourceType, sourceUrl, sentimentScore
-                FROM marketSignals
-                WHERE embedding IS NOT NULL
-                ORDER BY embedding <-> %s::vector
-                LIMIT %s
-                ''',
-                (vectorLiteral, limit),
-            )
+            if country:
+                cursor.execute(
+                    '''
+                    SELECT signalText, sourceType, sourceUrl, sentimentScore
+                    FROM marketSignals
+                    WHERE embedding IS NOT NULL AND (country = %s OR country IS NULL)
+                    ORDER BY embedding <-> %s::vector
+                    LIMIT %s
+                    ''',
+                    (country, vectorLiteral, limit),
+                )
+            else:
+                cursor.execute(
+                    '''
+                    SELECT signalText, sourceType, sourceUrl, sentimentScore
+                    FROM marketSignals
+                    WHERE embedding IS NOT NULL
+                    ORDER BY embedding <-> %s::vector
+                    LIMIT %s
+                    ''',
+                    (vectorLiteral, limit),
+                )
             rows = cursor.fetchall()
 
     signals: list[dict[str, Any]] = []
@@ -178,21 +190,22 @@ def _runLlmInsights(categoryName: str, signals: list[dict[str, Any]]) -> dict[st
     }
 
 
-def _saveCategoryInsights(categoryName: str, insights: dict[str, Any]) -> None:
+def _saveCategoryInsights(categoryName: str, country: str, insights: dict[str, Any]) -> None:
     with psycopg2.connect(DATABASE_URL) as connection:
         with connection.cursor() as cursor:
             cursor.execute(
                 '''
                 INSERT INTO categoryInsights (
                     category,
+                    country,
                     status,
                     gtmIntelligence,
                     financeIntelligence,
                     securityCompliance,
                     lastUpdated
                 )
-                VALUES (%s, %s, %s::jsonb, %s::jsonb, %s::jsonb, NOW())
-                ON CONFLICT (category)
+                VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, NOW())
+                ON CONFLICT (category, country)
                 DO UPDATE SET
                     status = EXCLUDED.status,
                     gtmIntelligence = EXCLUDED.gtmIntelligence,
@@ -202,6 +215,7 @@ def _saveCategoryInsights(categoryName: str, insights: dict[str, Any]) -> None:
                 ''',
                 (
                     categoryName,
+                    country,
                     insights['status'],
                     json.dumps(insights.get('gtmIntelligence', {})),
                     json.dumps(insights.get('financeIntelligence', {})),
@@ -211,50 +225,50 @@ def _saveCategoryInsights(categoryName: str, insights: dict[str, Any]) -> None:
 
 
 @celeryApp.task(name='scrapeMarketSignals', queue='scraping')
-def scrapeMarketSignals(category: str, keywords: list[str]) -> dict[str, Any]:
+def scrapeMarketSignals(category: str, keywords: list[str], country: str = 'us', marketplace: str = 'amazon') -> dict[str, Any]:
     from backend.api.scrapingbeeClient import searchGoogle, normalizeSerpResults
     from backend.api.marketplaceScrape import buildMarketplaceDiscoveryQuery, MarketplaceDiscoveryRequest
 
-    print(f'[scraping] Starting signal scrape for category={category}, keywords={keywords}')
+    print(f'[scraping] Starting signal scrape for category={category}, country={country}, keywords={keywords}')
 
-    rows: list[tuple[str, str, str]] = []
+    rows: list[tuple[str, str, str, str, str]] = []
 
     for keyword in keywords[:5]:
         socialData, err = searchGoogle(
             query=f'site:reddit.com OR site:twitter.com {keyword}',
-            country_code='us',
+            country_code=country,
             nb_results=5,
         )
         if not err:
             for result in normalizeSerpResults(socialData)[:3]:
                 text = f"{result.get('title', '')} — {result.get('description', '')}"
                 if text.strip():
-                    rows.append((text[:1000], result.get('source', 'social'), result.get('url', '')))
+                    rows.append((text[:1000], result.get('source', 'social'), result.get('url', ''), country, category))
 
         req = MarketplaceDiscoveryRequest(
-            keyword=keyword, marketplace='amazon', limit=3, include_scrape=False,
+            keyword=keyword, marketplace=marketplace, limit=3, include_scrape=False,
         )
         marketData, err = searchGoogle(
-            query=buildMarketplaceDiscoveryQuery(req), country_code='us', nb_results=3,
+            query=buildMarketplaceDiscoveryQuery(req), country_code=country, nb_results=3,
         )
         if not err:
             for result in normalizeSerpResults(marketData)[:2]:
                 text = f"{result.get('title', '')} — {result.get('description', '')}"
                 if text.strip():
-                    rows.append((text[:1000], 'marketplace', result.get('url', '')))
+                    rows.append((text[:1000], 'marketplace', result.get('url', ''), country, category))
 
     if rows:
         with psycopg2.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
                 cur.executemany(
-                    'INSERT INTO marketSignals (signalText, sourceType, sourceUrl, signalDate) '
-                    'VALUES (%s, %s, %s, CURRENT_DATE)',
+                    'INSERT INTO marketSignals (signalText, sourceType, sourceUrl, signalDate, country, category) '
+                    'VALUES (%s, %s, %s, CURRENT_DATE, %s, %s)',
                     rows,
                 )
 
     stored = len(rows)
-    print(f'[scraping] Done. Stored {stored} signals for category={category}')
-    return {'category': category, 'keywords': keywords, 'signals_stored': stored, 'status': 'completed'}
+    print(f'[scraping] Done. Stored {stored} signals for category={category}, country={country}')
+    return {'category': category, 'country': country, 'keywords': keywords, 'signals_stored': stored, 'status': 'completed'}
 
 
 @celeryApp.task(name='runAgentTask', bind=True, queue='inference')
@@ -282,10 +296,10 @@ def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | Non
 
 
 @celeryApp.task(name='processLlmInsights', queue='synthesis')
-def processLlmInsights(categoryName: str):
-    print(f'Worker picked up job for category: {categoryName}')
+def processLlmInsights(categoryName: str, country: str = ''):
+    print(f'Worker picked up job for category: {categoryName}, country: {country}')
 
-    signals = _fetchRelevantSignals(categoryName)
+    signals = _fetchRelevantSignals(categoryName, country)
     if not signals:
         return {
             'category': categoryName,
@@ -295,7 +309,7 @@ def processLlmInsights(categoryName: str):
 
     translatedSignals = _translateSignalsIfNeeded(signals)
     insights = _runLlmInsights(categoryName, translatedSignals)
-    _saveCategoryInsights(categoryName, insights)
+    _saveCategoryInsights(categoryName, country, insights)
 
     print(f'Job complete for {categoryName}! Saved to Postgres.')
     return {

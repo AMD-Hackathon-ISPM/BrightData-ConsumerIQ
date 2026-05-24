@@ -16,6 +16,7 @@ spec:
       containers:
         - name: api
           image: k3d-consumeriq-registry:5000/consumeriq-backend:local
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:

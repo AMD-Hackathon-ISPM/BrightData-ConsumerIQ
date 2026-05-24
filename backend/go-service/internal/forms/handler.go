@@ -24,6 +24,7 @@ type FounderFormPayload struct {
 	WorkspaceName        string   `json:"workspaceName"`
 	Industry             string   `json:"industry"`
 	Region               string   `json:"region"`
+	Country              string   `json:"country"`
 	Marketplace          string   `json:"marketplace"`
 	Competitors          []string `json:"competitors"`
 	SearchIntentKeywords []string `json:"searchIntentKeywords"`
@@ -31,6 +32,12 @@ type FounderFormPayload struct {
 	PainPoint            string   `json:"painPoint"`
 	PriceRangeMin        int      `json:"priceRangeMin"`
 	PriceRangeMax        int      `json:"priceRangeMax"`
+	TargetMarketDetail   string   `json:"targetMarketDetail"`
+	ProductName          string   `json:"productName"`
+	ProductDescription   string   `json:"productDescription"`
+	UniqueSellingPoint   string   `json:"uniqueSellingPoint"`
+	MainFeatures         string   `json:"mainFeatures"`
+	CompetitiveAdvantage string   `json:"competitiveAdvantage"`
 }
 
 type Handler struct {
@@ -119,9 +126,7 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Enqueue background orchestration: Go worker will trigger the Python
-	// scraping queue, then the inference queue, using the form's keywords.
-	h.enqueueFormReceived(formID, userID, p.Industry, p.SearchIntentKeywords)
+	h.enqueueFormReceived(formID, userID, p.Industry, p.Country, p.Marketplace, p.SearchIntentKeywords)
 
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"id":      formID,
@@ -157,12 +162,14 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) enqueueFormReceived(formID string, userID int64, category string, keywords []string) {
+func (h *Handler) enqueueFormReceived(formID string, userID int64, category, country, marketplace string, keywords []string) {
 	payload, err := json.Marshal(worker.FormReceivedPayload{
-		FormID:   formID,
-		UserID:   userID,
-		Category: category,
-		Keywords: keywords,
+		FormID:      formID,
+		UserID:      userID,
+		Category:    category,
+		Country:     country,
+		Marketplace: marketplace,
+		Keywords:    keywords,
 	})
 	if err != nil {
 		log.Printf("enqueueFormReceived marshal: %v", err)

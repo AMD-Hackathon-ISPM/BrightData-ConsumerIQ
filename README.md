@@ -134,6 +134,10 @@ GET  /api/task-status/{task_id}     → poll for result
   - Scraping worker: `kubectl logs -n consumeriq deploy/consumeriq-worker-scraping`
   - Go worker: `kubectl logs -n consumeriq deploy/consumeriq-go-worker`
 
+- Updates
+  - `kubectl apply -f /d/Hackathons/ConsumerIQ/infra/k8s/{part}/{service}-deployment.yaml`
+  - `kubectl rollout restart -n consumeriq deploy/consumeriq-{serviceName}`
+
 ## How to stop
 ```
 # Stop workloads, keep cluster

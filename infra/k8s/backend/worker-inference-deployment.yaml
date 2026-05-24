@@ -16,6 +16,7 @@ spec:
       containers:
         - name: worker
           image: k3d-consumeriq-registry:5000/consumeriq-backend:local
+          imagePullPolicy: Always
           command:
             - celery
             - -A
