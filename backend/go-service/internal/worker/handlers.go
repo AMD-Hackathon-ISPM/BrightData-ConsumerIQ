@@ -29,6 +29,8 @@ var httpClient = &http.Client{Timeout: 10 * time.Second}
 
 const inferenceQueueLimit = 10
 
+var backpressureEnabled = os.Getenv("BACKPRESSURE_ENABLED") == "true"
+
 var rdb *goredis.Client
 
 func Init(redisAddr string) {
@@ -111,7 +113,7 @@ func triggerScrape(ctx context.Context, category string, keywords []string, coun
 }
 
 func triggerInference(ctx context.Context, category string, country string) (string, error) {
-	if rdb != nil {
+	if backpressureEnabled && rdb != nil {
 		depth, err := rdb.LLen(ctx, "inference").Result()
 		if err == nil && depth >= inferenceQueueLimit {
 			log.Printf("[background] inference queue at limit (%d), skipping category=%s", depth, category)

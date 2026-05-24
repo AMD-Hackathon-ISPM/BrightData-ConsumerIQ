@@ -55,6 +55,7 @@ export function GeneratingStep({
 }: GeneratingStepProps) {
   const [pipeline, setPipeline] = useState<PipelineStatus | null>(null)
   const [revealed, setRevealed] = useState(0)
+  const [timedOut, setTimedOut] = useState(false)
   const personaStarted = useRef(false)
 
   const signalsStored = pipeline?.scraping.signalsStored ?? 0
@@ -79,6 +80,12 @@ export function GeneratingStep({
       'Building your dashboard',
     ]
   }, [region, industry, signalsStored])
+
+  useEffect(() => {
+    if (submitStatus !== 'success') return
+    const id = window.setTimeout(() => setTimedOut(true), 3 * 60 * 1000)
+    return () => window.clearTimeout(id)
+  }, [submitStatus])
 
   useEffect(() => {
     if (!formId || submitStatus !== 'success') return
@@ -119,7 +126,7 @@ export function GeneratingStep({
   }, [submitStatus, formState])
 
   const allDone = revealed >= lines.length
-  const canOpen = target >= 4 || submitStatus === 'error'
+  const canOpen = target >= 4 || submitStatus === 'error' || timedOut
 
   return (
     <div className="mx-auto w-full max-w-xl">

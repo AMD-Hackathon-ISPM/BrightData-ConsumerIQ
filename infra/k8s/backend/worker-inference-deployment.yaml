@@ -18,16 +18,14 @@ spec:
           image: k3d-consumeriq-registry:5000/consumeriq-backend:local
           imagePullPolicy: Always
           command:
-            - celery
-            - -A
-            - backend.redis.worker.celeryApp
-            - worker
-            - -Q
-            - inference,synthesis
-            - --concurrency=1
-            - -l
-            - info
+            - sh
+            - -c
+            - "celery -A backend.redis.worker.celeryApp worker -Q inference,synthesis --concurrency=${INFERENCE_CONCURRENCY:-1} -l info"
           env:
+            - name: INFERENCE_CONCURRENCY
+              value: "2"
+            - name: BACKPRESSURE_ENABLED
+              value: "false"
             - name: REDIS_URL
               value: redis://redis.consumeriq.svc.cluster.local:6379/0
             - name: DATABASE_URL
@@ -36,7 +34,7 @@ spec:
               value: http://consumeriq-inference.consumeriq.svc.cluster.local:8080
             - name: EMBEDDINGS_URL
               value: http://consumeriq-embeddings.consumeriq.svc.cluster.local:8080
-            - name: TRANSLATOR_URL
+            - name: TRANSLATOR_URL1
               value: http://consumeriq-translator.consumeriq.svc.cluster.local:8080
             - name: SCRAPINGBEE_API_KEY
               valueFrom:

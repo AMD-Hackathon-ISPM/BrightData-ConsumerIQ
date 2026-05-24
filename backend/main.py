@@ -15,7 +15,8 @@ from backend.api.serpSearch import router as serpRouter
 from backend.api.socialScrape import router as socialRouter
 
 _REDIS_URL = os.getenv('REDIS_URL', 'redis://redis.consumeriq.svc.cluster.local:6379/0')
-_INFERENCE_QUEUE_LIMIT = 5
+_INFERENCE_QUEUE_LIMIT = int(os.getenv('INFERENCE_QUEUE_LIMIT', '5'))
+_BACKPRESSURE_ENABLED = os.getenv('BACKPRESSURE_ENABLED', 'false').lower() == 'true'
 
 
 def _inferenceQueueDepth() -> int:
@@ -85,7 +86,7 @@ class PersonaDecodeRequest(BaseModel):
 
 @app.post('/api/agent/run')
 async def agentRun(payload: AgentRunRequest, request: Request):
-    if _inferenceQueueDepth() >= _INFERENCE_QUEUE_LIMIT:
+    if _BACKPRESSURE_ENABLED and _inferenceQueueDepth() >= _INFERENCE_QUEUE_LIMIT:
         raise HTTPException(status_code=503, detail='Inference queue full, try again later')
 
     try:
@@ -136,7 +137,7 @@ async def scanMarket(payload: ScanMarketRequest):
 
 @app.post('/api/persona-decode')
 async def personaDecodeRun(payload: PersonaDecodeRequest):
-    if _inferenceQueueDepth() >= _INFERENCE_QUEUE_LIMIT:
+    if _BACKPRESSURE_ENABLED and _inferenceQueueDepth() >= _INFERENCE_QUEUE_LIMIT:
         raise HTTPException(status_code=503, detail='Inference queue full, try again later')
 
     from backend.redis.worker import runPersonaDecodeTask

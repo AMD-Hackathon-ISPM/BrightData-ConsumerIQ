@@ -26,6 +26,8 @@ spec:
               value: postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.local:5432/consumeriq
             - name: PORT
               value: "8080"
+            - name: BACKPRESSURE_ENABLED
+              value: "false"
           readinessProbe:
             tcpSocket:
               port: 8080

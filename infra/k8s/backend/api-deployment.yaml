@@ -24,6 +24,10 @@ spec:
               value: redis://redis.consumeriq.svc.cluster.local:6379/0
             - name: DATABASE_URL
               value: postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.local:5432/consumeriq
+            - name: BACKPRESSURE_ENABLED
+              value: "false"
+            - name: INFERENCE_QUEUE_LIMIT
+              value: "20"
             - name: SCRAPINGBEE_API_KEY
               valueFrom:
                 secretKeyRef:
