@@ -5,3 +5,6 @@ data/*
 notebooks/datasets/*
 infra/k8s/backend/.env
 testing/*
+
+.venv*
+.env*

@@ -71,6 +71,7 @@ type BusinessSetupStepProps = {
   onIndustryChange: (value: string) => void
   onRegionChange: (value: string) => void
   onCountryChange: (value: string) => void
+  onCountryCodeChange: (value: string) => void
   onTargetGenChange: (value: string[]) => void
   onTargetGenderChange: (value: string) => void
   onTargetMarketDetailChange: (value: string) => void
@@ -178,6 +179,7 @@ export function BusinessSetupStep({
   onIndustryChange,
   onRegionChange,
   onCountryChange,
+  onCountryCodeChange,
   onTargetGenChange,
   onTargetGenderChange,
   onTargetMarketDetailChange,
@@ -271,7 +273,20 @@ export function BusinessSetupStep({
                 <Select
                   disabled={!region}
                   value={country}
-                  onValueChange={onCountryChange}
+                  onValueChange={(value) => {
+                    const selected = countryOptions.find(
+                      (entry) => entry.name === value,
+                    )
+
+                    if (!selected || selected.dataStatus === 'unavailable') {
+                      onCountryChange('')
+                      onCountryCodeChange('')
+                      return
+                    }
+
+                    onCountryChange(selected.name)
+                    onCountryCodeChange(selected.code)
+                  }}
                 >
                   <SelectTrigger className="h-11 w-full" id="country">
                     <SelectValue
@@ -281,11 +296,42 @@ export function BusinessSetupStep({
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {countryOptions.map((entry) => (
-                      <SelectItem key={entry.name} value={entry.name}>
-                        {entry.name}
-                      </SelectItem>
-                    ))}
+                    {countryOptions.map((entry) => {
+                      const isUnavailable = entry.dataStatus === 'unavailable'
+
+                      return (
+                        <SelectItem
+                          className={cn(
+                            !isUnavailable &&
+                              'text-foreground-default focus:bg-background-overlay-hover focus:text-foreground-default',
+                            isUnavailable &&
+                              'cursor-not-allowed text-foreground-muted opacity-35',
+                          )}
+                          disabled={isUnavailable}
+                          key={entry.name}
+                          value={entry.name}
+                        >
+                          <span className="flex w-full min-w-0 items-center justify-between gap-3">
+                            <span className="min-w-0 truncate">
+                              {entry.name}
+                            </span>
+                            <span
+                              className={cn(
+                                'shrink-0 text-[11px]',
+                                isUnavailable
+                                  ? 'text-foreground-muted'
+                                  : 'text-emerald-400',
+                              )}
+                            >
+                              {entry.code.toUpperCase()} ·{' '}
+                              {isUnavailable
+                                ? 'No data'
+                                : 'Available'}
+                            </span>
+                          </span>
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
                 <FieldError />

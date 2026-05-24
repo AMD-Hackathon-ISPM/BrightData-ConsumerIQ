@@ -40,7 +40,7 @@ export function DashboardAppSidebar({
             </SidebarHeader>
 
             <SidebarContent>
-                {navGroups.map((group, groupIndex) => (
+                {navGroups.map((group) => (
                     <SidebarGroup
                         key={group[0].id}
                         className="px-2 pt-3 font-medium text-foreground-lighter"

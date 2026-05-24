@@ -7,6 +7,7 @@ export type FounderFormState = {
   industry: string
   region: string
   country: string
+  countryCode: string
   targetGen: string[]
   targetGender: string
   targetMarketDetail: string

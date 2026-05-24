@@ -27,6 +27,7 @@ export async function submitFounderForm(
     priceRangeMin: state.priceRangeMin,
     priceRangeMax: state.priceRangeMax,
     country: state.country,
+    countryCode: state.countryCode,
     targetMarketDetail: state.targetMarketDetail,
     productName: state.productName,
     productDescription: state.productDescription,

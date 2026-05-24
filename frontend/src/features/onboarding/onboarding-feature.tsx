@@ -11,94 +11,99 @@ import { AnimatedPage } from "@/components/animated-page";
 import { Button } from "@/components/ui/button";
 import { submitFounderForm } from "./founder-form/api";
 import { useAuth } from "@/lib/auth";
-import type { FounderFormPayload, FounderFormState } from "./founder-form/types";
+import type {
+  FounderFormPayload,
+  FounderFormState,
+} from "./founder-form/types";
 
 export function ConsumerIQOnboarding({
   onComplete,
 }: {
-  onComplete: () => void
+  onComplete: () => void;
 }) {
-  const { user, loginWithToken } = useAuth()
-  const [step, setStep] = useState(1)
+  const { user, loginWithToken } = useAuth();
+  const [step, setStep] = useState(1);
   const [submitStatus, setSubmitStatus] = useState<
-    'idle' | 'submitting' | 'success' | 'error'
-  >('idle')
-  const [submittedFormId, setSubmittedFormId] = useState<string | null>(null)
+    "idle" | "submitting" | "success" | "error"
+  >("idle");
+  const [submittedFormId, setSubmittedFormId] = useState<string | null>(null);
   const [formState, setFormState] = useState<FounderFormState>({
-    fullName: user?.fullName ?? '',
-    workEmail: user?.email ?? '',
-    password: user ? 'AUTHENTICATED_USER' : '',
+    fullName: user?.fullName ?? "",
+    workEmail: user?.email ?? "",
+    password: user ? "AUTHENTICATED_USER" : "",
 
-    workspaceName: '',
-    industry: '',
-    region: '',
-    country: '',
+    workspaceName: "",
+    industry: "",
+    region: "",
+    country: "",
+    countryCode: "",
     targetGen: [],
-    targetGender: '',
-    targetMarketDetail: '',
-    salesChannel: '',
+    targetGender: "",
+    targetMarketDetail: "",
+    salesChannel: "",
 
-    problemToSolve: '',
-    productName: '',
-    productDescription: '',
-    uniqueSellingPoint: '',
-    mainFeatures: '',
-    competitiveAdvantage: '',
+    problemToSolve: "",
+    productName: "",
+    productDescription: "",
+    uniqueSellingPoint: "",
+    mainFeatures: "",
+    competitiveAdvantage: "",
     priceRangeMin: 0,
     priceRangeMax: 0,
 
     researchGoals: [],
-  })
+  });
 
   const updateField = useCallback(
     <T extends keyof FounderFormState>(
       field: T,
-      value: FounderFormState[T],
+      value: FounderFormState[T]
     ) => {
-      setFormState((current) => ({ ...current, [field]: value }))
+      setFormState((current) => ({ ...current, [field]: value }));
     },
-    [],
-  )
+    []
+  );
 
   const handleComplete = useCallback(async () => {
-    if (submitStatus === 'success' || submitStatus === 'error') {
-      onComplete()
-      return
+    if (submitStatus === "success" || submitStatus === "error") {
+      onComplete();
+      return;
     }
-    if (submitStatus === 'submitting') {
-      return
+    if (submitStatus === "submitting") {
+      return;
     }
 
-    setSubmitStatus('submitting')
-    setSubmittedFormId(null)
+    setSubmitStatus("submitting");
+    setSubmittedFormId(null);
 
-    const payload: FounderFormPayload = { ...formState }
+    const payload: FounderFormPayload = { ...formState };
 
     try {
-      const response = await submitFounderForm(payload)
-      setSubmittedFormId(response.id)
+      const response = await submitFounderForm(payload);
+      setSubmittedFormId(response.id);
       loginWithToken(
         { fullName: formState.fullName, email: formState.workEmail },
-        response.token,
-      )
-      setSubmitStatus('success')
+        response.token
+      );
+      setSubmitStatus("success");
     } catch (_error) {
-      setSubmitStatus('error')
-      toast.error('Unable to submit the founder form')
+      setSubmitStatus("error");
+      toast.error("Unable to submit the founder form");
     }
-  }, [formState, loginWithToken, onComplete, submitStatus])
+  }, [formState, loginWithToken, onComplete, submitStatus]);
 
   const isBusinessSetupValid =
     formState.workspaceName.trim().length > 0 &&
     formState.industry.trim().length > 0 &&
     formState.region.trim().length > 0 &&
     formState.country.trim().length > 0 &&
-    formState.salesChannel.trim().length > 0
+    formState.countryCode.trim().length > 0 &&
+    formState.salesChannel.trim().length > 0;
   const isProductContextValid =
     formState.problemToSolve.trim().length > 0 &&
     formState.productName.trim().length > 0 &&
-    formState.productDescription.trim().length > 0
-  const isResearchGoalsValid = formState.researchGoals.length > 0
+    formState.productDescription.trim().length > 0;
+  const isResearchGoalsValid = formState.researchGoals.length > 0;
 
   return (
     <main className="relative min-h-screen bg-background-default text-foreground-default">
@@ -135,23 +140,30 @@ export function ConsumerIQOnboarding({
               targetMarketDetail={formState.targetMarketDetail}
               salesChannel={formState.salesChannel}
               onWorkspaceNameChange={(value) =>
-                updateField('workspaceName', value)
+                updateField("workspaceName", value)
               }
-              onIndustryChange={(value) => updateField('industry', value)}
+              onIndustryChange={(value) => updateField("industry", value)}
               onRegionChange={(value) => {
-                updateField('region', value)
-                updateField('country', '')
+                updateField("region", value);
+                updateField("country", "");
+                updateField("countryCode", "");
               }}
-              onCountryChange={(value) => updateField('country', value)}
-              onTargetGenChange={(value) => updateField('targetGen', value)}
+              onCountryChange={(value) => {
+                updateField("country", value);
+                updateField("countryCode", "");
+              }}
+              onCountryCodeChange={(value) =>
+                updateField("countryCode", value)
+              }
+              onTargetGenChange={(value) => updateField("targetGen", value)}
               onTargetGenderChange={(value) =>
-                updateField('targetGender', value)
+                updateField("targetGender", value)
               }
               onTargetMarketDetailChange={(value) =>
-                updateField('targetMarketDetail', value)
+                updateField("targetMarketDetail", value)
               }
               onSalesChannelChange={(value) =>
-                updateField('salesChannel', value)
+                updateField("salesChannel", value)
               }
               isNextDisabled={!isBusinessSetupValid}
             />
@@ -169,25 +181,23 @@ export function ConsumerIQOnboarding({
               mainFeatures={formState.mainFeatures}
               competitiveAdvantage={formState.competitiveAdvantage}
               price={formState.priceRangeMin}
-              onProblemChange={(value) => updateField('problemToSolve', value)}
-              onProductNameChange={(value) =>
-                updateField('productName', value)
-              }
+              onProblemChange={(value) => updateField("problemToSolve", value)}
+              onProductNameChange={(value) => updateField("productName", value)}
               onProductDescriptionChange={(value) =>
-                updateField('productDescription', value)
+                updateField("productDescription", value)
               }
               onUniqueSellingPointChange={(value) =>
-                updateField('uniqueSellingPoint', value)
+                updateField("uniqueSellingPoint", value)
               }
               onMainFeaturesChange={(value) =>
-                updateField('mainFeatures', value)
+                updateField("mainFeatures", value)
               }
               onCompetitiveAdvantageChange={(value) =>
-                updateField('competitiveAdvantage', value)
+                updateField("competitiveAdvantage", value)
               }
               onPriceChange={(value) => {
-                updateField('priceRangeMin', value)
-                updateField('priceRangeMax', value)
+                updateField("priceRangeMin", value);
+                updateField("priceRangeMax", value);
               }}
               isNextDisabled={!isProductContextValid}
             />
@@ -195,14 +205,14 @@ export function ConsumerIQOnboarding({
             <ResearchGoalsStep
               onBack={() => setStep(3)}
               onNext={() => {
-                setStep(5)
-                void handleComplete()
+                setStep(5);
+                void handleComplete();
               }}
               workspaceName={formState.workspaceName}
               industry={formState.industry}
               researchGoals={formState.researchGoals}
               onResearchGoalsChange={(next) =>
-                updateField('researchGoals', next)
+                updateField("researchGoals", next)
               }
               isNextDisabled={!isResearchGoalsValid}
             />
@@ -218,5 +228,5 @@ export function ConsumerIQOnboarding({
         </AnimatedPage>
       </div>
     </main>
-  )
+  );
 }
