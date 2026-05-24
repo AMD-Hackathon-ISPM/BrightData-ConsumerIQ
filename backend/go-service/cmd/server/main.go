@@ -39,20 +39,14 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// ── Public endpoints (no token required) ─────────────────────────────────
-
-	// Auth
 	mux.HandleFunc("POST /auth/register", authH.Register)
 	mux.HandleFunc("POST /auth/login", authH.Login)
 	mux.HandleFunc("POST /auth/logout", authH.Logout)
 
-	// Founder form submit = registration + onboarding; must be public
 	mux.HandleFunc("POST /go-api/founder-form/submit", formsH.Submit)
 
-	// NGINX internal subrequest — `internal` directive blocks direct client access
 	mux.HandleFunc("GET /internal/auth/validate", authH.Validate)
 
-	// ── Protected endpoints (NGINX already validated the token) ───────────────
 	protected := http.NewServeMux()
 	protected.HandleFunc("GET /go-api/founder-form/{id}", formsH.Get)
 
