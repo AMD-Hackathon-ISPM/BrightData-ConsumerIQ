@@ -25,8 +25,7 @@ spec:
             limits:
               memory: "1Gi"
           readinessProbe:
-            httpGet:
-              path: /health
+            tcpSocket:
               port: 8080
             initialDelaySeconds: 20
             periodSeconds: 15

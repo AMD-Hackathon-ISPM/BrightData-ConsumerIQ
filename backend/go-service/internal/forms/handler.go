@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -25,6 +26,7 @@ type FounderFormPayload struct {
 	Industry             string   `json:"industry"`
 	Region               string   `json:"region"`
 	Country              string   `json:"country"`
+	CountryCode          string   `json:"countryCode"`
 	Marketplace          string   `json:"marketplace"`
 	Competitors          []string `json:"competitors"`
 	SearchIntentKeywords []string `json:"searchIntentKeywords"`
@@ -56,17 +58,57 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
-	if p.WorkEmail == "" || p.Password == "" {
-		writeErr(w, http.StatusBadRequest, "workEmail and password are required")
+	if p.WorkEmail == "" {
+		writeErr(w, http.StatusBadRequest, "workEmail is required")
 		return
 	}
 
-	plainPassword := p.Password
-	hash, err := bcrypt.GenerateFromPassword([]byte(plainPassword), bcrypt.DefaultCost)
-	if err != nil {
-		log.Printf("bcrypt: %v", err)
-		writeErr(w, http.StatusInternalServerError, "internal error")
-		return
+	var userID int64
+
+	if bearer := r.Header.Get("Authorization"); strings.HasPrefix(bearer, "Bearer ") {
+		token := strings.TrimPrefix(bearer, "Bearer ")
+		if session, err := auth.ValidateSession(r.Context(), h.rdb, token); err == nil && session != nil {
+			userID = session.UserID
+		}
+	}
+
+	if userID == 0 {
+		if p.Password == "" {
+			writeErr(w, http.StatusBadRequest, "password is required")
+			return
+		}
+		plainPassword := p.Password
+		hash, err := bcrypt.GenerateFromPassword([]byte(plainPassword), bcrypt.DefaultCost)
+		if err != nil {
+			log.Printf("bcrypt: %v", err)
+			writeErr(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		err = h.pool.QueryRow(r.Context(),
+			`INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id`,
+			p.WorkEmail, string(hash),
+		).Scan(&userID)
+		if err != nil {
+			var pgErr *pgconn.PgError
+			if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
+				log.Printf("insert user: %v", err)
+				writeErr(w, http.StatusInternalServerError, "internal error")
+				return
+			}
+			var existingHash string
+			if qErr := h.pool.QueryRow(r.Context(),
+				`SELECT id, password_hash FROM users WHERE email = $1`,
+				p.WorkEmail,
+			).Scan(&userID, &existingHash); qErr != nil {
+				log.Printf("select user: %v", qErr)
+				writeErr(w, http.StatusInternalServerError, "internal error")
+				return
+			}
+			if bcrypt.CompareHashAndPassword([]byte(existingHash), []byte(plainPassword)) != nil {
+				writeErr(w, http.StatusUnauthorized, "email already registered with a different password")
+				return
+			}
+		}
 	}
 
 	p.Password = ""
@@ -74,33 +116,6 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "internal error")
 		return
-	}
-
-	var userID int64
-	err = h.pool.QueryRow(r.Context(),
-		`INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id`,
-		p.WorkEmail, string(hash),
-	).Scan(&userID)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
-			log.Printf("insert user: %v", err)
-			writeErr(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-		var existingHash string
-		if qErr := h.pool.QueryRow(r.Context(),
-			`SELECT id, password_hash FROM users WHERE email = $1`,
-			p.WorkEmail,
-		).Scan(&userID, &existingHash); qErr != nil {
-			log.Printf("select user: %v", qErr)
-			writeErr(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-		if bcrypt.CompareHashAndPassword([]byte(existingHash), []byte(plainPassword)) != nil {
-			writeErr(w, http.StatusUnauthorized, "email already registered with a different password")
-			return
-		}
 	}
 
 	var formID string
@@ -126,7 +141,7 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.enqueueFormReceived(formID, userID, p.Industry, p.Country, p.Marketplace, p.SearchIntentKeywords)
+	h.enqueueFormReceived(formID, userID, p.Industry, p.Country, p.CountryCode, p.Marketplace, p.SearchIntentKeywords)
 
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"id":      formID,
@@ -162,12 +177,13 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) enqueueFormReceived(formID string, userID int64, category, country, marketplace string, keywords []string) {
+func (h *Handler) enqueueFormReceived(formID string, userID int64, category, country, countryCode, marketplace string, keywords []string) {
 	payload, err := json.Marshal(worker.FormReceivedPayload{
 		FormID:      formID,
 		UserID:      userID,
 		Category:    category,
 		Country:     country,
+		CountryCode: countryCode,
 		Marketplace: marketplace,
 		Keywords:    keywords,
 	})
