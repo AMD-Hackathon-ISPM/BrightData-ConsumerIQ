@@ -160,7 +160,7 @@ export function GeneratingStep({
                 ? 'running'
                 : 'queued'
           return (
-            <StatusLine key={index} state={state}>
+            <StatusLine key={line} state={state}>
               {line}
             </StatusLine>
           )

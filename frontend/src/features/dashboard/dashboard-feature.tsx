@@ -10,7 +10,7 @@ import {
   LaunchCompass,
   MarketOverview,
   PersonaDecode,
-} from "./components/dashboard-sections";
+} from "./components/sections";
 
 export function ConsumerIQDashboard({
   className,
