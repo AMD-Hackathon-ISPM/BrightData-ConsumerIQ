@@ -1,6 +1,5 @@
 import {
   ArrowRight,
-  Download,
   Sparkles,
   Target,
   TrendingUp,
@@ -27,13 +26,11 @@ import {
 import { pipelineSteps } from "../constants";
 import {
   HealthRow,
-  LineGraph,
   MapCard,
   MetricCard,
   Panel,
   PlatformShareChart,
   RegionBars,
-  SmallStat,
 } from "./dashboard-primitives";
 
 type CardTone = "high" | "medium" | "growth";
@@ -178,20 +175,10 @@ export function DemandPulse() {
         </div>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-3">
           <Panel
-            title="Trend Velocity Index"
-            subtitle="Global aggregate interest momentum"
+            title="Demand vs Supply"
+            subtitle="Opportunity by demand index and market saturation"
           >
-            <LineGraph />
-            <div className="mt-4 flex items-end justify-between border-t pt-3">
-              <div className="grid grid-cols-2 gap-5">
-                <SmallStat label="Current Velocity" value="42.8m/s" />
-                <SmallStat label="Acceleration" value="+12.4%" tone="danger" />
-              </div>
-              <Button size="sm" variant="ghost">
-                Export SVGs
-                <Download className="size-4" />
-              </Button>
-            </div>
+            <DemandSupplyOpportunityChart />
           </Panel>
 
           <Panel
@@ -223,6 +210,101 @@ export function DemandPulse() {
           },
         ]}
       />
+    </div>
+  );
+}
+
+function DemandSupplyOpportunityChart() {
+  const chartData = [
+    {
+      product: "Tinted Sunscreen SPF 50+",
+      shortProduct: "Tinted SPF",
+      demand: 92,
+      saturation: 28,
+    },
+    {
+      product: "Acne Spot Gel Centella",
+      shortProduct: "Acne Gel",
+      demand: 88,
+      saturation: 55,
+    },
+    {
+      product: "Peptide Lip Treatment",
+      shortProduct: "Peptide Lip",
+      demand: 85,
+      saturation: 32,
+    },
+  ];
+
+  const chartConfig = {
+    demand: { label: "Demand", color: "var(--destructive)" },
+    saturation: { label: "Saturation", color: "var(--chart-5)" },
+  };
+
+  return (
+    <div className="grid gap-4">
+      <ChartContainer
+        className="h-52 w-full min-w-0 overflow-hidden rounded-lg bg-muted/20 px-1 pt-2"
+        config={chartConfig}
+        initialDimension={{ height: 208, width: 520 }}
+      >
+        <BarChart
+          data={chartData}
+          layout="vertical"
+          margin={{ bottom: 8, left: 4, right: 22, top: 8 }}
+        >
+          <CartesianGrid horizontal={false} />
+          <XAxis domain={[0, 100]} tickLine={false} type="number" />
+          <YAxis
+            axisLine={false}
+            dataKey="shortProduct"
+            tickLine={false}
+            type="category"
+            width={82}
+          />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                formatter={(value, name, item) => {
+                  const payload = item.payload as (typeof chartData)[number];
+                  const label =
+                    name === "demand" ? "Demand" : "Saturation";
+
+                  return `${label} ${value} - ${payload.product}`;
+                }}
+              />
+            }
+          />
+          <Bar
+            dataKey="demand"
+            fill="var(--color-demand)"
+            radius={[4, 4, 4, 4]}
+          />
+          <Bar
+            dataKey="saturation"
+            fill="var(--color-saturation)"
+            radius={[4, 4, 4, 4]}
+          />
+        </BarChart>
+      </ChartContainer>
+
+      <div className="grid gap-2 border-t pt-3">
+        <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-destructive" />
+            Demand
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-chart-5" />
+            Saturation
+          </span>
+        </div>
+        <ul className="grid gap-1.5 text-xs leading-5 text-foreground-light">
+          <li>High demand + low saturation = strong opportunity.</li>
+          <li>High demand + high saturation = crowded market.</li>
+          <li>Low demand + low saturation = unproven opportunity.</li>
+        </ul>
+      </div>
     </div>
   );
 }
