@@ -8,18 +8,15 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 import type { PromptInputMessage } from '@/components/ai-elements/prompt-input'
-import { ChatComposer } from '@/features/llm-chat/components/chat-composer'
-import { ChatConversation } from '@/features/llm-chat/components/chat-conversation'
-import { ChatPanel } from '@/features/llm-chat/components/chat-panel'
-import { SuggestionList } from '@/features/llm-chat/components/suggestion-list'
-import {
-  initialMessages,
-  suggestions,
-} from '@/features/llm-chat/data/chat-content'
-import { delay, streamText } from '@/features/llm-chat/lib/streaming'
-import type { ChatStatus, MessageType } from '@/features/llm-chat/types'
 import { cn } from '@/lib/utils'
 import { getTaskStatus, startAgentRun } from './api'
+import { ChatComposer } from './components/chat-composer'
+import { ChatConversation } from './components/chat-conversation'
+import { ChatPanel } from './components/chat-panel'
+import { SuggestionList } from './components/suggestion-list'
+import { initialMessages, suggestions } from './data/chat-content'
+import { delay, streamText } from './lib/streaming'
+import type { ChatStatus, MessageType } from './types'
 
 const TASK_POLL_INTERVALS_MS = [1200, 2000, 3500, 5000]
 const TASK_TIMEOUT_MS = 60000
