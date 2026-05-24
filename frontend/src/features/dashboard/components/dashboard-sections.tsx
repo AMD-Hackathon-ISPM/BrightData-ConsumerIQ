@@ -560,7 +560,7 @@ export function PersonaDecode() {
             <h3 className="break-words font-semibold">TAM / SAM / SOM</h3>
           </div>
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="grid flex-1 content-center gap-4">
+            <div className="grid flex-1 content-center gap-4 rounded-lg border border-border-default bg-background-default p-4">
               <MarketSizingCircles />
             </div>
             <div className="mt-auto grid gap-2 pt-6 text-sm text-muted-foreground">
@@ -578,53 +578,14 @@ export function PersonaDecode() {
         </section>
       </div>
 
-      <section className="relative bg-card p-3.5 pl-4 shadow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-gradient-to-b before:from-brand-400 before:via-brand-500 before:to-brand-600 xl:p-4 xl:pl-5">
-        <div className="flex items-center gap-2">
-          <Sparkles
-            className="size-4"
-            color="url(#persona-ai-recommendation-gradient)"
-          >
-            <defs>
-              <linearGradient id="persona-ai-recommendation-gradient">
-                <stop stopColor="var(--brand-400)" />
-                <stop offset="50%" stopColor="var(--brand-500)" />
-                <stop offset="100%" stopColor="var(--brand-600)" />
-              </linearGradient>
-            </defs>
-          </Sparkles>
-          <p className="bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600 bg-clip-text text-base font-semibold text-transparent">
-            Advisor Intelligence
-          </p>
-        </div>
-        <p className="mt-3 text-sm text-foreground-light">
-          Focus the first wave on urban Gen Z women who prioritize affordable
-          daily hair solutions and respond to clear efficacy claims. Emphasize
-          barrier-repair messaging, push social proof around consistent results,
-          and keep entry pricing accessible to accelerate trial and repeat.
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border bg-muted/40 p-3">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground-light">
-              Key Pain Point
-            </p>
-            <p className="mt-2 text-sm font-semibold">Amazon + Temu</p>
-          </div>
-          <div className="rounded-lg border bg-muted/40 p-3">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground-light">
-              Brand Message
-            </p>
-            <p className="mt-2 text-sm font-semibold">
-              Daily relief, real results
-            </p>
-          </div>
-          <div className="rounded-lg border bg-muted/40 p-3">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground-light">
-              Market Opportunity
-            </p>
-            <p className="mt-2 text-sm font-semibold">Repeat purchase rate</p>
-          </div>
-        </div>
-      </section>
+      <AdvisorIntelligence
+        recommendation="Focus the first wave on urban Gen Z women who prioritize affordable daily hair solutions and respond to clear efficacy claims. Emphasize barrier-repair messaging, push social proof around consistent results, and keep entry pricing accessible to accelerate trial and repeat."
+        signals={[
+          { label: "Key Pain Point", value: "Amazon + Temu" },
+          { label: "Brand Message", value: "Daily relief, real results" },
+          { label: "Market Opportunity", value: "Repeat purchase rate" },
+        ]}
+      />
     </div>
   );
 }
@@ -1648,5 +1609,76 @@ function ToastDebugPanel() {
         </Button>
       </div>
     </Panel>
+  );
+}
+
+interface AdvisorSignal {
+  label: string;
+  value: string;
+}
+
+interface AdvisorIntelligenceProps {
+  recommendation: string;
+  signals: AdvisorSignal[];
+}
+
+function AdvisorIntelligence({
+  recommendation,
+  signals,
+}: AdvisorIntelligenceProps) {
+  return (
+    <section className="relative overflow-hidden rounded-xl border border-chart-5/25 bg-card shadow-sm">
+      {/* Hairline accent at the top */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-chart-5/70 to-chart-4/60" />
+      {/* Soft glow in the corner for depth */}
+      <div className="pointer-events-none absolute -left-24 -top-24 size-56 rounded-full bg-chart-5/[0.08] blur-3xl" />
+      <div className="pointer-events-none absolute -right-32 -bottom-32 size-64 rounded-full bg-chart-4/[0.06] blur-3xl" />
+
+      <div className="relative p-4 xl:p-5">
+        <div className="flex items-center gap-2">
+          <Sparkles
+            className="size-[18px] shrink-0"
+            color="url(#advisor-ai-icon-gradient)"
+          >
+            <defs>
+              <linearGradient
+                id="advisor-ai-icon-gradient"
+                x1="0"
+                y1="0"
+                x2="1"
+                y2="1"
+              >
+                <stop stopColor="var(--chart-5)" />
+                <stop offset="100%" stopColor="var(--chart-4)" />
+              </linearGradient>
+            </defs>
+          </Sparkles>
+          <p className="bg-gradient-to-r from-chart-5 to-chart-4 bg-clip-text text-base font-semibold tracking-tight text-transparent">
+            Advisor Intelligence
+          </p>
+        </div>
+
+        <p className="mt-5 max-w-3xl text-sm leading-relaxed text-foreground-light">
+          {recommendation}
+        </p>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {signals.map((signal) => (
+            <div
+              className="group/signal relative overflow-hidden rounded-lg border border-chart-5/20 bg-background-default/60 p-3 transition-colors hover:border-chart-5/40"
+              key={signal.label}
+            >
+              <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-chart-5/70 via-chart-5/30 to-chart-4/60" />
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground-lighter">
+                {signal.label}
+              </p>
+              <p className="mt-2 text-sm font-semibold text-foreground-default">
+                {signal.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

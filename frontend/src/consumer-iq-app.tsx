@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -10,6 +10,7 @@ import { ConsumerIQDashboard } from "@/features/dashboard";
 import type { DashboardSection } from "@/features/dashboard/constants";
 import { ConsumerIQOnboarding } from "@/features/onboarding";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useAuth } from "@/lib/auth";
 
 const CONSUMER_IQ_ONBOARDED_KEY = "consumeriq:onboarded";
 const FounderChat = lazy(() =>
@@ -19,19 +20,30 @@ const FounderChat = lazy(() =>
 );
 
 export function ConsumerIQExperience() {
-  const [isOnboarded, setIsOnboarded] = useState(false);
+  const { user } = useAuth();
+  const [isOnboarded, setIsOnboarded] = useState(() => {
+    try {
+      return (
+        user?.email != null &&
+        window.localStorage.getItem(CONSUMER_IQ_ONBOARDED_KEY) === user.email
+      );
+    } catch {
+      return false;
+    }
+  });
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeSection, setActiveSection] =
     useState<DashboardSection>("dashboard");
   const isTabletUp = useMediaQuery("(min-width: 768px)");
 
-  useEffect(() => {
-    window.localStorage.removeItem(CONSUMER_IQ_ONBOARDED_KEY);
-  }, []);
-
   const handleOnboardingComplete = useCallback(() => {
+    try {
+      if (user?.email) {
+        window.localStorage.setItem(CONSUMER_IQ_ONBOARDED_KEY, user.email);
+      }
+    } catch {}
     setIsOnboarded(true);
-  }, []);
+  }, [user?.email]);
 
   const handleToggleChat = useCallback(() => {
     setIsChatOpen((open) => !open);
