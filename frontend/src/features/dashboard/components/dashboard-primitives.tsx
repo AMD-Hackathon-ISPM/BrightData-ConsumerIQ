@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -262,30 +264,49 @@ export function LineGraph() {
   const chartConfig = {
     value: {
       label: "Velocity",
-      color: "var(--foreground)",
+      color: "var(--chart-5)",
     },
   };
 
   return (
-    <ChartContainer className="h-48 w-full" config={chartConfig}>
-      <LineChart data={chartData} margin={{ left: 12, right: 12, top: 12 }}>
-        <CartesianGrid vertical={false} />
+    <ChartContainer className="h-56 w-full" config={chartConfig}>
+      <AreaChart
+        data={chartData}
+        margin={{ bottom: 0, left: 12, right: 12, top: 12 }}
+      >
+        <defs>
+          <linearGradient id="velocity-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop
+              offset="0%"
+              stopColor="var(--color-value)"
+              stopOpacity={0.35}
+            />
+            <stop
+              offset="100%"
+              stopColor="var(--color-value)"
+              stopOpacity={0}
+            />
+          </linearGradient>
+        </defs>
+        <CartesianGrid stroke="var(--border)" strokeOpacity={0.6} vertical={false} />
         <XAxis
-          dataKey="week"
-          tickLine={false}
           axisLine={false}
+          dataKey="week"
+          tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+          tickLine={false}
           tickMargin={8}
         />
         <YAxis hide />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Line
+        <Area
+          activeDot={{ fill: "var(--color-value)", r: 4, strokeWidth: 0 }}
           dataKey="value"
+          fill="url(#velocity-fill)"
           stroke="var(--color-value)"
           strokeWidth={2}
-          dot={false}
           type="monotone"
         />
-      </LineChart>
+      </AreaChart>
     </ChartContainer>
   );
 }
