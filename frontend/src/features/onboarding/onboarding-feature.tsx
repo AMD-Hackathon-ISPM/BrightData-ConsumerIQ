@@ -221,6 +221,7 @@ export function ConsumerIQOnboarding({
               onComplete={handleComplete}
               submitStatus={submitStatus}
               formId={submittedFormId}
+              formState={formState}
               region={formState.region}
               industry={formState.industry}
             />

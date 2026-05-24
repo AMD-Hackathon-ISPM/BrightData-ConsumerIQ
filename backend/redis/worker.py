@@ -30,6 +30,7 @@ celeryApp.conf.update(
     task_default_queue='inference',
     task_routes={
         'runAgentTask': {'queue': 'inference'},
+        'runPersonaDecodeTask': {'queue': 'inference'},
         'processLlmInsights': {'queue': 'synthesis'},
         'scrapeMarketSignals': {'queue': 'scraping'},
         'scrapeMarketplacePage': {'queue': 'scraping'},
@@ -271,6 +272,61 @@ def scrapeMarketSignals(category: str, keywords: list[str], country: str = 'us',
     return {'category': category, 'country': country, 'keywords': keywords, 'signals_stored': stored, 'status': 'completed'}
 
 
+@celeryApp.task(name='runPersonaDecodeTask', queue='inference')
+def runPersonaDecodeTask(formData: dict) -> dict[str, Any]:
+    category = formData.get('category', '')
+    country = formData.get('country', 'us')
+
+    signals = _fetchRelevantSignals(category, country, limit=20)
+    if signals:
+        signalLines = []
+        for s in signals[:15]:
+            line = f"- {s['signalText'][:200]}"
+            if s.get('sourceType'):
+                line += f" ({s['sourceType']})"
+            signalLines.append(line)
+        signalContext = '\n'.join(signalLines)
+    else:
+        signalContext = '- No market signals yet; base personas on the product context.'
+
+    prompt = (
+        'You are a consumer market analyst. Generate exactly 3 buyer personas.\n\n'
+        f'Product: {formData.get("productName", "")}\n'
+        f'Category: {category}\n'
+        f'Country: {country}\n'
+        f'Region: {formData.get("region", "")}\n'
+        f'Target Customer: {formData.get("customerSegment", "")}\n'
+        f'Pain Point: {formData.get("painPoint", "")}\n'
+        f'Price Range: {formData.get("priceRangeMin", 0)}-{formData.get("priceRangeMax", 0)}\n'
+        f'Product Description: {formData.get("productDescription", "")}\n\n'
+        f'Market Signals:\n{signalContext}\n\n'
+        'Return ONLY a JSON object with no extra text:\n'
+        '{"personas":['
+        '{"name":"...","age":"18-26","tone":"high","description":"...","painPoints":["...","...","..."],"goals":"..."},'
+        '{"name":"...","age":"...","tone":"medium","description":"...","painPoints":["...","..."],"goals":"..."},'
+        '{"name":"...","age":"...","tone":"growth","description":"...","painPoints":["...","..."],"goals":"..."}'
+        '],"stp":{"segmentation":"...","targeting":"...","positioning":"...","geographic":"...","demographic":"...","psychographic":"...","behavioral":"...","needs":"..."},'
+        '"advisorIntelligence":{"recommendation":"...","keyPainPoint":"...","brandMessage":"...","marketOpportunity":"..."}}\n\n'
+        'JSON:'
+    )
+
+    llm = createLlm()
+    try:
+        response = llm.create_completion(
+            prompt=prompt,
+            max_tokens=1200,
+            temperature=0.3,
+            stop=['\n\n\n'],
+        )
+        rawText = response['choices'][0]['text']
+    finally:
+        del llm
+        gc.collect()
+
+    personaData = _parseInsights(rawText)
+    return {'status': 'completed', 'personaData': personaData}
+
+
 @celeryApp.task(name='runAgentTask', bind=True, queue='inference')
 def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | None = None) -> dict[str, Any]:
     from backend.agent.reactAgent import runReactAgent
@@ -295,17 +351,20 @@ def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | Non
     return result
 
 
-@celeryApp.task(name='processLlmInsights', queue='synthesis')
-def processLlmInsights(categoryName: str, country: str = ''):
+@celeryApp.task(name='processLlmInsights', queue='synthesis', bind=True, max_retries=3)
+def processLlmInsights(self, categoryName: str, country: str = ''):
     print(f'Worker picked up job for category: {categoryName}, country: {country}')
 
     signals = _fetchRelevantSignals(categoryName, country)
     if not signals:
-        return {
-            'category': categoryName,
-            'status': 'failed',
-            'error': 'No signals found for category embedding search.',
-        }
+        try:
+            raise self.retry(countdown=90)
+        except self.MaxRetriesExceededError:
+            return {
+                'category': categoryName,
+                'status': 'failed',
+                'error': 'No signals found after retries.',
+            }
 
     translatedSignals = _translateSignalsIfNeeded(signals)
     insights = _runLlmInsights(categoryName, translatedSignals)

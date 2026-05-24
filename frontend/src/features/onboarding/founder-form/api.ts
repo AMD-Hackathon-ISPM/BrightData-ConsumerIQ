@@ -1,4 +1,37 @@
+import { getAuthToken } from "@/lib/auth";
 import type { FounderFormState } from "./types";
+
+function authHeader(): Record<string, string> {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+export const PERSONA_TASK_KEY = "ciq_persona_task_id";
+
+export async function startPersonaDecode(
+  state: FounderFormState,
+): Promise<{ taskId: string }> {
+  const response = await fetch("/api/persona-decode", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeader() },
+    body: JSON.stringify({
+      category: state.industry,
+      country: state.countryCode,
+      marketplace: state.salesChannel,
+      customerSegment: [state.targetGen, state.targetGender]
+        .filter(Boolean)
+        .join(", "),
+      painPoint: state.problemToSolve,
+      priceRangeMin: state.priceRangeMin,
+      priceRangeMax: state.priceRangeMax,
+      productName: state.productName,
+      productDescription: state.productDescription,
+      region: state.region,
+    }),
+  });
+  if (!response.ok) throw new Error("persona decode request failed");
+  return response.json() as Promise<{ taskId: string }>;
+}
 
 export type SubmitFounderFormResponse = {
   id: string;
@@ -38,7 +71,7 @@ export async function submitFounderForm(
 
   const response = await fetch("/go-api/founder-form/submit", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeader() },
     body: JSON.stringify(payload),
   });
 

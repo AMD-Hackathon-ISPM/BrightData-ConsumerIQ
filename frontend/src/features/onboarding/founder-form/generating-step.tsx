@@ -1,12 +1,46 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { StatusLine } from './shared'
+import { startPersonaDecode, PERSONA_TASK_KEY } from './api'
+import { getAuthToken } from '@/lib/auth'
+import type { FounderFormState } from './types'
+
+type PipelineStatus = {
+  scraping: { status: string; signalsStored: number }
+  inference: { status: string }
+}
+
+async function fetchPipelineStatus(formId: string): Promise<PipelineStatus | null> {
+  try {
+    const token = getAuthToken()
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+    const res = await fetch(`/api/form-pipeline/${formId}`, { headers })
+    if (!res.ok) return null
+    return res.json() as Promise<PipelineStatus>
+  } catch {
+    return null
+  }
+}
+
+function pipelineTarget(p: PipelineStatus | null): number {
+  if (!p) return 1
+  const scrape = p.scraping.status
+  const infer = p.inference.status
+  if (infer === 'completed' || infer === 'skipped') return 7
+  if (infer === 'processing') return 5
+  if (infer === 'failed') return 5
+  if (scrape === 'completed' || scrape === 'skipped') return 4
+  if (scrape === 'failed') return 4
+  if (scrape === 'processing') return 3
+  return 1
+}
 
 type GeneratingStepProps = {
   onComplete: () => void
   submitStatus: 'idle' | 'submitting' | 'success' | 'error'
   formId: string | null
+  formState: FounderFormState
   region?: string
   industry?: string
 }
@@ -15,38 +49,77 @@ export function GeneratingStep({
   onComplete,
   submitStatus,
   formId,
+  formState,
   region,
   industry,
 }: GeneratingStepProps) {
+  const [pipeline, setPipeline] = useState<PipelineStatus | null>(null)
+  const [revealed, setRevealed] = useState(0)
+  const personaStarted = useRef(false)
+
+  const signalsStored = pipeline?.scraping.signalsStored ?? 0
+
   const lines = useMemo(() => {
     const scopeLabel = industry?.toLowerCase() ?? 'category'
     const firstLine =
       region && industry
         ? `Scanning ${region} marketplaces for ${scopeLabel} listings…`
         : 'Scanning marketplace listings…'
+    const signalsLine =
+      signalsStored > 0
+        ? `${signalsStored.toLocaleString()} market signals collected`
+        : 'Gathering market signals…'
     return [
       firstLine,
-      '47 listings found across 23 brands',
-      'Reading 1,247 verified-purchase reviews…',
+      signalsLine,
+      'Reading verified-purchase reviews…',
       'Identifying customer patterns',
       'Cross-referencing social demand signals',
       'Detecting market gaps',
       'Building your dashboard',
     ]
-  }, [region, industry])
-
-  const [revealed, setRevealed] = useState(0)
+  }, [region, industry, signalsStored])
 
   useEffect(() => {
-    if (revealed >= lines.length) return
-    const timeoutId = window.setTimeout(
-      () => setRevealed((current) => current + 1),
-      revealed === 0 ? 600 : 950,
-    )
-    return () => window.clearTimeout(timeoutId)
-  }, [revealed, lines.length])
+    if (!formId || submitStatus !== 'success') return
+    let cancelled = false
+    const poll = async () => {
+      while (!cancelled) {
+        const status = await fetchPipelineStatus(formId)
+        if (!cancelled) setPipeline(status)
+        if (status && pipelineTarget(status) >= lines.length) break
+        await new Promise<void>((r) => setTimeout(r, 3000))
+      }
+    }
+    poll()
+    return () => {
+      cancelled = true
+    }
+  }, [formId, submitStatus, lines.length])
+
+  const target = pipelineTarget(pipeline)
+
+  useEffect(() => {
+    if (submitStatus !== 'success') return
+    if (revealed >= target) return
+    const id = window.setTimeout(() => setRevealed((r) => r + 1), revealed === 0 ? 600 : 900)
+    return () => window.clearTimeout(id)
+  }, [revealed, target, submitStatus])
+
+  useEffect(() => {
+    if (submitStatus !== 'success' || personaStarted.current) return
+    personaStarted.current = true
+    startPersonaDecode(formState)
+      .then(({ taskId }) => {
+        try {
+          localStorage.setItem(PERSONA_TASK_KEY, taskId)
+        } catch {}
+      })
+      .catch(() => {})
+  }, [submitStatus, formState])
 
   const allDone = revealed >= lines.length
+  const canOpen = target >= 4 || submitStatus === 'error'
 
   return (
     <div className="mx-auto w-full max-w-xl">
@@ -79,7 +152,7 @@ export function GeneratingStep({
 
       <div className="mx-auto mt-12 max-w-md space-y-3">
         {lines.map((line, index) => {
-          if (index > revealed) return null
+          if (index >= revealed) return null
           const state =
             index < revealed - 1 || allDone
               ? 'done'
@@ -87,7 +160,7 @@ export function GeneratingStep({
                 ? 'running'
                 : 'queued'
           return (
-            <StatusLine key={line} state={state}>
+            <StatusLine key={index} state={state}>
               {line}
             </StatusLine>
           )
@@ -108,10 +181,10 @@ export function GeneratingStep({
         ) : null}
         <Button
           onClick={onComplete}
-          disabled={submitStatus === 'submitting' || !allDone}
+          disabled={submitStatus === 'submitting' || !canOpen}
           className={cn(
             'h-11 min-w-48 gap-2 px-5 transition-opacity duration-500',
-            allDone ? 'opacity-100' : 'opacity-60',
+            canOpen ? 'opacity-100' : 'opacity-60',
           )}
         >
           {submitStatus === 'submitting' ? 'Submitting…' : 'Open dashboard'}

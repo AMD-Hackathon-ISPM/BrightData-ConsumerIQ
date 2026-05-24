@@ -70,6 +70,19 @@ class ScanMarketRequest(BaseModel):
     country: str = ''
 
 
+class PersonaDecodeRequest(BaseModel):
+    category: str
+    country: str = 'us'
+    marketplace: str = 'amazon'
+    customerSegment: str = ''
+    painPoint: str = ''
+    priceRangeMin: int = 0
+    priceRangeMax: int = 0
+    productName: str = ''
+    productDescription: str = ''
+    region: str = ''
+
+
 @app.post('/api/agent/run')
 async def agentRun(payload: AgentRunRequest, request: Request):
     if _inferenceQueueDepth() >= _INFERENCE_QUEUE_LIMIT:
@@ -121,6 +134,70 @@ async def scanMarket(payload: ScanMarketRequest):
     return {'message': f'Successfully queued LLM analysis for {payload.category}', 'taskId': task.id, 'status': 'processing'}
 
 
+@app.post('/api/persona-decode')
+async def personaDecodeRun(payload: PersonaDecodeRequest):
+    if _inferenceQueueDepth() >= _INFERENCE_QUEUE_LIMIT:
+        raise HTTPException(status_code=503, detail='Inference queue full, try again later')
+
+    from backend.redis.worker import runPersonaDecodeTask
+    task = runPersonaDecodeTask.delay(payload.model_dump())
+    return {'taskId': task.id, 'status': 'processing'}
+
+
+@app.get('/api/form-pipeline/{form_id}')
+async def getFormPipeline(formId: str = Path(..., alias='form_id')):
+    import redis as redis_lib
+    try:
+        r = redis_lib.from_url(_REDIS_URL)
+        raw = r.get(f'form_pipeline:{formId}')
+    except Exception:
+        raise HTTPException(status_code=503, detail='Redis unavailable')
+
+    if not raw:
+        raise HTTPException(status_code=404, detail='Pipeline not found')
+
+    pipeline = json.loads(raw)
+
+    result: dict = {}
+
+    scrape_task_id = pipeline.get('scrape_task_id', '')
+    if scrape_task_id:
+        try:
+            from celery.result import AsyncResult
+            from backend.redis.worker import celeryApp
+            sr = AsyncResult(scrape_task_id, app=celeryApp)
+            if sr.successful():
+                scrape_result = sr.result or {}
+                result['scraping'] = {'status': 'completed', 'signalsStored': scrape_result.get('signals_stored', 0)}
+            elif sr.failed():
+                result['scraping'] = {'status': 'failed', 'signalsStored': 0}
+            else:
+                result['scraping'] = {'status': 'processing', 'signalsStored': 0}
+        except Exception:
+            result['scraping'] = {'status': 'unknown', 'signalsStored': 0}
+    else:
+        result['scraping'] = {'status': 'skipped', 'signalsStored': 0}
+
+    inference_task_id = pipeline.get('inference_task_id', '')
+    if inference_task_id:
+        try:
+            from celery.result import AsyncResult
+            from backend.redis.worker import celeryApp
+            ir = AsyncResult(inference_task_id, app=celeryApp)
+            if ir.successful():
+                result['inference'] = {'status': 'completed'}
+            elif ir.failed():
+                result['inference'] = {'status': 'failed'}
+            else:
+                result['inference'] = {'status': 'processing'}
+        except Exception:
+            result['inference'] = {'status': 'unknown'}
+    else:
+        result['inference'] = {'status': 'skipped'}
+
+    return result
+
+
 @app.get('/api/task-status/{task_id}')
 async def getTaskStatus(taskId: str = Path(..., alias='task_id')):
     try:
@@ -134,7 +211,8 @@ async def getTaskStatus(taskId: str = Path(..., alias='task_id')):
 
     taskResult = AsyncResult(taskId, app=celeryApp)
 
-    if taskResult.ready():
+    if taskResult.successful():
         return {'taskId': taskId, 'status': 'completed', 'result': taskResult.result}
-
+    if taskResult.failed():
+        return {'taskId': taskId, 'status': 'failed', 'error': str(taskResult.result)}
     return {'taskId': taskId, 'status': 'processing'}
