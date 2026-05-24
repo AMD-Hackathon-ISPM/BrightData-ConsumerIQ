@@ -10,6 +10,10 @@ from backend.api.scrapingbee_client import (
     normalizeText,
     scrapePageText,
     searchGoogle,
+    scrapeAmazonWithReviews,  # Added import for scrapeAmazonWithReviews
+    debugWalmartReviewScrape,
+    scrapeWalmartProduct,
+    scrapeWalmartWithReviews,
 )
 
 router = APIRouter(tags=["marketplace"])
@@ -43,6 +47,11 @@ class MarketplaceDiscoveryRequest(BaseModel):
     include_scrape: bool = True
 
 
+class WalmartReviewDebugRequest(BaseModel):
+    url: str
+    country_code: str = "us"
+
+
 def classifyMarketplaceUrl(url: str):
     lowered = url.lower()
 
@@ -53,6 +62,13 @@ def classifyMarketplaceUrl(url: str):
         if "/dp/" in lowered or "/gp/product/" in lowered:
             return "amazon_product_page"
         return "amazon_page"
+
+    if "walmart." in lowered:
+        if "/reviews/product/" in lowered:
+            return "walmart_review_page"
+        if "/ip/" in lowered:
+            return "walmart_product_page"
+        return "walmart_page"
 
     if "pingjia.taobao.com" in lowered:
         return "taobao_review_page"
@@ -121,6 +137,47 @@ def extractTaobaoSignals(text: str):
     }
 
 
+def extractWalmartSignals(text: str, url: str = ""):
+    clean = normalizeText(text)
+    lines = clean.splitlines()
+    joined = " ".join(lines)
+
+    rating_match = re.search(r"(\d+(?:\.\d+)?)\s+out of\s+5", joined, re.IGNORECASE)
+    review_count_match = re.search(r"([\d,]+)\s+(?:reviews?|ratings?)", joined, re.IGNORECASE)
+
+    product_mentions = []
+    for line in lines:
+        lowered = line.lower()
+        has_product_context = any(
+            marker in lowered
+            for marker in [
+                "about this item",
+                "product details",
+                "specifications",
+                "brand",
+                "walmart item",
+                "seller",
+                "shipping",
+            ]
+        )
+
+        if len(line) > 20 and has_product_context:
+            product_mentions.append(line)
+
+    return {
+        "marketplace": "walmart",
+        "page_blocked": isBlockedMarketplaceText(clean),
+        "prices": extractPriceSignals(clean),
+        "review_tags": [],
+        "product_mentions": product_mentions[:12],
+        "walmart_specific": {
+            "source_url": url,
+            "average_rating": float(rating_match.group(1)) if rating_match else None,
+            "total_reviews": int(review_count_match.group(1).replace(",", "")) if review_count_match else None,
+        },
+    }
+
+
 def extractMarketplaceSignals(url: str, text: str):
     page_type = classifyMarketplaceUrl(url)
 
@@ -129,6 +186,9 @@ def extractMarketplaceSignals(url: str, text: str):
 
     if "amazon" in page_type.lower() or "amazon.com" in url.lower():
         return extractAmazonSignals(text, url)
+
+    if "walmart" in page_type.lower() or "walmart." in url.lower():
+        return extractWalmartSignals(text, url)
 
     return {
         "marketplace": detectSourceFromUrl(url),
@@ -153,6 +213,9 @@ def buildMarketplaceDiscoveryQuery(payload: MarketplaceDiscoveryRequest):
     if marketplace == "amazon":
         return f"site:amazon.com {keyword} reviews price"
 
+    if marketplace == "walmart":
+        return f"site:walmart.com/ip {keyword} reviews price"
+
     if marketplace == "temu":
         return f"site:temu.com {keyword} reviews price"
 
@@ -172,32 +235,117 @@ def shouldRetryWithFullAmazonRender(error: dict | None):
     )
 
 
-@router.post("/api/marketplace-scrape")
-async def marketplaceScrape(payload: MarketplaceScrapeRequest):
-<<<<<<< HEAD
-    if "amazon.com" in payload.url.lower():
-    result, error = scrapeAmazonWithReviews(
+@router.post("/api/marketplace-debug/walmart-reviews")
+async def walmartReviewDebug(payload: WalmartReviewDebugRequest):
+    result, error = debugWalmartReviewScrape(
         url=payload.url,
         country_code=payload.country_code,
     )
-    if not error:
-        # result sudah berupa dict dengan reviews terstruktur!
+
+    if error:
+        return error
+
+    return {
+        "status": "success",
+        "source": "scrapingbee_debug",
+        "debug": result,
+    }
+
+
+@router.post("/api/marketplace-scrape")
+async def marketplaceScrape(payload: MarketplaceScrapeRequest):
+    if "walmart." in payload.url.lower():
+        country_code = "us" if payload.country_code == "cn" else payload.country_code
+
+        if payload.include_reviews:
+            result, error = scrapeWalmartWithReviews(
+                url=payload.url,
+                country_code=country_code,
+                max_pages=payload.max_review_pages,
+            )
+
+            if error:
+                return {
+                    "status": "success",
+                    "source": "scrapingbee_with_fallback",
+                    "source_url": payload.url,
+                    "page_type": "walmart_product_page",
+                    "signals": {
+                        "marketplace": "walmart",
+                        "page_blocked": True,
+                        "prices": [],
+                        "review_tags": [],
+                        "product_mentions": [],
+                        "walmart_specific": {
+                            "product": {},
+                            "reviews": [],
+                            "rating_summary": {},
+                            "review_count_scraped": 0,
+                            "review_source": "blocked_or_timed_out_live_scrape",
+                            "blocked_reason": error.get("message") if isinstance(error, dict) else str(error),
+                        },
+                    },
+                }
+
+            product = result.get("product", {})
+            reviews = result.get("reviews", [])
+
+            return {
+                "status": "success",
+                "source": "scrapingbee",
+                "source_url": payload.url,
+                "page_type": "walmart_product_page",
+                "signals": {
+                    "marketplace": "walmart",
+                    "page_blocked": False,
+                    "prices": [product.get("price")] if product.get("price") else [],
+                    "review_tags": [],
+                    "product_mentions": [product.get("description")] if product.get("description") else [],
+                    "walmart_specific": {
+                        "product": product,
+                        "reviews": reviews,
+                        "rating_summary": result.get("rating_summary", {}),
+                        "review_count_scraped": result.get("review_count_scraped", 0),
+                        "review_source": result.get("review_source"),
+                        "review_error": result.get("review_error"),
+                    },
+                },
+            }
+
+        product, error = scrapeWalmartProduct(
+            url=payload.url,
+            country_code=country_code,
+        )
+
+        if error:
+            return error
+
         return {
             "status": "success",
             "source": "scrapingbee",
             "source_url": payload.url,
-            "page_type": "amazon_product_page",
+            "page_type": "walmart_product_page",
+            "keyword": payload.keyword,
+            "country_code": country_code,
             "signals": {
-                "marketplace": "amazon",
+                "marketplace": "walmart",
                 "page_blocked": False,
-                "prices": result.get("price", []),
+                "prices": [product.get("price")] if product.get("price") else [],
                 "review_tags": [],
-                "product_mentions": [],
-                "amazon_specific": {
-                    "reviews": result.get("reviews", []),
-                    "rating_summary": result.get("rating_summary", {}),
-                }
-=======
+                "product_mentions": [product.get("description")] if product.get("description") else [],
+                "walmart_specific": {
+                    "product": product,
+                    "reviews": [],
+                    "rating_summary": {
+                        "average_rating": product.get("average_rating"),
+                        "total_reviews": product.get("total_reviews"),
+                    },
+                    "review_count_scraped": 0,
+                    "review_source": "not_requested",
+                },
+            },
+        }
+
     if "amazon." in payload.url.lower():
         country_code = "us" if payload.country_code == "cn" else payload.country_code
 
@@ -426,6 +574,21 @@ async def taobaoUrlTemplate(keyword: str):
         "templates": {
             "search_url": f"https://s.taobao.com/search?q={encoded_keyword}",
             "recommended_dynamic_flow": "Use /api/marketplace-discovery first, then pass selected URLs to /api/marketplace-batch-scrape.",
+        },
+    }
+
+
+@router.get("/api/marketplace-url-template/walmart")
+async def walmartUrlTemplate(keyword: str):
+    encoded_keyword = quote_plus(keyword)
+
+    return {
+        "keyword": keyword,
+        "templates": {
+            "search_url": f"https://www.walmart.com/search?q={encoded_keyword}",
+            "product_url_pattern": "https://www.walmart.com/ip/{product-slug}/{item_id}",
+            "reviews_url_pattern": "https://www.walmart.com/reviews/product/{item_id}?page=1",
+            "recommended_dynamic_flow": "Use /api/marketplace-discovery with marketplace=walmart, then scrape selected /ip/ URLs.",
         },
     }
 def extractAmazonSignals(text: str, url: str = ""):
