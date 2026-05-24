@@ -1,4 +1,5 @@
-﻿import os
+import os
+import re
 import json
 import html
 import time
@@ -353,34 +354,87 @@ def scrapeAmazonReviewPage(url: str, country_code: str = "us", page: int = 1):
             "selector": "[data-hook='review']",
             "type": "list",
             "output": {
-                "title": {"selector": "[data-hook='review-title'] span", "type": "text"},
-                "body": {"selector": "[data-hook='review-body'] span", "type": "text"},
-                "stars": {"selector": "[data-hook='review-star-rating'] span", "type": "text"},
-                "author": {"selector": ".a-profile-name", "type": "text"},
-                "date": {"selector": "[data-hook='review-date']", "type": "text"},
-                "verified": {"selector": "[data-hook='avp-badge']", "type": "text"}
-            }
+                "title": {"selector": "[data-hook='review-title']", "output": "text"},
+                "body": {"selector": "[data-hook='review-body']", "output": "text"},
+                "stars": {
+                    "selector": "[data-hook='review-star-rating'] span, [data-hook='cmps-review-star-rating'] span",
+                    "output": "text",
+                },
+                "author": {"selector": ".a-profile-name", "output": "text"},
+                "date": {"selector": "[data-hook='review-date']", "output": "text"},
+                "verified": {"selector": "[data-hook='avp-badge']", "output": "text"},
+            },
         },
-        "rating_summary": {
-            "selector": "#averageCustomerReviews",
-            "output": {
-                "avg_rating": {"selector": "[data-hook='rating-out-of-text']", "type": "text"},
-                "total_reviews": {"selector": "[data-hook='total-review-count']", "type": "text"}
-            }
-        },
-        "price": {"selector": ".a-price .a-offscreen", "type": "text"}
+        "average_rating": {"selector": "[data-hook='rating-out-of-text']", "output": "text"},
+        "total_reviews": {"selector": "[data-hook='total-review-count']", "output": "text"},
     }
 
+    result, error = scrapeAndParse(
+        url=review_url,
+        country_code=country_code,
+        render_js=False,
+        wait_ms=0,
+        extract_rules=extract_rules,
+    )
+
+    if not error and isinstance(result, dict) and result.get("reviews"):
+        return result, None
+
     return scrapeAndParse(
-        url=url,
+        url=review_url,
         country_code=country_code,
         render_js=True,
-        wait_ms=15000,
-        js_scenario=js_scenario,
+        wait_ms=8000,
+        wait_browser="load",
+        block_resources=False,
         extract_rules=extract_rules,
     )
 
 
+def scrapeAmazonWithReviews(url: str, country_code: str = "us", max_pages: int = 3):
+    all_reviews = []
+    rating_summary = {}
+
+    for page in range(1, max_pages + 1):
+        result, error = scrapeAmazonReviewPage(url, country_code=country_code, page=page)
+
+        if error:
+            if isBlockedScrapeError(error):
+                return None, {
+                    "status": "blocked",
+                    "source_url": error.get("source_url", url) if isinstance(error, dict) else url,
+                    "message": "Amazon redirected ScrapingBee to login/CAPTCHA before reviews were available",
+                    "next_step": "Use a permitted data source fallback now, then switch this path to Bright Data Amazon reviews once credits are active.",
+                }
+            return None, error
+
+        if isBlockedScrapeResult(result):
+            return None, {
+                "status": "blocked",
+                "message": "Amazon CAPTCHA/block page detected",
+                "source_url": url,
+            }
+
+        reviews = result.get("reviews", []) if isinstance(result, dict) else []
+
+        if not reviews:
+            break
+
+        all_reviews.extend(reviews)
+
+        if page == 1:
+            rating_summary = {
+                "average_rating": result.get("average_rating"),
+                "total_reviews": result.get("total_reviews"),
+            }
+
+    return {
+        "reviews": all_reviews,
+        "rating_summary": rating_summary,
+        "review_count_scraped": len(all_reviews),
+    }, None
+
+
 
 def extractWalmartItemId(url: str):
     parsed = urlparse(url)
@@ -1097,10 +1151,16 @@ def scrapeWalmartReviewPage(url: str, country_code: str = "us", page: int = 1):
         return None, error
 
     if not isinstance(result, dict):
+        review_text_result, review_text_error = scrapeWalmartReviewTextFallback(review_url, country_code=country_code)
+
+        if review_text_result and review_text_result.get("reviews"):
+            return review_text_result, None
+
         return None, {
             "status": "error",
             "source_url": review_url,
             "message": "Walmart review extraction did not return structured JSON",
+            "fallback_error": review_text_error,
         }
 
     if isBlockedScrapeResult(result):
@@ -1132,7 +1192,24 @@ def scrapeWalmartWithReviews(url: str, country_code: str = "us", max_pages: int 
     product, product_error = scrapeWalmartProduct(url, country_code=country_code)
 
     if product_error:
-        return None, product_error
+        product = {
+            "item_id": extractWalmartItemId(url),
+            "assumed_reviews_url": buildWalmartReviewsUrl(url, 1),
+            "url": url,
+            "title": None,
+            "brand": None,
+            "price": None,
+            "currency": None,
+            "description": None,
+            "image": None,
+            "sku": extractWalmartItemId(url),
+            "gtin": None,
+            "seller": None,
+            "availability": None,
+            "average_rating": None,
+            "total_reviews": None,
+            "product_error": product_error,
+        }
 
     all_reviews = []
     rating_summary = {}
@@ -1889,10 +1966,16 @@ def scrapeWalmartReviewPage(url: str, country_code: str = "us", page: int = 1):
         return None, error
 
     if not isinstance(result, dict):
+        review_text_result, review_text_error = scrapeWalmartReviewTextFallback(review_url, country_code=country_code)
+
+        if review_text_result and review_text_result.get("reviews"):
+            return review_text_result, None
+
         return None, {
             "status": "error",
             "source_url": review_url,
             "message": "Walmart review extraction did not return structured JSON",
+            "fallback_error": review_text_error,
         }
 
     if isBlockedScrapeResult(result):
@@ -1924,7 +2007,25 @@ def scrapeWalmartWithReviews(url: str, country_code: str = "us", max_pages: int 
     product, product_error = scrapeWalmartProduct(url, country_code=country_code)
 
     if product_error:
-        return None, product_error
+        item_id = extractWalmartItemId(url)
+        product = {
+            "item_id": item_id,
+            "assumed_reviews_url": buildWalmartReviewsUrl(url, 1),
+            "url": url,
+            "title": None,
+            "brand": None,
+            "price": None,
+            "currency": None,
+            "description": None,
+            "image": None,
+            "sku": item_id,
+            "gtin": None,
+            "seller": None,
+            "availability": None,
+            "average_rating": None,
+            "total_reviews": None,
+            "product_error": product_error,
+        }
 
     all_reviews = []
     rating_summary = {}
@@ -1966,8 +2067,6 @@ def scrapeWalmartWithReviews(url: str, country_code: str = "us", max_pages: int 
         "review_error": review_error,
     }, None
 
-
->>>>>>> Stashed changes
 def searchGoogle(query: str, country_code: str = "us", language: str = "en", nb_results: int = 10):
     api_key, error = requireApiKey()
     if error:

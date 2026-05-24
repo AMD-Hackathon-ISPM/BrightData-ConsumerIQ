@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-﻿from fastapi import FastAPI, HTTPException, Path
+from fastapi import FastAPI, HTTPException, Path
 
 from backend.api.marketplace_scrape import router as marketplaceRouter
 from backend.api.serp_search import router as serpRouter
@@ -15,15 +14,6 @@ app.include_router(marketplaceRouter)
 async def health():
     return {"status": "ok"}
 
-=======
-from fastapi import FastAPI, Path
-from celery.result import AsyncResult
-from backend.redis.worker import celeryApp, processLlmInsights
-from backend.api.marketplace_scrape import router as marketplaceRouter
-
-app = FastAPI(title='ConsumerIQ API')
-app.include_router(marketplaceRouter)
->>>>>>> 89bb938 (fallback and review fix)
 
 @app.post("/api/scan-market/{category_name}")
 async def scanMarket(categoryName: str = Path(..., alias="category_name")):

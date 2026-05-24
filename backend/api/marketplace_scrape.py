@@ -1,4 +1,5 @@
-﻿import re
+import re
+import traceback
 from urllib.parse import quote_plus
 
 from fastapi import APIRouter
@@ -23,7 +24,8 @@ class MarketplaceScrapeRequest(BaseModel):
     url: str
     keyword: str | None = None
     country_code: str = "cn"
-    render_js: bool = True scroll: bool = False  
+    render_js: bool = True 
+    scroll: bool = False  
     wait_for: str | None = None 
     include_reviews: bool = True
     max_review_pages: int = 1
@@ -258,11 +260,20 @@ async def marketplaceScrape(payload: MarketplaceScrapeRequest):
         country_code = "us" if payload.country_code == "cn" else payload.country_code
 
         if payload.include_reviews:
-            result, error = scrapeWalmartWithReviews(
-                url=payload.url,
-                country_code=country_code,
-                max_pages=payload.max_review_pages,
-            )
+            try:
+                result, error = scrapeWalmartWithReviews(
+                    url=payload.url,
+                    country_code=country_code,
+                    max_pages=payload.max_review_pages,
+                )
+            except Exception as error:
+                return {
+                    "status": "error",
+                    "source": "walmart_exception_debug",
+                    "source_url": payload.url,
+                    "message": str(error),
+                    "traceback": traceback.format_exc(),
+                }
 
             if error:
                 return {
@@ -397,9 +408,7 @@ async def marketplaceScrape(payload: MarketplaceScrapeRequest):
                         "live_review_error_status": error.get("status") if isinstance(error, dict) else None,
                     },
                 },
->>>>>>> 89bb938 (fallback and review fix)
             }
-        }
 
         page_text, error = scrapePageText(
             url=payload.url,
