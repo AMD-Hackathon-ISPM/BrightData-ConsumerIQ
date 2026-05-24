@@ -36,6 +36,21 @@ import {
   SmallStat,
 } from "./dashboard-primitives";
 
+type CardTone = "high" | "medium" | "growth";
+
+const cardHoverBorderClass: Record<CardTone, string> = {
+  high: "hover:border-destructive-500/50",
+  medium: "hover:border-warning-500/50",
+  growth: "hover:border-[#98971a]/50 dark:hover:border-[#b8bb26]/50",
+};
+
+const badgeToneClass: Record<CardTone, string> = {
+  high: "bg-destructive-500/15 text-destructive-500",
+  medium: "bg-warning-500/15 text-warning-600 dark:text-warning-500",
+  growth:
+    "bg-[#98971a]/15 text-[#98971a] dark:bg-[#b8bb26]/15 dark:text-[#b8bb26]",
+};
+
 export function MarketOverview() {
   return (
     <div className="grid gap-3">
@@ -156,117 +171,117 @@ export function MarketOverview() {
 
 export function DemandPulse() {
   return (
-    <div className="grid gap-3">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-3">
-        <Panel
-          title="Trend Velocity Index"
-          subtitle="Global aggregate interest momentum"
-        >
-          <LineGraph />
-          <div className="mt-4 flex items-end justify-between border-t pt-3">
-            <div className="grid grid-cols-2 gap-5">
-              <SmallStat label="Current Velocity" value="42.8m/s" />
-              <SmallStat label="Acceleration" value="+12.4%" tone="danger" />
-            </div>
-            <Button variant="ghost">
-              Export SVGs
-              <Download className="size-4" />
-            </Button>
-          </div>
-        </Panel>
-
-        <DemandPulseRecommendation />
-
-        <Panel
-          title="Marketplace Share"
-          subtitle="Dominance by platform segment"
-        >
-          <PlatformShareChart />
-        </Panel>
-
-        <div className="rounded-xl bg-foreground p-4 text-background shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">Search Intent Analysis</h3>
-              <p className="text-xs opacity-70">Live SERP clustering</p>
-            </div>
-            <span className="rounded bg-background/10 px-2 py-1 text-[10px] uppercase">
-              Live
-            </span>
-          </div>
-          {[
-            ['"barrier repair serum"', "Commercial", "144K"],
-            ['"spf moisturizer sensitive skin"', "Informational", "82K"],
-            ['"budget skincare bundle"', "Transactional", "36K"],
-          ].map(([keyword, intent, volume]) => (
-            <div
-              className="mb-2 rounded-lg border border-background/20 p-3"
-              key={keyword}
-            >
-              <div className="flex items-center justify-between">
-                <p className="font-medium">{keyword}</p>
-                <ArrowRight className="size-4 opacity-70" />
-              </div>
-              <div className="mt-3 flex items-center gap-2 text-[10px] uppercase">
-                <span className="rounded bg-background/15 px-2 py-1">
-                  {intent}
-                </span>
-                <span className="rounded bg-background/15 px-2 py-1">
-                  Volume: {volume}
-                </span>
-              </div>
-            </div>
-          ))}
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
+      <section>
+        <div className="mb-3 min-w-0">
+          <h2 className="break-words text-base font-semibold">Trend Signals</h2>
         </div>
-      </div>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-3">
+          <Panel
+            title="Trend Velocity Index"
+            subtitle="Global aggregate interest momentum"
+          >
+            <LineGraph />
+            <div className="mt-4 flex items-end justify-between border-t pt-3">
+              <div className="grid grid-cols-2 gap-5">
+                <SmallStat label="Current Velocity" value="42.8m/s" />
+                <SmallStat label="Acceleration" value="+12.4%" tone="danger" />
+              </div>
+              <Button size="sm" variant="ghost">
+                Export SVGs
+                <Download className="size-4" />
+              </Button>
+            </div>
+          </Panel>
+
+          <Panel
+            title="Marketplace Share"
+            subtitle="Dominance by platform segment"
+          >
+            <PlatformShareChart />
+          </Panel>
+
+          <SearchIntentAnalysis />
+        </div>
+      </section>
 
       <ProductOpportunityMatrix />
+
+      <AdvisorIntelligence
+        recommendation={
+          'Prioritize Amazon for high-intent conversion because search demand is clustering around proof-based skincare terms. Use Sponsored Products on "barrier repair serum" and "sensitive skin SPF", then test Temu deal placements for bundle discovery and price-sensitive trial traffic.'
+        }
+        signals={[
+          { label: "Headline", value: "Lead with Amazon, amplify with Temu" },
+          {
+            label: "Best Channel",
+            value: "Amazon Search + Sponsored Products",
+          },
+          {
+            label: "Ad Placement",
+            value: "Temu in-app bundles + coupon feed",
+          },
+        ]}
+      />
     </div>
   );
 }
 
-function DemandPulseRecommendation() {
+function SearchIntentAnalysis() {
+  const keywords = [
+    {
+      keyword: '"barrier repair serum"',
+      intent: "Commercial",
+      volume: "144K",
+    },
+    {
+      keyword: '"spf moisturizer sensitive skin"',
+      intent: "Informational",
+      volume: "82K",
+    },
+    {
+      keyword: '"budget skincare bundle"',
+      intent: "Transactional",
+      volume: "36K",
+    },
+  ];
+
   return (
-    <Panel>
-      <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-chart-5/10 text-chart-5">
-          <Sparkles className="size-5" />
+    <section className="rounded-xl border border-foreground/10 bg-foreground p-3.5 text-background shadow-sm xl:p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="break-words font-semibold">Search Intent Analysis</h3>
+          <p className="mt-1 break-words text-xs text-background/70">
+            Live SERP clustering
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full border border-chart-4/40 bg-chart-4/15 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-chart-4">
+          Live
         </span>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            AI Recommendation
-          </p>
-          <h3 className="mt-2 text-lg font-semibold">
-            Lead with Amazon intent, amplify with Temu discovery.
-          </h3>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Prioritize Amazon for high-intent conversion because search demand
-            is clustering around proof-based skincare terms. Use Sponsored
-            Products on "barrier repair serum" and "sensitive skin SPF", then
-            test Temu deal placements for bundle discovery and price-sensitive
-            trial traffic.
-          </p>
-        </div>
       </div>
-      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-        <div className="rounded-lg border bg-muted/25 p-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Best Channel
-          </p>
-          <p className="mt-2 font-semibold">
-            Amazon Search + Sponsored Products
-          </p>
-        </div>
-        <div className="rounded-lg border bg-muted/25 p-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Ad Placement
-          </p>
-          <p className="mt-2 font-semibold">
-            Temu in-app bundles + coupon feed
-          </p>
-        </div>
-      </div>
-    </Panel>
+
+      <ul className="grid gap-2">
+        {keywords.map(({ intent, keyword, volume }) => (
+          <li
+            className="rounded-lg border border-background/15 bg-background/[0.04] p-3"
+            key={keyword}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-sm font-medium">{keyword}</p>
+              <ArrowRight className="size-4 shrink-0 opacity-70" />
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-background/15 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em]">
+                {intent}
+              </span>
+              <span className="rounded-full border border-background/15 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] opacity-80">
+                Vol {volume}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -278,6 +293,7 @@ function ProductOpportunityMatrix() {
       saturation: "Low",
       tags: ["Makeup-Skincare Hybrid", "Daily Wear"],
       icon: Sparkles,
+      tone: "high" as const,
     },
     {
       title: "Acne Spot Gel (Centella)",
@@ -285,6 +301,7 @@ function ProductOpportunityMatrix() {
       saturation: "Med",
       tags: ["Targeted Treatment", "Gen Z"],
       icon: TrendingUp,
+      tone: "medium" as const,
     },
     {
       title: "Peptide Lip Treatment",
@@ -292,15 +309,18 @@ function ProductOpportunityMatrix() {
       saturation: "Low",
       tags: ["Premiumization", "Night Care"],
       icon: Target,
+      tone: "growth" as const,
     },
   ];
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-semibold">Product Opportunity Matrix</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
+    <section>
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="break-words text-base font-semibold">
+            Product Opportunity Matrix
+          </h2>
+          <p className="mt-1 break-words text-sm text-muted-foreground">
             High demand, low competitor saturation niches
           </p>
         </div>
@@ -310,31 +330,50 @@ function ProductOpportunityMatrix() {
         </Button>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         {opportunities.map(
-          ({ demand, icon: Icon, saturation, tags, title }) => (
+          ({ demand, icon: Icon, saturation, tags, title, tone }) => (
             <article
-              className="relative overflow-hidden rounded-lg border bg-muted/25 p-4"
+              className={cn(
+                "relative grid gap-3 overflow-hidden rounded-xl border bg-card p-3.5 shadow-sm transition-colors xl:p-4",
+                cardHoverBorderClass[tone],
+              )}
               key={title}
             >
-              <div className="absolute top-0 right-0 grid size-16 place-items-start justify-end rounded-bl-full bg-chart-5/10 p-3 text-chart-5">
+              <div
+                className={cn(
+                  "absolute top-0 right-0 grid size-16 place-items-start justify-end rounded-bl-full p-3",
+                  badgeToneClass[tone],
+                )}
+              >
                 <Icon className="size-5" />
               </div>
-              <h4 className="pr-12 text-base font-semibold">{title}</h4>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+
+              <h3 className="pr-12 text-base font-semibold leading-tight">
+                {title}
+              </h3>
+
+              <p className="-mx-3.5 border-y bg-background-default px-3.5 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground xl:-mx-4 xl:px-4">
+                Signals
+              </p>
+
+              <div className="grid grid-cols-2 gap-3 text-sm text-foreground-light">
                 <p>
-                  <span className="text-muted-foreground">Demand Index: </span>
-                  <strong>{demand}</strong>
+                  <span className="text-muted-foreground">Demand Index </span>
+                  <strong className="text-foreground-default">{demand}</strong>
                 </p>
                 <p>
-                  <span className="text-muted-foreground">Saturation: </span>
-                  <strong>{saturation}</strong>
+                  <span className="text-muted-foreground">Saturation </span>
+                  <strong className="text-foreground-default">
+                    {saturation}
+                  </strong>
                 </p>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
+
+              <div className="flex flex-wrap gap-2">
                 {tags.map((tag) => (
                   <span
-                    className="rounded bg-muted px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+                    className="rounded-full border bg-muted/40 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
                     key={tag}
                   >
                     {tag}
@@ -403,18 +442,12 @@ export function PersonaDecode() {
       .slice(0, 3)
       .toUpperCase();
 
-  const avatarToneClass: Record<"high" | "medium" | "growth", string> = {
+  const avatarToneClass: Record<CardTone, string> = {
     high: "border-destructive-500/40 bg-destructive-500/15 text-destructive-500",
     medium:
       "border-warning-500/40 bg-warning-500/15 text-warning-600 dark:text-warning-500",
     growth:
       "border-[#98971a]/40 bg-[#98971a]/15 text-[#98971a] dark:border-[#b8bb26]/40 dark:bg-[#b8bb26]/15 dark:text-[#b8bb26]",
-  };
-
-  const cardHoverBorderClass: Record<"high" | "medium" | "growth", string> = {
-    high: "hover:border-destructive-500/50",
-    medium: "hover:border-warning-500/50",
-    growth: "hover:border-[#98971a]/50 dark:hover:border-[#b8bb26]/50",
   };
 
   return (
@@ -480,8 +513,13 @@ export function PersonaDecode() {
       </section>
 
       <div className="grid gap-3 xl:grid-cols-2">
-        <Panel title="Segmentation, Targeting, and Positioning">
-          <div className="grid gap-2">
+        <section className="flex h-full flex-col rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
+          <div className="mb-3 min-w-0">
+            <h3 className="break-words font-semibold">
+              Segmentation, Targeting, and Positioning
+            </h3>
+          </div>
+          <div className="grid flex-1 auto-rows-fr gap-2">
             {[
               {
                 letter: "S",
@@ -500,17 +538,17 @@ export function PersonaDecode() {
               },
             ].map((row) => (
               <div
-                className="grid grid-cols-[2.25rem_1fr] items-center gap-3"
+                className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-stretch gap-3 sm:grid-cols-[3.5rem_minmax(0,1fr)]"
                 key={row.letter}
               >
-                <span className="text-center font-mono text-4xl font-bold leading-none text-destructive-500">
+                <span className="self-center text-center font-mono text-4xl font-bold leading-none text-destructive-500 sm:text-5xl">
                   {row.letter}
                 </span>
-                <div className="rounded-lg border bg-background-default px-3 py-2.5">
+                <div className="flex min-w-0 flex-col justify-center rounded-lg border bg-background-default px-3 py-3">
                   <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                     {row.title}
                   </p>
-                  <p className="mt-1 text-sm leading-relaxed text-foreground-light">
+                  <p className="mt-1 break-words text-[15px] leading-relaxed text-foreground-light">
                     {row.text}
                   </p>
                 </div>
@@ -541,19 +579,19 @@ export function PersonaDecode() {
               },
             ].map((item) => (
               <div
-                className="grid grid-cols-[8rem_1fr] items-stretch gap-2"
+                className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-stretch gap-2 sm:grid-cols-[7.5rem_minmax(0,1fr)] lg:grid-cols-[8rem_minmax(0,1fr)]"
                 key={item.title}
               >
-                <div className="flex items-center rounded-lg bg-destructive-500/15 px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-destructive-500">
+                <div className="flex items-center break-words rounded-lg bg-destructive-500/15 px-2.5 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-destructive-500 sm:px-3 sm:text-[11px] sm:tracking-[0.16em]">
                   {item.title}
                 </div>
-                <p className="rounded-lg border bg-background-default px-3 py-2 text-sm leading-relaxed text-foreground-light">
+                <p className="min-w-0 break-words rounded-lg border bg-background-default px-3 py-2 text-sm leading-relaxed text-foreground-light">
                   {item.text}
                 </p>
               </div>
             ))}
           </div>
-        </Panel>
+        </section>
 
         <section className="flex min-h-0 flex-col rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
           <div className="mb-3 min-w-0">
@@ -1627,7 +1665,7 @@ function AdvisorIntelligence({
   signals,
 }: AdvisorIntelligenceProps) {
   return (
-    <section className="relative overflow-hidden rounded-xl border border-chart-5/25 bg-card shadow-sm">
+    <section className="relative min-w-0 overflow-hidden rounded-xl border border-chart-5/25 bg-card shadow-sm">
       {/* Hairline accent at the top */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-chart-5/70 to-chart-4/60" />
       {/* Soft glow in the corner for depth */}
