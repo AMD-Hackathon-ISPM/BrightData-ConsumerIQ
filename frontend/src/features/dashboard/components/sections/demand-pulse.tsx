@@ -1,11 +1,4 @@
-import {
-  ArrowRight,
-  Download,
-  Info,
-  Sparkles,
-  Target,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowRight, Info, Sparkles, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -14,10 +7,9 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
-  LineGraph,
+  DemandSupplyChart,
   Panel,
   PlatformShareChart,
-  SmallStat,
 } from "../dashboard-primitives";
 import {
   AdvisorIntelligence,
@@ -29,55 +21,10 @@ export function DemandPulse() {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
       <section>
-        <div className="mb-3 min-w-0">
-          <h2 className="break-words text-base font-semibold">Trend Signals</h2>
-        </div>
-        <div className="grid gap-3 lg:grid-cols-2">
-          <section className="rounded-xl border bg-card p-3.5 shadow-sm lg:col-span-2 xl:p-4">
-            <div className="mb-3 flex min-w-0 items-center gap-2">
-              <h3 className="min-w-0 break-words font-semibold">
-                Trend Velocity Index
-              </h3>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    aria-label="About Trend Velocity Index"
-                    className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    type="button"
-                  >
-                    <Info className="size-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent
-                  className="max-w-[16rem]"
-                  side="right"
-                  sideOffset={8}
-                >
-                  Global aggregate interest momentum
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <LineGraph />
-            <div className="mt-4 flex items-end justify-between border-t pt-3">
-              <div className="grid grid-cols-2 gap-5">
-                <SmallStat label="Current Velocity" value="42.8m/s" />
-                <SmallStat
-                  label="Acceleration"
-                  value="+12.4%"
-                  tone="danger"
-                />
-              </div>
-              <Button size="sm" variant="ghost">
-                Export SVGs
-                <Download className="size-4" />
-              </Button>
-            </div>
-          </section>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <DemandSupplyCard />
 
-          <Panel
-            title="Marketplace Share"
-            subtitle="Dominance by platform segment"
-          >
+          <Panel title="Marketplace Share">
             <PlatformShareChart />
           </Panel>
 
@@ -104,6 +51,76 @@ export function DemandPulse() {
         ]}
       />
     </div>
+  );
+}
+
+function DemandSupplyCard() {
+  return (
+    <section className="flex h-full flex-col rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
+      <div className="mb-3 min-w-0 shrink-0">
+        <div className="flex min-w-0 items-center gap-2">
+          <h3 className="min-w-0 break-words font-semibold">Demand vs Supply</h3>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                aria-label="About Demand vs Supply"
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                type="button"
+              >
+                <Info className="size-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent
+              className="max-w-[18rem]"
+              side="right"
+              sideOffset={8}
+            >
+              <p className="font-medium">
+                Opportunity by demand index and market saturation
+              </p>
+              <ul className="mt-1.5 grid gap-0.5 text-xs">
+                <li>High demand + low saturation = strong opportunity.</li>
+                <li>High demand + high saturation = crowded market.</li>
+                <li>Low demand + low saturation = unproven.</li>
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <div className="mt-1 flex items-center gap-3 text-xs text-foreground-light">
+          <span className="flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-chart-1" />
+            Demand
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-chart-5" />
+            Saturation
+          </span>
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col">
+        <DemandSupplyChart />
+      </div>
+
+      <div
+        className={cn(
+          "mt-3 flex shrink-0 items-center gap-2.5 rounded-lg border px-2.5 py-2",
+          "border-[#98971a]/30 bg-[#98971a]/8 dark:border-[#b8bb26]/30 dark:bg-[#b8bb26]/8",
+        )}
+      >
+        <span className="grid size-6 shrink-0 place-items-center rounded-md bg-[#98971a]/15 text-[#98971a] dark:bg-[#b8bb26]/15 dark:text-[#b8bb26]">
+          <Sparkles className="size-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#98971a] dark:text-[#b8bb26]">
+            Strong opportunity
+          </p>
+          <p className="truncate text-sm font-medium">
+            Tinted SPF · 64pt demand–saturation gap
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 

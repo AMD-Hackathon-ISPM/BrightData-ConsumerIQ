@@ -34,9 +34,9 @@ export function Panel({
   title?: string;
 }) {
   return (
-    <section className="rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
+    <section className="flex h-full flex-col rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
       {title ? (
-        <div className="mb-3 min-w-0">
+        <div className="mb-3 min-w-0 shrink-0">
           <h3 className="break-words font-semibold">{title}</h3>
           {subtitle ? (
             <p className="mt-1 break-words text-sm text-muted-foreground">
@@ -45,7 +45,7 @@ export function Panel({
           ) : null}
         </div>
       ) : null}
-      {children}
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </section>
   );
 }
@@ -195,29 +195,43 @@ export function RegionBars({ rows }: { rows: [string, number][] }) {
 
 export function PlatformShareChart() {
   const chartData = [
-    { name: "Amazon", value: 61.5, fill: "var(--foreground)" },
-    { name: "Temu", value: 38.5, fill: "var(--chart-5)" },
+    {
+      name: "Amazon",
+      value: 61.5,
+      change: 2.1,
+      fill: "var(--chart-1)",
+    },
+    {
+      name: "Temu",
+      value: 38.5,
+      change: -2.1,
+      fill: "var(--chart-5)",
+    },
   ];
   const chartConfig = {
     value: {
       label: "Share",
-      color: "var(--foreground)",
+      color: "var(--chart-1)",
     },
   };
 
   return (
-    <div className="grid items-center gap-4 sm:grid-cols-[7rem_1fr]">
-      <div className="relative size-28">
-        <ChartContainer className="h-full w-full" config={chartConfig}>
+    <div className="flex h-full flex-col gap-5">
+      <div className="relative mx-auto flex aspect-square w-full max-h-44 max-w-44 flex-1 items-center justify-center">
+        <ChartContainer
+          className="!aspect-square pointer-events-auto h-full w-full [&_.recharts-tooltip-wrapper]:z-20"
+          config={chartConfig}
+        >
           <PieChart>
             <ChartTooltip content={<ChartTooltipContent hideLabel />} />
             <Pie
               data={chartData}
               dataKey="value"
-              innerRadius={36}
+              innerRadius="58%"
               nameKey="name"
-              outerRadius={54}
+              outerRadius="82%"
               paddingAngle={2}
+              strokeWidth={0}
             >
               {chartData.map((entry) => (
                 <Cell fill={entry.fill} key={entry.name} />
@@ -225,22 +239,49 @@ export function PlatformShareChart() {
             </Pie>
           </PieChart>
         </ChartContainer>
-        <div className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 text-center">
-          <p className="text-xl font-semibold">62%</p>
-          <p className="text-[10px] uppercase tracking-[0.16em]">Leader</p>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+          <p className="font-semibold text-2xl tabular-nums">62%</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-foreground-light">
+            Leader
+          </p>
         </div>
       </div>
-      <div className="grid gap-3 text-sm">
+      <div className="grid shrink-0 gap-3 text-sm">
         {chartData.map((item) => (
-          <div
-            className="flex items-center justify-between gap-5"
-            key={item.name}
-          >
-            <span className="flex items-center gap-2">
-              <span className="size-3" style={{ backgroundColor: item.fill }} />
-              {item.name}
-            </span>
-            <strong>{item.value.toFixed(1)}%</strong>
+          <div className="grid gap-1.5" key={item.name}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className="size-2 rounded-full"
+                  style={{ backgroundColor: item.fill }}
+                />
+                <span className="font-medium">{item.name}</span>
+              </span>
+              <span className="flex items-baseline gap-2">
+                <span className="font-mono text-sm font-semibold tabular-nums">
+                  {item.value.toFixed(1)}%
+                </span>
+                <span
+                  className={cn(
+                    "font-mono text-[10px] font-semibold tabular-nums",
+                    item.change > 0 ? "text-chart-4" : "text-destructive"
+                  )}
+                >
+                  {item.change > 0 ? "+" : ""}
+                  {item.change.toFixed(1)}%
+                </span>
+              </span>
+            </div>
+            <div className="h-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${item.value}%`,
+                  backgroundColor: item.fill,
+                }}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -307,6 +348,66 @@ export function LineGraph() {
           type="monotone"
         />
       </AreaChart>
+    </ChartContainer>
+  );
+}
+
+export function DemandSupplyChart() {
+  const chartData = [
+    { product: "Tinted SPF", demand: 92, saturation: 28 },
+    { product: "Acne Gel", demand: 88, saturation: 55 },
+    { product: "Peptide Lip", demand: 85, saturation: 32 },
+  ];
+  const chartConfig = {
+    demand: { label: "Demand", color: "var(--chart-1)" },
+    saturation: { label: "Saturation", color: "var(--chart-5)" },
+  };
+
+  return (
+    <ChartContainer className="h-full min-h-44 w-full" config={chartConfig}>
+      <BarChart
+        barCategoryGap={14}
+        barGap={3}
+        data={chartData}
+        layout="vertical"
+        margin={{ bottom: 0, left: 8, right: 12, top: 4 }}
+      >
+        <CartesianGrid
+          horizontal={false}
+          stroke="var(--border)"
+          strokeOpacity={0.5}
+        />
+        <XAxis
+          axisLine={false}
+          domain={[0, 100]}
+          tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+          tickLine={false}
+          ticks={[0, 25, 50, 75, 100]}
+          type="number"
+        />
+        <YAxis
+          axisLine={false}
+          dataKey="product"
+          tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+          tickLine={false}
+          tickMargin={8}
+          type="category"
+          width={72}
+        />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Bar
+          barSize={10}
+          dataKey="demand"
+          fill="var(--color-demand)"
+          radius={[3, 3, 3, 3]}
+        />
+        <Bar
+          barSize={10}
+          dataKey="saturation"
+          fill="var(--color-saturation)"
+          radius={[3, 3, 3, 3]}
+        />
+      </BarChart>
     </ChartContainer>
   );
 }
