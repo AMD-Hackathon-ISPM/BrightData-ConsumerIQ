@@ -71,7 +71,13 @@ export function ChatConversation({ messages }: ChatConversationProps) {
                       </Reasoning>
                     ) : null}
 
-                    <MessageContent>
+                    <MessageContent
+                      className={
+                        message.from === 'user'
+                          ? '!bg-black/30 shadow-sm'
+                          : undefined
+                      }
+                    >
                       <MessageResponse
                         className={
                           message.from === 'assistant'
