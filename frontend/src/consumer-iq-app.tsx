@@ -6,15 +6,15 @@ import {
 } from "@/components/ui/resizable";
 import { AppShell } from "@/components/layouts/AppShell";
 import { DashboardAppSidebar } from "@/components/layouts/DashboardAppSidebar";
-import { ConsumerIQDashboard } from "@/features/dashboard";
+import { ConsumerIQDashboard } from "@/features/dashboard/dashboard-feature";
 import type { DashboardSection } from "@/features/dashboard/constants";
-import { ConsumerIQOnboarding } from "@/features/onboarding";
+import { ConsumerIQOnboarding } from "@/features/onboarding/onboarding-feature";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useAuth } from "@/lib/auth";
 
 const CONSUMER_IQ_ONBOARDED_KEY = "consumeriq:onboarded";
 const FounderChat = lazy(() =>
-  import("@/features/founder-chat").then((module) => ({
+  import("@/features/founder-chat/founder-chat-feature").then((module) => ({
     default: module.FounderChat,
   }))
 );
