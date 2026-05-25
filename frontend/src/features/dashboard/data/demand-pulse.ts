@@ -51,7 +51,10 @@ export type ClaimTrendItem = {
 };
 
 export type AdvisorSignal = {
+  detail?: string;
+  icon?: "down" | "target" | "trend" | "up";
   label: string;
+  tone?: "negative" | "neutral" | "positive";
   value: string;
 };
 
@@ -228,16 +231,49 @@ export const demandPulseFixture = {
   },
   advisor: {
     recommendation:
-      'Prioritize Amazon for high-intent conversion because search demand is clustering around proof-based skincare terms. Use Sponsored Products on "barrier repair serum" and "sensitive skin SPF", then test Temu deal placements for bundle discovery and price-sensitive trial traffic.',
+      "Lead with Amazon for high-intent capture, then amplify on TikTok Shop where discovery growth is fastest. Anchor creative on barrier-repair claims; a +42% rise against low saturation is a clean window. Bid on commercial-intent keywords and skip paraben-free and anti-aging copy because they are saturated and falling.",
     signals: [
-      { label: "Headline", value: "Lead with Amazon, amplify with Temu" },
       {
-        label: "Best Channel",
-        value: "Amazon Search + Sponsored Products",
+        detail: "34.6% share · +2.1%",
+        icon: "up",
+        label: "Primary channel",
+        tone: "positive",
+        value: "Amazon",
       },
       {
-        label: "Ad Placement",
-        value: "Temu in-app bundles + coupon feed",
+        detail: "+3.6% fastest growing",
+        icon: "trend",
+        label: "Amplify channel",
+        tone: "positive",
+        value: "TikTok Shop",
+      },
+      {
+        detail: "64K + 144K commercial vol",
+        icon: "target",
+        label: "Ad format",
+        tone: "neutral",
+        value: "Sponsored Products",
+      },
+      {
+        detail: "+42% · 89K vol · low sat",
+        icon: "up",
+        label: "Creative hook",
+        tone: "positive",
+        value: "Barrier repair",
+      },
+      {
+        detail: "144K vol · +12%",
+        icon: "up",
+        label: "Keyword focus",
+        tone: "positive",
+        value: "barrier repair serum",
+      },
+      {
+        detail: "−34% / −18% · saturated",
+        icon: "down",
+        label: "Claims to avoid",
+        tone: "negative",
+        value: "Paraben-free, anti-aging",
       },
     ],
   },

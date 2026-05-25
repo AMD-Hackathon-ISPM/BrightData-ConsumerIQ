@@ -1,4 +1,11 @@
-import { Sparkles } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Sparkles,
+  Target,
+  TrendingUp,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type CardTone = "high" | "medium" | "growth";
 
@@ -16,7 +23,10 @@ export const badgeToneClass: Record<CardTone, string> = {
 };
 
 interface AdvisorSignal {
+  detail?: string;
+  icon?: "down" | "target" | "trend" | "up";
   label: string;
+  tone?: "negative" | "neutral" | "positive";
   value: string;
 }
 
@@ -24,6 +34,19 @@ interface AdvisorIntelligenceProps {
   recommendation: string;
   signals: AdvisorSignal[];
 }
+
+const advisorSignalToneClass = {
+  negative: "text-destructive",
+  neutral: "text-foreground-light",
+  positive: "text-[#98971a] dark:text-[#b8bb26]",
+} as const;
+
+const advisorSignalIcon = {
+  down: ArrowDownRight,
+  target: Target,
+  trend: TrendingUp,
+  up: ArrowUpRight,
+} as const;
 
 export function AdvisorIntelligence({
   recommendation,
@@ -66,20 +89,39 @@ export function AdvisorIntelligence({
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          {signals.map((signal) => (
-            <div
-              className="group/signal relative overflow-hidden rounded-lg border border-chart-5/20 bg-background-default/60 p-3 transition-colors hover:border-chart-5/40"
-              key={signal.label}
-            >
-              <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-chart-5/70 via-chart-5/30 to-chart-4/60" />
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground-lighter">
-                {signal.label}
-              </p>
-              <p className="mt-2 text-sm font-semibold text-foreground-default">
-                {signal.value}
-              </p>
-            </div>
-          ))}
+          {signals.map((signal) => {
+            const tone = signal.tone ?? "positive";
+            const Icon =
+              advisorSignalIcon[
+                signal.icon ?? (tone === "negative" ? "down" : "up")
+              ];
+
+            return (
+              <div
+                className="group/signal relative overflow-hidden rounded-lg border border-chart-5/20 bg-background-default/60 p-3 transition-colors hover:border-chart-5/40"
+                key={signal.label}
+              >
+                <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-chart-5/70 via-chart-5/30 to-chart-4/60" />
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground-lighter">
+                  {signal.label}
+                </p>
+                <p className="mt-2 text-sm font-semibold text-foreground-default">
+                  {signal.value}
+                </p>
+                {signal.detail ? (
+                  <p
+                    className={cn(
+                      "mt-1.5 flex items-center gap-1 text-xs font-medium",
+                      advisorSignalToneClass[tone]
+                    )}
+                  >
+                    <Icon aria-hidden className="size-3 shrink-0" />
+                    <span className="break-words">{signal.detail}</span>
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

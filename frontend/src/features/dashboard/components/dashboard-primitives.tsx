@@ -19,12 +19,14 @@ import {
   PieChart,
   Scatter,
   ScatterChart,
-  Sector,
   XAxis,
   YAxis,
   ZAxis,
 } from "recharts";
-import type { PieSectorDataItem } from "recharts/types/polar/Pie";
+import type {
+  DemandSupplyPoint,
+  MarketplaceShareItem,
+} from "../data/demand-pulse";
 
 export function Panel({
   children,
@@ -195,15 +197,34 @@ export function RegionBars({ rows }: { rows: [string, number][] }) {
   );
 }
 
-export function PlatformShareChart() {
-  const chartData = [
-    { name: "Amazon", value: 34.6, change: 2.1, fill: "var(--chart-1)" },
-    { name: "Temu", value: 22.4, change: -1.4, fill: "var(--chart-5)" },
-    { name: "TikTok Shop", value: 15.1, change: 3.6, fill: "var(--chart-3)" },
-    { name: "Shopee", value: 12.2, change: 0.8, fill: "var(--chart-2)" },
-    { name: "Walmart", value: 9.4, change: -0.7, fill: "var(--chart-4)" },
-    { name: "eBay", value: 6.3, change: -0.2, fill: "var(--muted-foreground)" },
-  ];
+const marketplaceShareColors = [
+  "var(--chart-1)",
+  "var(--chart-5)",
+  "var(--chart-3)",
+  "var(--chart-2)",
+  "var(--chart-4)",
+  "var(--muted-foreground)",
+];
+
+export function PlatformShareChart({
+  data,
+}: {
+  data: MarketplaceShareItem[];
+}) {
+  if (data.length === 0) {
+    return (
+      <div className="flex min-h-[12rem] items-center justify-center rounded-lg border border-dashed bg-muted/10 px-3 py-6 text-center">
+        <p className="max-w-xs text-sm text-muted-foreground">
+          Marketplace share data will appear here after analysis completes.
+        </p>
+      </div>
+    );
+  }
+
+  const chartData = data.map((item, index) => ({
+    ...item,
+    fill: marketplaceShareColors[index % marketplaceShareColors.length],
+  }));
   const activeIndex = chartData.reduce(
     (max, item, idx, arr) => (item.value > arr[max].value ? idx : max),
     0
@@ -250,23 +271,24 @@ export function PlatformShareChart() {
               }
             />
             <Pie
-              activeIndex={activeIndex}
-              activeShape={({
-                outerRadius = 0,
-                ...props
-              }: PieSectorDataItem) => (
-                <Sector {...props} outerRadius={outerRadius + 8} />
-              )}
               data={chartData}
               dataKey="value"
               innerRadius="58%"
               nameKey="name"
               outerRadius="82%"
               paddingAngle={2}
-              strokeWidth={0}
             >
-              {chartData.map((entry) => (
-                <Cell fill={entry.fill} key={entry.name} />
+              {chartData.map((entry, index) => (
+                <Cell
+                  fill={entry.fill}
+                  key={entry.name}
+                  stroke={
+                    index === activeIndex
+                      ? "var(--foreground)"
+                      : "var(--background-default)"
+                  }
+                  strokeWidth={index === activeIndex ? 2 : 1}
+                />
               ))}
             </Pie>
           </PieChart>
@@ -392,12 +414,7 @@ export function LineGraph() {
   );
 }
 
-export function DemandSupplyChart() {
-  const chartData = [
-    { product: "Tinted SPF", demand: 92, saturation: 28 },
-    { product: "Acne Gel", demand: 88, saturation: 55 },
-    { product: "Peptide Lip", demand: 85, saturation: 32 },
-  ];
+export function DemandSupplyChart({ data }: { data: DemandSupplyPoint[] }) {
   const chartConfig = {
     demand: { label: "Demand", color: "var(--chart-1)" },
     saturation: { label: "Saturation", color: "var(--chart-5)" },
@@ -408,7 +425,7 @@ export function DemandSupplyChart() {
       <BarChart
         barCategoryGap={14}
         barGap={3}
-        data={chartData}
+        data={data}
         layout="vertical"
         margin={{ bottom: 0, left: 8, right: 12, top: 4 }}
       >
