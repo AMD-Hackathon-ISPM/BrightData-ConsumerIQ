@@ -19,10 +19,12 @@ import {
   PieChart,
   Scatter,
   ScatterChart,
+  Sector,
   XAxis,
   YAxis,
   ZAxis,
 } from "recharts";
+import type { PieSectorDataItem } from "recharts/types/polar/Pie";
 
 export function Panel({
   children,
@@ -195,36 +197,66 @@ export function RegionBars({ rows }: { rows: [string, number][] }) {
 
 export function PlatformShareChart() {
   const chartData = [
-    {
-      name: "Amazon",
-      value: 61.5,
-      change: 2.1,
-      fill: "var(--chart-1)",
-    },
-    {
-      name: "Temu",
-      value: 38.5,
-      change: -2.1,
-      fill: "var(--chart-5)",
-    },
+    { name: "Amazon", value: 34.6, change: 2.1, fill: "var(--chart-1)" },
+    { name: "Temu", value: 22.4, change: -1.4, fill: "var(--chart-5)" },
+    { name: "TikTok Shop", value: 15.1, change: 3.6, fill: "var(--chart-3)" },
+    { name: "Shopee", value: 12.2, change: 0.8, fill: "var(--chart-2)" },
+    { name: "Walmart", value: 9.4, change: -0.7, fill: "var(--chart-4)" },
+    { name: "eBay", value: 6.3, change: -0.2, fill: "var(--muted-foreground)" },
   ];
+  const activeIndex = chartData.reduce(
+    (max, item, idx, arr) => (item.value > arr[max].value ? idx : max),
+    0
+  );
   const chartConfig = {
-    value: {
-      label: "Share",
-      color: "var(--chart-1)",
-    },
+    value: { label: "Share", color: "var(--chart-1)" },
   };
+  const columns = chartData.length <= 3 ? 1 : 2;
+  const rows: (typeof chartData)[] = [];
+  for (let i = 0; i < chartData.length; i += columns) {
+    rows.push(chartData.slice(i, i + columns));
+  }
 
   return (
-    <div className="flex h-full flex-col gap-5">
-      <div className="relative mx-auto flex aspect-square w-full max-h-44 max-w-44 flex-1 items-center justify-center">
+    <div className="flex h-full flex-col gap-4">
+      <div className="relative mx-auto flex aspect-square w-full max-w-[14rem] min-h-0 flex-1 items-center justify-center">
         <ChartContainer
           className="!aspect-square pointer-events-auto h-full w-full [&_.recharts-tooltip-wrapper]:z-20"
           config={chartConfig}
         >
           <PieChart>
-            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  formatter={(value, name, item) => (
+                    <div className="flex flex-1 items-center justify-between gap-3 leading-none">
+                      <div className="flex items-center gap-2">
+                        <span
+                          aria-hidden
+                          className="size-2.5 shrink-0 rounded-[2px]"
+                          style={{
+                            backgroundColor: item.payload?.fill ?? item.color,
+                          }}
+                        />
+                        <span className="text-muted-foreground">{name}</span>
+                      </div>
+                      <span className="font-mono font-medium tabular-nums text-foreground">
+                        {Number(value).toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
+                  hideLabel
+                />
+              }
+            />
             <Pie
+              activeIndex={activeIndex}
+              activeShape={({
+                outerRadius = 0,
+                ...props
+              }: PieSectorDataItem) => (
+                <Sector {...props} outerRadius={outerRadius + 8} />
+              )}
               data={chartData}
               dataKey="value"
               innerRadius="58%"
@@ -239,52 +271,60 @@ export function PlatformShareChart() {
             </Pie>
           </PieChart>
         </ChartContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          <p className="font-semibold text-2xl tabular-nums">62%</p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-foreground-light">
-            Leader
-          </p>
-        </div>
       </div>
-      <div className="grid shrink-0 gap-3 text-sm">
-        {chartData.map((item) => (
-          <div className="grid gap-1.5" key={item.name}>
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
-                <span
-                  aria-hidden
-                  className="size-2 rounded-full"
-                  style={{ backgroundColor: item.fill }}
-                />
-                <span className="font-medium">{item.name}</span>
-              </span>
-              <span className="flex items-baseline gap-2">
-                <span className="font-mono text-sm font-semibold tabular-nums">
-                  {item.value.toFixed(1)}%
-                </span>
-                <span
-                  className={cn(
-                    "font-mono text-[10px] font-semibold tabular-nums",
-                    item.change > 0 ? "text-chart-4" : "text-destructive"
-                  )}
-                >
-                  {item.change > 0 ? "+" : ""}
-                  {item.change.toFixed(1)}%
-                </span>
-              </span>
-            </div>
-            <div className="h-1 overflow-hidden rounded-full bg-muted">
+      <ul className="shrink-0 overflow-hidden rounded-lg border bg-background-default text-sm">
+        {rows.map((row, rowIdx) => (
+          <li
+            className={cn(
+              "flex",
+              rowIdx < rows.length - 1 && "border-b"
+            )}
+            key={row.map((r) => r.name).join("-")}
+          >
+            {row.map((item, itemIdx) => (
               <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${item.value}%`,
-                  backgroundColor: item.fill,
-                }}
+                className={cn(
+                  "flex min-w-0 flex-1 flex-col gap-1 px-3 py-2",
+                  itemIdx > 0 && "border-l"
+                )}
+                key={item.name}
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: item.fill }}
+                  />
+                  <span className="truncate text-xs font-medium text-foreground-light">
+                    {item.name}
+                  </span>
+                </span>
+                <span className="flex items-baseline gap-1.5">
+                  <span className="font-mono text-sm font-semibold tabular-nums">
+                    {item.value.toFixed(1)}%
+                  </span>
+                  <span
+                    className={cn(
+                      "font-mono text-[10px] font-semibold tabular-nums",
+                      item.change > 0 ? "text-chart-4" : "text-destructive"
+                    )}
+                  >
+                    {item.change > 0 ? "+" : ""}
+                    {item.change.toFixed(1)}%
+                  </span>
+                </span>
+              </div>
+            ))}
+            {row.length < columns ? (
+              <div
+                aria-hidden
+                className="flex-1 border-l"
+                style={{ flexGrow: columns - row.length }}
               />
-            </div>
-          </div>
+            ) : null}
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }
