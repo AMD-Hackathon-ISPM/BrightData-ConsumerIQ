@@ -47,7 +47,7 @@ export function ConsumerIQDashboard({
               </div>
             </div>
 
-            <SectionFade transitionKey={active}>
+            <SectionFade key={active} transitionKey={active}>
               {active === "dashboard" && <MarketOverview />}
               {active === "pulse" && <DemandPulse />}
               {active === "persona" && <PersonaDecode />}

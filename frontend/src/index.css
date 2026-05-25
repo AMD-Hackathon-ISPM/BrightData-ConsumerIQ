@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -353,4 +354,34 @@
     font-feature-settings: normal;
     letter-spacing: 0;
   }
+}
+
+.launch-readiness-map .maplibregl-ctrl-attrib {
+  background: color-mix(in srgb, var(--background-muted) 88%, transparent);
+  color: var(--muted-foreground);
+}
+
+.launch-readiness-popup .maplibregl-popup-content {
+  background-color: var(--background-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 45px rgb(0 0 0 / 0.28);
+  color: var(--foreground-default);
+  padding: 0;
+}
+
+.launch-readiness-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: var(--background-muted);
+}
+
+.launch-readiness-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: var(--background-muted);
+}
+
+.launch-readiness-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--background-muted);
+}
+
+.launch-readiness-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--background-muted);
 }
