@@ -663,3 +663,494 @@ Inti insight:
 ```txt
 Komentar ini adalah consumer voice evidence bahwa sebagian audience skincare TikTok sudah familiar dengan pemakaian full set/routine. Backend sebaiknya menandai sebagai bundle_interest, routine_completion, dan post_purchase signal. Dashboard sebaiknya menampilkannya sebagai evidence persona dan rekomendasi bundling, bukan sebagai angka demand tunggal.
 ```
+
+---
+
+# Instagram Raw Payload Types
+
+Bagian ini adalah versi 1:1 dari raw Bright Data payload yang dicontohkan. Ini bukan normalized dashboard schema. Tujuannya supaya backend dan AI engineer tahu bentuk data mentah yang harus diparse.
+
+Endpoint yang tercakup:
+
+```txt
+Instagram Profiles - Collect by URL
+Instagram Reels - Collect by URL
+Instagram Posts - Collect by URL
+Instagram Comments - Collect by URL
+```
+
+## Instagram Profiles - Collect by URL
+
+### Type
+
+```ts
+type InstagramProfileByUrlPayload = InstagramProfileByUrlRecord[];
+
+type InstagramProfileByUrlRecord = {
+  account: string;
+  fbid: string;
+  id: string;
+  followers: number;
+  posts_count: number;
+  is_business_account: boolean;
+  is_professional_account: boolean;
+  is_verified: boolean;
+  avg_engagement: number;
+  external_url: string[] | null;
+  biography: string | null;
+  business_category_name: string | null;
+  category_name: string | null;
+  post_hashtags: string[] | null;
+  following: number;
+  posts: InstagramProfilePost[];
+  profile_image_link: string | null;
+  profile_url: string;
+  profile_name: string;
+  highlights_count: number;
+  highlights: InstagramProfileHighlight[];
+  full_name: string;
+  is_private: boolean;
+  bio_hashtags: string[] | null;
+  url: string;
+  is_joined_recently: boolean;
+  has_channel: boolean;
+  partner_id: string;
+  business_address: string | null;
+  related_accounts: InstagramRelatedAccount[];
+  email_address: string | null;
+  external_url_title: InstagramExternalUrlTitle | null;
+  pronouns: string;
+};
+
+type InstagramProfilePost = {
+  caption: string | null;
+  comments: number | null;
+  content_type: string;
+  datetime: string;
+  id: string;
+  image_url: string | null;
+  is_pinned: boolean;
+  likes: number | null;
+  location: string | null;
+  post_hashtags: string[] | null;
+  url: string;
+  video_url: string | null;
+};
+
+type InstagramProfileHighlight = {
+  highlight_url: string;
+  id: string;
+  image: string | null;
+  owner: string;
+  title: string | null;
+};
+
+type InstagramRelatedAccount = Record<string, unknown>;
+
+type InstagramExternalUrlTitle = {
+  title: string | null;
+  url: string | null;
+};
+```
+
+### Payload Pattern
+
+```json
+[
+  {
+    "account": "string",
+    "fbid": "string",
+    "id": "string",
+    "followers": "number",
+    "posts_count": "number",
+    "is_business_account": "boolean",
+    "is_professional_account": "boolean",
+    "is_verified": "boolean",
+    "avg_engagement": "number",
+    "external_url": ["string"] | null,
+    "biography": "string | null",
+    "business_category_name": "string | null",
+    "category_name": "string | null",
+    "post_hashtags": ["string"] | null,
+    "following": "number",
+    "posts": [
+      {
+        "caption": "string | null",
+        "comments": "number | null",
+        "content_type": "string",
+        "datetime": "string",
+        "id": "string",
+        "image_url": "string | null",
+        "is_pinned": "boolean",
+        "likes": "number | null",
+        "location": "string | null",
+        "post_hashtags": ["string"] | null,
+        "url": "string",
+        "video_url": "string | null"
+      }
+    ],
+    "profile_image_link": "string | null",
+    "profile_url": "string",
+    "profile_name": "string",
+    "highlights_count": "number",
+    "highlights": [
+      {
+        "highlight_url": "string",
+        "id": "string",
+        "image": "string | null",
+        "owner": "string",
+        "title": "string | null"
+      }
+    ],
+    "full_name": "string",
+    "is_private": "boolean",
+    "bio_hashtags": ["string"] | null,
+    "url": "string",
+    "is_joined_recently": "boolean",
+    "has_channel": "boolean",
+    "partner_id": "string",
+    "business_address": "string | null",
+    "related_accounts": ["object"],
+    "email_address": "string | null",
+    "external_url_title": {
+      "title": "string | null",
+      "url": "string | null"
+    } | null,
+    "pronouns": "string"
+  }
+]
+```
+
+## Instagram Reels - Collect by URL
+
+### Type
+
+```ts
+type InstagramReelsByUrlPayload = InstagramReelByUrlRecord[];
+
+type InstagramReelByUrlRecord = {
+  url: string;
+  user_posted: string;
+  description: string | null;
+  hashtags: string[] | null;
+  num_comments: number;
+  date_posted: string;
+  likes: number;
+  views: number | null;
+  video_play_count: number | null;
+  top_comments: InstagramTopComment[];
+  post_id: string;
+  thumbnail: string | null;
+  shortcode: string;
+  content_id: string;
+  product_type: string | null;
+  coauthor_producers: InstagramCoauthorProducer[];
+  tagged_users: InstagramTaggedUser[];
+  length: string | null;
+  video_url: string | null;
+  audio_url: string | null;
+  posts_count: number;
+  followers: number;
+  following: number | null;
+  user_profile_url: string;
+  is_paid_partnership: boolean;
+  is_verified: boolean;
+  profile_image_link: string | null;
+};
+
+type InstagramTopComment = {
+  avatar: string | null;
+  comment: string;
+  date_of_comment: string;
+  likes: number | null;
+  num_replies: number;
+  replies: InstagramCommentReply[];
+  user_commenting: string;
+};
+
+type InstagramCommentReply = Record<string, unknown>;
+type InstagramCoauthorProducer = Record<string, unknown>;
+type InstagramTaggedUser = Record<string, unknown>;
+```
+
+### Payload Pattern
+
+```json
+[
+  {
+    "url": "string",
+    "user_posted": "string",
+    "description": "string | null",
+    "hashtags": ["string"] | null,
+    "num_comments": "number",
+    "date_posted": "string",
+    "likes": "number",
+    "views": "number | null",
+    "video_play_count": "number | null",
+    "top_comments": [
+      {
+        "avatar": "string | null",
+        "comment": "string",
+        "date_of_comment": "string",
+        "likes": "number | null",
+        "num_replies": "number",
+        "replies": ["object"],
+        "user_commenting": "string"
+      }
+    ],
+    "post_id": "string",
+    "thumbnail": "string | null",
+    "shortcode": "string",
+    "content_id": "string",
+    "product_type": "string | null",
+    "coauthor_producers": ["object"],
+    "tagged_users": ["object"],
+    "length": "string | null",
+    "video_url": "string | null",
+    "audio_url": "string | null",
+    "posts_count": "number",
+    "followers": "number",
+    "following": "number | null",
+    "user_profile_url": "string",
+    "is_paid_partnership": "boolean",
+    "is_verified": "boolean",
+    "profile_image_link": "string | null"
+  }
+]
+```
+
+## Instagram Posts - Collect by URL
+
+### Type
+
+```ts
+type InstagramPostsByUrlPayload = InstagramPostByUrlRecord[];
+
+type InstagramPostByUrlRecord = {
+  url: string;
+  user_posted: string;
+  description: string | null;
+  hashtags: string[] | null;
+  num_comments: number;
+  date_posted: string;
+  likes: number;
+  photos: string[] | null;
+  videos: string[] | null;
+  location: string | null;
+  location_details: InstagramLocationDetails | null;
+  latest_comments: InstagramLatestComment[] | null;
+  post_id: string;
+  discovery_input: unknown | null;
+  has_handshake: boolean | null;
+  shortcode: string;
+  content_type: string;
+  pk: string;
+  content_id: string;
+  engagement_score_view: number | null;
+  thumbnail: string | null;
+  video_view_count: number | null;
+  product_type: string | null;
+  coauthor_producers: InstagramCoauthorProducer[] | null;
+  tagged_users: InstagramPostTaggedUser[] | null;
+  video_play_count: number | null;
+  followers: number;
+  posts_count: number;
+  profile_image_link: string | null;
+  is_verified: boolean;
+  is_paid_partnership: boolean;
+  partnership_details: InstagramPartnershipDetails | null;
+  user_posted_id: string;
+  post_content: InstagramPostContentItem[];
+  audio: InstagramPostAudio | null;
+  profile_url: string;
+  videos_duration: number | string | null;
+  images: InstagramPostImage[];
+  alt_text: string | null;
+  photos_number: number;
+  audio_url: string | null;
+};
+
+type InstagramLocationDetails = {
+  profile_pic_url: string | null;
+};
+
+type InstagramLatestComment = Record<string, unknown>;
+
+type InstagramPostTaggedUser = {
+  id: string;
+  is_verified: boolean;
+  profile_pic_url: string | null;
+  username: string;
+};
+
+type InstagramPartnershipDetails = {
+  profile_id: string | null;
+  profile_url: string | null;
+  username: string | null;
+};
+
+type InstagramPostContentItem = {
+  alt_text: string | null;
+  id: string;
+  index: number;
+  type: string;
+  url: string;
+};
+
+type InstagramPostAudio = {
+  audio_asset_id: string | null;
+  ig_artist_id: string | null;
+  ig_artist_username: string | null;
+  original_audio_title: string | null;
+};
+
+type InstagramPostImage = {
+  id: string;
+  url: string;
+};
+```
+
+### Payload Pattern
+
+```json
+[
+  {
+    "url": "string",
+    "user_posted": "string",
+    "description": "string | null",
+    "hashtags": ["string"] | null,
+    "num_comments": "number",
+    "date_posted": "string",
+    "likes": "number",
+    "photos": ["string"] | null,
+    "videos": ["string"] | null,
+    "location": "string | null",
+    "location_details": {
+      "profile_pic_url": "string | null"
+    } | null,
+    "latest_comments": ["object"] | null,
+    "post_id": "string",
+    "discovery_input": "unknown | null",
+    "has_handshake": "boolean | null",
+    "shortcode": "string",
+    "content_type": "string",
+    "pk": "string",
+    "content_id": "string",
+    "engagement_score_view": "number | null",
+    "thumbnail": "string | null",
+    "video_view_count": "number | null",
+    "product_type": "string | null",
+    "coauthor_producers": ["object"] | null,
+    "tagged_users": [
+      {
+        "id": "string",
+        "is_verified": "boolean",
+        "profile_pic_url": "string | null",
+        "username": "string"
+      }
+    ] | null,
+    "video_play_count": "number | null",
+    "followers": "number",
+    "posts_count": "number",
+    "profile_image_link": "string | null",
+    "is_verified": "boolean",
+    "is_paid_partnership": "boolean",
+    "partnership_details": {
+      "profile_id": "string | null",
+      "profile_url": "string | null",
+      "username": "string | null"
+    } | null,
+    "user_posted_id": "string",
+    "post_content": [
+      {
+        "alt_text": "string | null",
+        "id": "string",
+        "index": "number",
+        "type": "string",
+        "url": "string"
+      }
+    ],
+    "audio": {
+      "audio_asset_id": "string | null",
+      "ig_artist_id": "string | null",
+      "ig_artist_username": "string | null",
+      "original_audio_title": "string | null"
+    } | null,
+    "profile_url": "string",
+    "videos_duration": "number | string | null",
+    "images": [
+      {
+        "id": "string",
+        "url": "string"
+      }
+    ],
+    "alt_text": "string | null",
+    "photos_number": "number",
+    "audio_url": "string | null"
+  }
+]
+```
+
+## Instagram Comments - Collect by URL
+
+### Type
+
+```ts
+type InstagramCommentsByUrlPayload = InstagramCommentByUrlRecord[];
+
+type InstagramCommentByUrlRecord = {
+  url: string;
+  comment_user: string;
+  comment_user_url: string;
+  comment_date: string;
+  comment: string;
+  likes_number: number;
+  replies_number: number;
+  replies: InstagramCommentReply[] | null;
+  hashtag_comment: string[] | null;
+  tagged_users_in_comment: InstagramTaggedUserInComment[] | null;
+  post_url: string;
+  post_user: string;
+  comment_id: string;
+  post_id: string;
+};
+
+type InstagramTaggedUserInComment = Record<string, unknown>;
+```
+
+### Payload Pattern
+
+```json
+[
+  {
+    "url": "string",
+    "comment_user": "string",
+    "comment_user_url": "string",
+    "comment_date": "string",
+    "comment": "string",
+    "likes_number": "number",
+    "replies_number": "number",
+    "replies": ["object"] | null,
+    "hashtag_comment": ["string"] | null,
+    "tagged_users_in_comment": ["object"] | null,
+    "post_url": "string",
+    "post_user": "string",
+    "comment_id": "string",
+    "post_id": "string"
+  }
+]
+```
+
+## Instagram Dashboard Relevance
+
+| Endpoint | Primary Dashboard Use | Secondary Use |
+|---|---|---|
+| `Instagram Profiles - Collect by URL` | Competitor Mirror | Launch Compass |
+| `Instagram Reels - Collect by URL` | Demand Pulse | Launch Compass |
+| `Instagram Posts - Collect by URL` | Demand Pulse | Competitor Mirror |
+| `Instagram Comments - Collect by URL` | Persona Decode | Advisor Intelligence |
+
+Catatan parser:
+- Treat fields exactly as raw payload first, then map to normalized data later.
+- CDN/media URL fields can be stored for audit/media preview, but do not need to be shown by default.
+- User identity fields from comments should be hidden from dashboard display unless needed for debugging.
