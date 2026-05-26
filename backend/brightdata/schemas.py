@@ -320,6 +320,87 @@ class LazadaReviewPayload(RootModel[list[LazadaReviewRecord]]):
     pass
 
 
+class EtsyProductSpecification(LooseModel):
+    specification_name: str | None = None
+    specification_values: str | list[str] | None = None
+
+
+class EtsyFaq(LooseModel):
+    question: str | None = None
+    answer: str | None = None
+
+
+class EtsyVariation(LooseModel):
+    type: str | None = None
+    value: str | list[str] | None = None
+
+
+class EtsyProductRecord(LooseModel):
+    url: str
+    product_id: str
+    listing_inventory_id: str | int | None = None
+    title: str
+    rating: float | None = None
+    reviews_count_shop: int | None = None
+    reviews_count_item: int | None = None
+    initial_price: float | None = None
+    discount_percentage: int | float | None = None
+    final_price: float | None = None
+    currency: str | None = None
+    images: list[str] = Field(default_factory=list)
+    breadcrumbs: list[UrlName] = Field(default_factory=list)
+    root_category: str | None = None
+    seller_name: str | None = None
+    seller_shop_name: str | None = None
+    seller_response: str | None = None
+    item_details: list[str] = Field(default_factory=list)
+    shipping_return_policies: list[str] = Field(default_factory=list)
+    product_specifications: list[EtsyProductSpecification] = Field(default_factory=list)
+    faqs: list[EtsyFaq] = Field(default_factory=list)
+    category_tree: list[str] = Field(default_factory=list)
+    liisted_date: str | None = None
+    seller_shop_url: str | None = None
+    variation: list[EtsyVariation] = Field(default_factory=list)
+    variations: list[EtsyVariation] = Field(default_factory=list)
+    videos: list[str] = Field(default_factory=list)
+    highlights: list[str] = Field(default_factory=list)
+    item_details_html: str | None = None
+    highlights_lines: list[NameValue] = Field(default_factory=list)
+    variation_url: str | None = None
+    is_star_seller: bool | None = None
+    sku: str | int | None = None
+    description: str | None = None
+    product_category: str | None = None
+    nai_category_tree: list[UrlName] = Field(default_factory=list)
+    image_url: str | None = None
+    price: str | float | None = None
+    sale_price: str | float | None = None
+    availability: str | None = None
+    availability_date: str | None = None
+    group_id: str | None = None
+    listing_has_variations: bool | None = None
+    variant_attributes: list[NameValue] = Field(default_factory=list)
+    nai_variants: list[CommerceVariantGroup] = Field(default_factory=list)
+    store_name: str | None = None
+    seller_url: str | None = None
+    seller_privacy_policy: str | None = None
+    seller_tos: str | None = None
+    return_policy: str | None = None
+    return_window: int | None = None
+    target_countries: list[str] = Field(default_factory=list)
+    store_country: str | None = None
+    category_urls: list[str] = Field(default_factory=list)
+    brand: str | None = None
+    variant_id: str | None = None
+    timestamp: str | None = None
+    input: dict[str, Any] | None = None
+    discovery_input: dict[str, Any] | None = None
+
+
+class EtsyProductPayload(RootModel[list[EtsyProductRecord]]):
+    pass
+
+
 class AmazonVariation(LooseModel):
     asin: str | None = None
     color: str | None = None
@@ -886,6 +967,7 @@ BRIGHTDATA_SCHEMA_REGISTRY: dict[str, type[BaseModel]] = {
     "lazada.products": LazadaProductPayload,
     "lazada.products.search_gmv": LazadaSearchGmvPayload,
     "lazada.reviews": LazadaReviewPayload,
+    "etsy.products": EtsyProductPayload,
     "amazon.products": AmazonProductPayload,
     "amazon.products.search": AmazonSearchProductPayload,
     "amazon.reviews": AmazonReviewPayload,
@@ -948,6 +1030,16 @@ BRIGHTDATA_DATASET_KEYS: list[BrightDataDatasetKey] = [
         description="Lazada product review collection results.",
         model="LazadaReviewPayload",
         endpoints=["Lazada Reviews - collect by URL"],
+    ),
+    BrightDataDatasetKey(
+        key="etsy.products",
+        description="Etsy product detail, keyword discovery, and shop discovery results.",
+        model="EtsyProductPayload",
+        endpoints=[
+            "Etsy - collect by URL",
+            "Etsy - discover by keyword",
+            "Etsy - discover by shop URL",
+        ],
     ),
     BrightDataDatasetKey(
         key="amazon.products",
