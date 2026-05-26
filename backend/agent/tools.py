@@ -4,16 +4,13 @@ from typing import Any
 
 from backend.api.scrapingbeeClient import (
     normalizeSerpResults,
-    normalizeText,
-    scrapePageText,
     searchGoogle,
 )
 from backend.api.marketplaceScrape import (
-    MarketplaceDiscoveryRequest,
-    buildMarketplaceDiscoveryQuery,
-    extractMarketplaceSignals,
+    runMarketplaceDiscovery,
+    runMarketplaceScrape,
 )
-from backend.api.socialScrape import extractSocialSignals
+from backend.api.socialScrape import runSocialDiscovery, runSocialScrape
 
 TOOL_SCHEMAS: dict[str, dict] = {
     'serp_search': {
@@ -24,10 +21,10 @@ TOOL_SCHEMAS: dict[str, dict] = {
         },
     },
     'marketplace_discovery': {
-        'description': 'Find product listings on marketplaces via Google SERP',
+        'description': 'Find product listings on marketplaces via Bright Data',
         'input': {
             'keyword': 'str — product to search',
-            'marketplace': 'str (optional: \'taobao\' | \'amazon\' | \'temu\', default \'taobao\')',
+            'marketplace': 'str (optional: \'amazon\' | \'tokopedia\' | \'lazada\' | \'walmart\', default \'amazon\')',
             'country_code': 'str (optional, default \'cn\')',
         },
     },
@@ -72,49 +69,32 @@ def toolSerpSearch(query: str, country_code: str = 'us') -> dict:
 
 def toolMarketplaceDiscovery(
     keyword: str,
-    marketplace: str = 'taobao',
+    marketplace: str = 'amazon',
     country_code: str = 'cn',
 ) -> dict:
-    req = MarketplaceDiscoveryRequest(
+    result = runMarketplaceDiscovery(
         keyword=keyword,
         marketplace=marketplace,
         country_code=country_code,
         limit=4,
         include_scrape=False,
     )
-    query = buildMarketplaceDiscoveryQuery(req)
-    data, error = searchGoogle(query=query, country_code=country_code, nb_results=4)
-    if error:
-        return {'error': str(error)}
-    results = normalizeSerpResults(data)
-    return _compact({'marketplace': marketplace, 'keyword': keyword, 'results': results})
+    return _compact(result)
 
 
 def toolSocialDiscovery(keyword: str, country_code: str = 'us') -> dict:
-    query = f'site:reddit.com OR site:twitter.com {keyword}'
-    data, error = searchGoogle(query=query, country_code=country_code, nb_results=5)
-    if error:
-        return {'error': str(error)}
-    results = normalizeSerpResults(data)
-    return _compact({'keyword': keyword, 'results': results})
+    result = runSocialDiscovery(keyword=keyword, country_code=country_code, limit=5, include_scrape=False)
+    return _compact(result)
 
 
 def toolMarketplaceScrape(url: str, keyword: str | None = None) -> dict:
-    text, error = scrapePageText(url=url)
-    if error:
-        return {'error': str(error)}
-    clean = normalizeText(text)
-    signals = extractMarketplaceSignals(url, text)
-    return _compact({'url': url, 'signals': signals, 'textPreview': clean[:1000]})
+    result = runMarketplaceScrape(url=url, keyword=keyword)
+    return _compact(result)
 
 
 def toolSocialScrape(url: str, keyword: str | None = None) -> dict:
-    text, error = scrapePageText(url=url)
-    if error:
-        return {'error': str(error)}
-    clean = normalizeText(text)
-    signals = extractSocialSignals(url, text)
-    return _compact({'url': url, 'signals': signals, 'textPreview': clean[:1000]})
+    result = runSocialScrape(url=url, keyword=keyword)
+    return _compact(result)
 
 
 _REGISTRY: dict[str, Any] = {

@@ -227,34 +227,43 @@ def _saveCategoryInsights(categoryName: str, country: str, insights: dict[str, A
 
 @celeryApp.task(name='scrapeMarketSignals', queue='scraping')
 def scrapeMarketSignals(category: str, keywords: list[str], country: str = 'us', marketplace: str = 'amazon') -> dict[str, Any]:
-    from backend.api.scrapingbeeClient import searchGoogle, normalizeSerpResults
-    from backend.api.marketplaceScrape import buildMarketplaceDiscoveryQuery, MarketplaceDiscoveryRequest
+    from backend.api.marketplaceScrape import runMarketplaceDiscovery
+    from backend.api.socialScrape import runSocialDiscovery
 
     print(f'[scraping] Starting signal scrape for category={category}, country={country}, keywords={keywords}')
 
     rows: list[tuple[str, str, str, str, str]] = []
 
     for keyword in keywords[:5]:
-        socialData, err = searchGoogle(
-            query=f'site:reddit.com OR site:twitter.com {keyword}',
+        socialData = runSocialDiscovery(
+            keyword=keyword,
             country_code=country,
-            nb_results=5,
+            limit=3,
+            include_scrape=False,
         )
-        if not err:
-            for result in normalizeSerpResults(socialData)[:3]:
+        if socialData.get('status') == 'success':
+            for result in socialData.get('serpResults', [])[:3]:
                 text = f"{result.get('title', '')} — {result.get('description', '')}"
                 if text.strip():
                     rows.append((text[:1000], result.get('source', 'social'), result.get('url', ''), country, category))
 
-        req = MarketplaceDiscoveryRequest(
-            keyword=keyword, marketplace=marketplace, limit=3, include_scrape=False,
+        marketData = runMarketplaceDiscovery(
+            keyword=keyword,
+            marketplace=marketplace,
+            country_code=country,
+            limit=3,
+            include_scrape=False,
         )
-        marketData, err = searchGoogle(
-            query=buildMarketplaceDiscoveryQuery(req), country_code=country, nb_results=3,
-        )
-        if not err:
-            for result in normalizeSerpResults(marketData)[:2]:
+        if marketData.get('status') == 'success':
+            for result in marketData.get('results', [])[:3]:
+                record = result.get('record') or {}
+                metrics = []
+                for key in ['final_price', 'price', 'rating', 'reviews_count', 'review_count', 'sold', 'number_sold', 'gmv']:
+                    if isinstance(record, dict) and record.get(key) is not None:
+                        metrics.append(f'{key}={record.get(key)}')
                 text = f"{result.get('title', '')} — {result.get('description', '')}"
+                if metrics:
+                    text = f"{text} ({', '.join(metrics)})"
                 if text.strip():
                     rows.append((text[:1000], 'marketplace', result.get('url', ''), country, category))
 
@@ -412,7 +421,7 @@ def scrapeMarketplacePageBatch(
 @celeryApp.task(name='scrapeMarketplaceDiscovery', queue='scraping')
 def scrapeMarketplaceDiscovery(
     keyword: str,
-    marketplace: str = 'taobao',
+    marketplace: str = 'amazon',
     country_code: str = 'cn',
     language: str = 'en',
     limit: int = 5,

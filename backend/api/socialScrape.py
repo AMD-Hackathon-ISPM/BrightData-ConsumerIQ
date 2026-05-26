@@ -1,16 +1,99 @@
+import re
+from typing import Any
+
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from backend.api.scrapingbeeClient import (
-    detectSourceFromUrl,
-    normalizeSerpResults,
-    normalizeText,
-    scrapePageText,
-    searchGoogle,
-)
+from backend.brightdata.client import scrape_brightdata
 
 router = APIRouter(tags=['social'])
+
+
+def normalizeText(text: str):
+    return re.sub(r'\n{3,}', '\n\n', re.sub(r'[ \t]+', ' ', text or '')).strip()
+
+
+def detectSourceFromUrl(url: str):
+    lowered = url.lower()
+    if 'reddit.com' in lowered:
+        return 'reddit'
+    if 'twitter.com' in lowered or 'x.com' in lowered:
+        return 'twitter'
+    if 'youtube.com' in lowered:
+        return 'youtube'
+    if 'tiktok.com' in lowered:
+        return 'tiktok'
+    return 'social'
+
+
+def _endpointForSocialUrl(url: str) -> str | None:
+    lowered = url.lower()
+
+    if 'instagram.com' in lowered:
+        if '/reel/' in lowered:
+            return 'instagram.reels.collect_url'
+        if '/p/' in lowered:
+            return 'instagram.posts.collect_url'
+        return 'instagram.profiles.collect_url'
+
+    if 'x.com' in lowered or 'twitter.com' in lowered:
+        if '/status/' in lowered:
+            return 'x.posts.collect_url'
+        return 'x.profiles.collect_url'
+
+    if 'tiktok.com' in lowered or 'shop-' in lowered:
+        if '/shop/c/' in lowered:
+            return 'tiktok.shop.category.collect_url'
+        if '/shop/store/' in lowered:
+            return 'tiktok.shop.products.discover_shop'
+        if '/view/product/' in lowered or '/pdp/' in lowered:
+            return 'tiktok.shop.products.collect_url'
+        if '/discover/' in lowered or '/channel/' in lowered or '/music/' in lowered or '/explore' in lowered:
+            return 'tiktok.discover_pages.collect_url'
+        if '/search?' in lowered:
+            return 'tiktok.search_results.collect_url'
+        if '/video/' in lowered:
+            return 'tiktok.posts.collect_url'
+        return 'tiktok.profiles.collect_url'
+
+    return None
+
+
+def _recordsFromResult(result: dict[str, Any]) -> list[dict[str, Any]]:
+    records = result.get('records')
+    if isinstance(records, list):
+        return [record for record in records if isinstance(record, dict)]
+    if isinstance(records, dict):
+        return [records]
+    return []
+
+
+def _socialSignalFromRecord(record: dict[str, Any], fallback_source: str, fallback_url: str) -> dict[str, Any]:
+    title = (
+        record.get('description')
+        or record.get('comment_text')
+        or record.get('comment')
+        or record.get('biography')
+        or record.get('caption')
+        or record.get('title')
+        or record.get('profile_name')
+        or record.get('nickname')
+        or ''
+    )
+    return {
+        'source': fallback_source,
+        'title': str(title)[:300],
+        'url': str(record.get('url') or record.get('post_url') or record.get('profile_url') or fallback_url),
+        'origin': 'brightdata_dataset',
+        'engagement': {
+            'likes': record.get('likes') or record.get('digg_count') or record.get('num_likes'),
+            'comments': record.get('num_comments') or record.get('comment_count'),
+            'views': record.get('views') or record.get('play_count') or record.get('video_play_count'),
+            'shares': record.get('share_count') or record.get('num_share_count'),
+            'followers': record.get('followers') or record.get('profile_followers'),
+        },
+    }
 
 
 class SocialScrapeRequest(BaseModel):
@@ -115,27 +198,33 @@ def runSocialScrape(
     country_code: str = 'us',
     render_js: bool = True,
 ) -> dict:
-    page_text, error = scrapePageText(
-        url=url,
-        country_code=country_code,
-        render_js=render_js,
+    endpoint = _endpointForSocialUrl(url)
+    if endpoint is None:
+        return {
+            'status': 'unsupported_social_source',
+            'source': 'brightdata',
+            'sourceUrl': url,
+            'keyword': keyword,
+            'countryCode': country_code,
+            'error': 'No Bright Data social endpoint is configured for this URL.',
+        }
+
+    result = scrape_brightdata(
+        endpoint_key=endpoint,
+        input_records=[{'url': url}],
     )
-
-    if error:
-        return error
-
-    clean_text = normalizeText(page_text)
-    signals = extractSocialSignals(url, page_text)
+    records = _recordsFromResult(result)
+    source = detectSourceFromUrl(url)
 
     return {
-        'status': 'success',
-        'source': 'scrapingbee',
+        **result,
         'sourceUrl': url,
         'keyword': keyword,
         'countryCode': country_code,
-        'signals': signals,
-        'textPreview': clean_text[:2000],
-        'rawTextLength': len(page_text),
+        'signals': [
+            _socialSignalFromRecord(record, source, url)
+            for record in records[:10]
+        ],
     }
 
 
@@ -146,71 +235,30 @@ def runSocialDiscovery(
     limit: int = 5,
     include_scrape: bool = True,
 ) -> dict:
-    query = (
-        'site:reddit.com OR site:youtube.com OR site:tiktok.com '
-        f'OR site:twitter.com {keyword}'
+    country = country_code.upper() if country_code else ''
+    result = scrape_brightdata(
+        endpoint_key='tiktok.posts.discover_keyword',
+        input_records=[{'search_keyword': keyword, 'country': country}],
     )
-
-    data, error = searchGoogle(query=query, country_code=country_code, language=language, nb_results=limit)
-
-    if error:
-        return error
-
-    serp_results = normalizeSerpResults(data)
-
-    if not include_scrape:
-        return {
-            'status': 'success',
-            'keyword': keyword,
-            'serpResults': serp_results,
-            'scrapeResults': [],
+    records = _recordsFromResult(result)
+    serp_results = [
+        {
+            'title': str(record.get('description') or record.get('title') or '')[:300],
+            'description': str(record.get('profile_biography') or record.get('description') or '')[:500],
+            'url': str(record.get('url') or record.get('post_url') or ''),
+            'source': 'tiktok',
+            'record': record,
         }
-
-    scrape_results = []
-
-    for result in serp_results[:limit]:
-        source = result['source']
-
-        if source not in ['reddit', 'twitter']:
-            scrape_results.append({
-                'status': 'skipped',
-                'reason': f'{source} scraping parser is not implemented yet',
-                'result': result,
-            })
-            continue
-
-        scrape_result = runSocialScrape(
-            url=result['url'], keyword=keyword, country_code=country_code, render_js=True,
-        )
-
-        signals = scrape_result.get('signals', [])
-        text_preview = scrape_result.get('textPreview', '')
-
-        if not signals and len(text_preview.strip()) < 100:
-            scrape_results.append({
-                'discovered': result,
-                'scrape': {
-                    'status': 'fallback',
-                    'reason': 'Direct social scrape returned no usable content',
-                    'source': result['source'],
-                    'signals': [{
-                        'source': result['source'],
-                        'title': result['title'],
-                        'snippet': result['description'],
-                        'url': result['url'],
-                        'origin': 'serp_fallback',
-                    }],
-                },
-            })
-            continue
-
-        scrape_results.append({'discovered': result, 'scrape': scrape_result})
+        for record in records[:limit]
+    ]
 
     return {
-        'status': 'success',
+        **result,
         'keyword': keyword,
+        'countryCode': country_code,
+        'language': language,
         'serpResults': serp_results,
-        'scrapeResults': scrape_results,
+        'scrapeResults': [],
     }
 
 

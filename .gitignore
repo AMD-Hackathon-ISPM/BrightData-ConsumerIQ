@@ -7,4 +7,6 @@ infra/k8s/backend/.env
 testing/*
 
 .venv*
-.env*
+.env
+
+tes.md

@@ -35,5 +35,11 @@ spec:
             - name: SCRAPINGBEE_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: consumeriq-scrapingbee
+                  name: consumeriq-api-keys
                   key: SCRAPINGBEE_API_KEY
+                  optional: true
+            - name: BRIGHTDATA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: BRIGHTDATA_API_TOKEN
