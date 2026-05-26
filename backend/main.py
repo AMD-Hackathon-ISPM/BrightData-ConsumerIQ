@@ -13,6 +13,7 @@ _DATABASE_URL = os.getenv(
 from backend.api.marketplaceScrape import router as marketplaceRouter
 from backend.api.serpSearch import router as serpRouter
 from backend.api.socialScrape import router as socialRouter
+from backend.api.brightdataSchemas import router as brightdataSchemasRouter
 
 _REDIS_URL = os.getenv('REDIS_URL', 'redis://redis.consumeriq.svc.cluster.local:6379/0')
 _INFERENCE_QUEUE_LIMIT = int(os.getenv('INFERENCE_QUEUE_LIMIT', '5'))
@@ -53,6 +54,7 @@ app = FastAPI(title='ConsumerIQ API')
 app.include_router(marketplaceRouter)
 app.include_router(serpRouter)
 app.include_router(socialRouter)
+app.include_router(brightdataSchemasRouter)
 
 class AgentRunRequest(BaseModel):
     prompt: str
