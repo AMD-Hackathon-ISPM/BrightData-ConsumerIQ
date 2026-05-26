@@ -212,6 +212,54 @@ class AlibabaProductPayload(RootModel[list[AlibabaProductRecord]]):
     pass
 
 
+class AliExpressProductRecord(LooseModel):
+    db_source: str | int | None = None
+    timestamp: str | None = None
+    url: str | None = None
+    item_id: str | None = None
+    variant_id: str | None = None
+    gtin: str | None = None
+    mpn: str | None = None
+    title: str | None = None
+    description: str | None = None
+    product_category: str | None = None
+    category_tree: list[UrlName] | list[str] | None = None
+    brand: str | None = None
+    image_url: str | None = None
+    images: list[str] | None = None
+    additional_image_urls: list[str] = Field(default_factory=list)
+    price: str | float | None = None
+    sale_price: str | float | None = None
+    initial_price: str | float | None = None
+    final_price: str | float | None = None
+    currency: str | None = None
+    availability: str | None = None
+    in_stock: bool | None = None
+    rating: float | None = None
+    reviews_count: int | None = None
+    reviews: list[CommerceReview] | None = None
+    seller_name: str | None = None
+    seller_id: str | None = None
+    seller_url: str | None = None
+    seller_rating: float | str | None = None
+    seller_reviews_count: int | None = None
+    merchant_id: str | int | None = None
+    product_overview: str | list[str] | dict[str, Any] | None = None
+    specifications: list[NameValue] | list[dict[str, Any]] | dict[str, Any] | None = None
+    product_specifications: list[NameValue] | list[dict[str, Any]] | dict[str, Any] | None = None
+    sizes: list[str] | None = None
+    colors: list[str] | None = None
+    style: str | None = None
+    variants: list[CommerceVariantGroup] | list[dict[str, Any]] | None = None
+    variant_attributes: list[NameValue] | None = None
+    input: dict[str, Any] | None = None
+    discovery_input: dict[str, Any] | None = None
+
+
+class AliExpressProductPayload(RootModel[list[AliExpressProductRecord]]):
+    pass
+
+
 class LazadaVariationGroup(LooseModel):
     name: str | None = None
     variations: list[str] = Field(default_factory=list)
@@ -398,6 +446,219 @@ class EtsyProductRecord(LooseModel):
 
 
 class EtsyProductPayload(RootModel[list[EtsyProductRecord]]):
+    pass
+
+
+class GoogleShoppingRatingStars(LooseModel):
+    five_stars: int | None = Field(default=None, alias="5_stars")
+    four_stars: int | None = Field(default=None, alias="4_stars")
+    three_stars: int | None = Field(default=None, alias="3_stars")
+    two_stars: int | None = Field(default=None, alias="2_stars")
+    one_star: int | None = Field(default=None, alias="1_star")
+
+
+class GoogleShoppingProductSpecification(LooseModel):
+    specification_name: str | None = None
+    specification_value: str | None = None
+
+
+class GoogleShoppingRelatedItem(LooseModel):
+    url: str | None = None
+    title: str | None = None
+    price: str | float | None = None
+
+
+class GoogleShoppingBuyingOption(LooseModel):
+    seller_name: str | None = None
+    seller_url: str | None = None
+    price: str | float | None = None
+    currency: str | None = None
+
+
+class GoogleShoppingProductRecord(LooseModel):
+    url: str | None = None
+    product_id: str | None = None
+    title: str | None = None
+    product_description: list[str] = Field(default_factory=list)
+    rating: float | None = None
+    reviews_count: int | None = None
+    images: list[str] = Field(default_factory=list)
+    amount_of_stars: GoogleShoppingRatingStars | None = None
+    seller_name: str | None = None
+    item_price: str | float | None = None
+    total_price: str | float | None = None
+    currency: str | None = None
+    product_specifications: list[GoogleShoppingProductSpecification] = Field(default_factory=list)
+    related_items: list[GoogleShoppingRelatedItem] = Field(default_factory=list)
+    country: str | None = None
+    buying_options: list[GoogleShoppingBuyingOption] = Field(default_factory=list)
+    variant_id: str | None = None
+    description: str | None = None
+    product_category: str | None = None
+    category_tree: list[UrlName] | list[str] | None = None
+    brand: str | None = None
+    image_url: str | None = None
+    price: str | float | None = None
+    sale_price: str | float | None = None
+    availability: str | None = None
+    availability_date: str | None = None
+    group_id: str | None = None
+    variant_attributes: list[NameValue] | None = None
+    nai_variants: list[CommerceVariantGroup] | None = None
+    store_name: str | None = None
+    seller_url: str | None = None
+    seller_privacy_policy: str | None = None
+    seller_tos: str | None = None
+    return_window: int | None = None
+    target_countries: list[str] = Field(default_factory=list)
+    store_country: str | None = None
+    category_urls: list[str] | None = None
+    reviews: list[CommerceReview] = Field(default_factory=list)
+    timestamp: str | None = None
+    input: dict[str, Any] | None = None
+    discovery_input: dict[str, Any] | None = None
+
+
+class GoogleShoppingProductPayload(RootModel[list[GoogleShoppingProductRecord]]):
+    pass
+
+
+class GoogleShoppingSearchUsRecord(LooseModel):
+    url: str | None = None
+    product_id: str | None = None
+    title: str | None = None
+    final_price: str | float | None = None
+    initial_price: str | float | None = None
+    currency: str | None = None
+    rating: float | None = None
+    reviews_count: int | None = None
+    image_url: str | None = None
+    images: list[str] | None = None
+    seller_name: str | None = None
+    store_name: str | None = None
+    product_description: str | list[str] | None = None
+    description: str | None = None
+    rank: int | None = None
+    page_number: int | None = None
+    timestamp: str | None = None
+    input: dict[str, Any] | None = None
+    discovery_input: dict[str, Any] | None = None
+
+
+class GoogleShoppingSearchUsPayload(RootModel[list[GoogleShoppingSearchUsRecord]]):
+    pass
+
+
+class GoogleSerpGeneral(LooseModel):
+    search_engine: str | None = None
+    language: str | None = None
+    location: str | None = None
+    search_type: str | None = None
+    page_title: str | None = None
+    datetime: str | None = None
+    query: str | None = None
+
+
+class GoogleSerpPaginationItem(LooseModel):
+    page: str | int | None = None
+    link: str | None = None
+    page_html: str | None = None
+
+
+class GoogleSerpOrganicResult(LooseModel):
+    url: str | None = None
+    rank: int | None = None
+    link: str | None = None
+    title: str | None = None
+    description: str | None = None
+
+
+class GoogleSerpRelatedResult(LooseModel):
+    rank: int | None = None
+    link: str | None = None
+    text: str | None = None
+
+
+class GoogleSerpNavigationItem(LooseModel):
+    title: str | None = None
+    link: str | None = None
+
+
+class GoogleSerpLocalPackItem(LooseModel):
+    position: int | None = None
+    name: str | None = None
+    address: str | None = None
+    category: str | None = None
+    rating: float | None = None
+    reviews_count: int | None = None
+    phone: str | None = None
+    website: str | None = None
+    cid: str | int | None = None
+    google_maps_url: str | None = None
+
+
+class GoogleSerpAioCitation(LooseModel):
+    index: int | None = None
+    title: str | None = None
+    link: str | None = None
+
+
+class GoogleSerpRecord(LooseModel):
+    url: str | None = None
+    keyword: str | None = None
+    general: GoogleSerpGeneral | None = None
+    related: list[GoogleSerpRelatedResult] = Field(default_factory=list)
+    pagination: list[GoogleSerpPaginationItem] = Field(default_factory=list)
+    organic: list[GoogleSerpOrganicResult] = Field(default_factory=list)
+    people_also_ask: list[str | dict[str, Any]] = Field(default_factory=list)
+    navigation: list[GoogleSerpNavigationItem] = Field(default_factory=list)
+    language: str | None = None
+    country: str | None = None
+    aio_citations: list[GoogleSerpAioCitation] | None = None
+    page_html: str | None = None
+    aio_text: str | None = None
+    index: str | int | None = None
+    local_pack: list[GoogleSerpLocalPackItem] | None = None
+    timestamp: str | None = None
+    input: dict[str, Any] | None = None
+    discovery_input: dict[str, Any] | None = None
+
+
+class GoogleSerpPayload(RootModel[list[GoogleSerpRecord]]):
+    pass
+
+
+class GoogleAiModeLink(LooseModel):
+    title: str | None = None
+    link: str | None = None
+    url: str | None = None
+    text: str | None = None
+
+
+class GoogleAiModeCitation(LooseModel):
+    index: int | None = None
+    title: str | None = None
+    link: str | None = None
+    url: str | None = None
+    text: str | None = None
+
+
+class GoogleAiModeRecord(LooseModel):
+    db_source: str | int | None = None
+    timestamp: str | None = None
+    url: str | None = None
+    prompt: str | None = None
+    country: str | None = None
+    answer_html: str | None = None
+    answer_text: str | None = None
+    answer_markdown: str | None = None
+    links_attached: list[GoogleAiModeLink] = Field(default_factory=list)
+    citations: list[GoogleAiModeCitation] = Field(default_factory=list)
+    input: dict[str, Any] | None = None
+    discovery_input: dict[str, Any] | None = None
+
+
+class GoogleAiModePayload(RootModel[list[GoogleAiModeRecord]]):
     pass
 
 
@@ -1216,10 +1477,15 @@ BRIGHTDATA_SCHEMA_REGISTRY: dict[str, type[BaseModel]] = {
     "tokopedia.products": TokopediaProductPayload,
     "sephora.products": SephoraProductPayload,
     "alibaba.products": AlibabaProductPayload,
+    "aliexpress.products": AliExpressProductPayload,
     "lazada.products": LazadaProductPayload,
     "lazada.products.search_gmv": LazadaSearchGmvPayload,
     "lazada.reviews": LazadaReviewPayload,
     "etsy.products": EtsyProductPayload,
+    "google.shopping": GoogleShoppingProductPayload,
+    "google.shopping.search_us": GoogleShoppingSearchUsPayload,
+    "google.serp_100": GoogleSerpPayload,
+    "google.ai_mode": GoogleAiModePayload,
     "amazon.products": AmazonProductPayload,
     "amazon.products.search": AmazonSearchProductPayload,
     "amazon.reviews": AmazonReviewPayload,
@@ -1272,6 +1538,15 @@ BRIGHTDATA_DATASET_KEYS: list[BrightDataDatasetKey] = [
         endpoints=["Alibaba - collect by URL", "Alibaba - discover by category URL"],
     ),
     BrightDataDatasetKey(
+        key="aliexpress.products",
+        description="AliExpress product detail and category product collection results.",
+        model="AliExpressProductPayload",
+        endpoints=[
+            "AliExpress products - collect by URL",
+            "AliExpress products - collect by category URL",
+        ],
+    ),
+    BrightDataDatasetKey(
         key="lazada.products",
         description="Lazada product detail discovery results.",
         model="LazadaProductPayload",
@@ -1302,6 +1577,33 @@ BRIGHTDATA_DATASET_KEYS: list[BrightDataDatasetKey] = [
             "Etsy - discover by keyword",
             "Etsy - discover by shop URL",
         ],
+    ),
+    BrightDataDatasetKey(
+        key="google.shopping",
+        description="Google Shopping product detail and keyword discovery results.",
+        model="GoogleShoppingProductPayload",
+        endpoints=[
+            "Google Shopping - collect by URL",
+            "Google Shopping - discover by keyword",
+        ],
+    ),
+    BrightDataDatasetKey(
+        key="google.shopping.search_us",
+        description="US-focused Google Shopping product search result rows.",
+        model="GoogleShoppingSearchUsPayload",
+        endpoints=["Google Shopping products search US - collect by URL"],
+    ),
+    BrightDataDatasetKey(
+        key="google.serp_100",
+        description="Google SERP results across up to 100 organic positions with SERP metadata.",
+        model="GoogleSerpPayload",
+        endpoints=["Google SERP 100 Results - collect by URL"],
+    ),
+    BrightDataDatasetKey(
+        key="google.ai_mode",
+        description="Google AI Mode Search answers, links, and citations.",
+        model="GoogleAiModePayload",
+        endpoints=["Google AI Mode Search - collect by URL"],
     ),
     BrightDataDatasetKey(
         key="amazon.products",
