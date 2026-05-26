@@ -340,8 +340,6 @@ def detectSourceFromUrl(url: str):
         return 'youtube'
     if 'tiktok.com' in host:
         return 'tiktok'
-    if 'taobao.com' in host or 'tmall.com' in host:
-        return 'taobao'
     if 'amazon.' in host:
         return 'amazon'
     if 'temu.' in host:

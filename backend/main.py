@@ -14,6 +14,7 @@ from backend.api.marketplaceScrape import router as marketplaceRouter
 from backend.api.serpSearch import router as serpRouter
 from backend.api.socialScrape import router as socialRouter
 from backend.api.brightdataSchemas import router as brightdataSchemasRouter
+from backend.api.brightdataScrape import router as brightdataScrapeRouter
 
 _REDIS_URL = os.getenv('REDIS_URL', 'redis://redis.consumeriq.svc.cluster.local:6379/0')
 _INFERENCE_QUEUE_LIMIT = int(os.getenv('INFERENCE_QUEUE_LIMIT', '5'))
@@ -55,6 +56,7 @@ app.include_router(marketplaceRouter)
 app.include_router(serpRouter)
 app.include_router(socialRouter)
 app.include_router(brightdataSchemasRouter)
+app.include_router(brightdataScrapeRouter)
 
 class AgentRunRequest(BaseModel):
     prompt: str

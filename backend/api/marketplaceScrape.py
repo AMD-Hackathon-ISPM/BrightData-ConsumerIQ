@@ -1,20 +1,36 @@
 import re
-from urllib.parse import quote_plus
+from typing import Any
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from backend.api.scrapingbeeClient import (
-    detectSourceFromUrl,
-    normalizeSerpResults,
-    normalizeText,
-    scrapePageText,
-    searchGoogle,
-    scrapeAmazonWithReviews,
-)
+from backend.brightdata.client import scrape_brightdata
 
 router = APIRouter(tags=['marketplace'])
+
+
+def normalizeText(text: str):
+    return re.sub(r'\n{3,}', '\n\n', re.sub(r'[ \t]+', ' ', text or '')).strip()
+
+
+def detectSourceFromUrl(url: str):
+    lowered = url.lower()
+    if 'amazon.' in lowered:
+        return 'amazon'
+    if 'tokopedia.com' in lowered:
+        return 'tokopedia'
+    if 'alibaba.com' in lowered:
+        return 'alibaba'
+    if 'sephora.com' in lowered:
+        return 'sephora'
+    if 'lazada.' in lowered:
+        return 'lazada'
+    if 'walmart.com' in lowered:
+        return 'walmart'
+    if 'ebay.' in lowered:
+        return 'ebay'
+    return 'marketplace'
 
 
 class MarketplaceScrapeRequest(BaseModel):
@@ -39,7 +55,7 @@ class MarketplaceBatchScrapeRequest(BaseModel):
 
 class MarketplaceDiscoveryRequest(BaseModel):
     keyword: str
-    marketplace: str = 'taobao'
+    marketplace: str = 'amazon'
     country_code: str = 'cn'
     language: str = 'en'
     limit: int = 5
@@ -55,18 +71,6 @@ def classifyMarketplaceUrl(url: str):
         if '/dp/' in lowered or '/gp/product/' in lowered:
             return 'amazon_product_page'
         return 'amazon_page'
-
-    if 'pingjia.taobao.com' in lowered:
-        return 'taobao_review_page'
-
-    if 'world.taobao.com' in lowered or 'beaut.taobao.com' in lowered or 'fanyi.taobao.com' in lowered:
-        return 'taobao_content_page'
-
-    if 's.taobao.com' in lowered:
-        return 'taobao_search_page'
-
-    if 'taobao.com' in lowered or 'tmall.com' in lowered:
-        return 'taobao_page'
 
     return detectSourceFromUrl(url)
 
@@ -89,36 +93,6 @@ def extractPriceSignals(text: str):
     clean = normalizeText(text)
     prices = re.findall(r'(?:¥|￥|rp|idr|\$)\s?[0-9][0-9.,]*', clean, flags=re.IGNORECASE)
     return list(dict.fromkeys(prices))[:20]
-
-
-def extractTaobaoSignals(text: str):
-    clean = normalizeText(text)
-    lines = clean.splitlines()
-    joined = ' '.join(lines)
-
-    review_tag_pattern = re.compile(r'([一-鿿A-Za-z][一-鿿A-Za-z\s-]{1,30})\((\d+)\)')
-    review_tags = [
-        {'tag': match.group(1).strip(), 'count': int(match.group(2))}
-        for match in review_tag_pattern.finditer(joined)
-    ][:20]
-
-    product_lines = []
-    for line in lines:
-        has_price_context = '¥' in line or '￥' in line
-        has_beauty_context = any(
-            keyword in line.lower()
-            for keyword in ['serum', 'skincare', 'cleanser', 'pola', 'cream', 'toner', 'essence']
-        )
-        if len(line) > 18 and (has_price_context or has_beauty_context):
-            product_lines.append(line)
-
-    return {
-        'marketplace': 'taobao',
-        'pageBlocked': isBlockedMarketplaceText(clean),
-        'prices': extractPriceSignals(clean),
-        'reviewTags': review_tags,
-        'productMentions': product_lines[:12],
-    }
 
 
 def extractAmazonSignals(text: str, url: str = ''):
@@ -207,9 +181,6 @@ def extractAmazonSignals(text: str, url: str = ''):
 def extractMarketplaceSignals(url: str, text: str):
     page_type = classifyMarketplaceUrl(url)
 
-    if page_type.startswith('taobao'):
-        return extractTaobaoSignals(text)
-
     if 'amazon' in page_type.lower() or 'amazon.com' in url.lower():
         return extractAmazonSignals(text, url)
 
@@ -226,13 +197,6 @@ def buildMarketplaceDiscoveryQuery(payload: MarketplaceDiscoveryRequest):
     keyword = payload.keyword
     marketplace = payload.marketplace.lower()
 
-    if marketplace == 'taobao':
-        return (
-            'site:world.taobao.com/lang/en-us/shopping-guide OR '
-            'site:pingjia.taobao.com OR site:beaut.taobao.com OR site:fanyi.taobao.com '
-            f'{keyword}'
-        )
-
     if marketplace == 'amazon':
         return f'site:amazon.com {keyword} reviews price'
 
@@ -243,14 +207,127 @@ def buildMarketplaceDiscoveryQuery(payload: MarketplaceDiscoveryRequest):
 
 
 def shouldRetryWithFullAmazonRender(error: dict | None):
-    if not isinstance(error, dict):
-        return False
-    message = str(error.get('message') or '').lower()
-    return (
-        'document is empty' in message
-        or 'block_resources=false' in message
-        or 'read timeout' in message
-    )
+    return False
+
+
+def _endpointForMarketplaceUrl(url: str, include_reviews: bool = True) -> str | None:
+    lowered = url.lower()
+    if 'tokopedia.com' in lowered:
+        return 'tokopedia.products.collect_url'
+    if 'alibaba.com' in lowered:
+        return 'alibaba.products.collect_url'
+    if 'sephora.com' in lowered:
+        return 'sephora.products.collect_url'
+    if 'walmart.com/search' in lowered:
+        return 'walmart.products.search.collect_url'
+    if 'walmart.com' in lowered:
+        return 'walmart.products.collect_url'
+    if 'lazada.' in lowered and include_reviews:
+        return 'lazada.reviews.collect_url'
+    if 'lazada.' in lowered:
+        return 'lazada.products.search_gmv.collect_url'
+    if 'amazon.' in lowered and ('/product-reviews/' in lowered or 'reviews' in lowered) and include_reviews:
+        return 'amazon.reviews.collect_url'
+    if 'amazon.' in lowered:
+        return 'amazon.products.collect_url'
+    return None
+
+
+def _marketplaceDiscoveryEndpoint(marketplace: str) -> str | None:
+    normalized = marketplace.lower()
+    mapping = {
+        'tokopedia': 'tokopedia.products.discover_keyword',
+        'lazada': 'lazada.products.discover_keyword',
+        'walmart': 'walmart.products.discover_keyword',
+        'amazon': 'amazon.products.discover_keyword',
+    }
+    return mapping.get(normalized)
+
+
+def _lazadaDomain(country_code: str) -> str:
+    domains = {
+        'sg': 'https://www.lazada.sg',
+        'my': 'https://www.lazada.com.my',
+        'vn': 'https://www.lazada.vn',
+        'ph': 'https://www.lazada.com.ph',
+        'th': 'https://www.lazada.co.th',
+        'id': 'https://www.lazada.co.id',
+    }
+    return domains.get(country_code.lower(), 'https://www.lazada.vn')
+
+
+def _recordsFromResult(result: dict[str, Any]) -> list[dict[str, Any]]:
+    records = result.get('records')
+    if isinstance(records, list):
+        return records
+    if isinstance(records, dict):
+        return [records]
+    return []
+
+
+def _firstText(record: dict[str, Any], *keys: str) -> str:
+    for key in keys:
+        value = record.get(key)
+        if value is not None and value != '':
+            return str(value)
+    return ''
+
+
+def _buildMarketplaceSignals(records: list[dict[str, Any]], marketplace: str) -> dict[str, Any]:
+    prices: list[str] = []
+    mentions: list[str] = []
+    review_tags: list[dict[str, Any]] = []
+
+    for record in records[:20]:
+        title = _firstText(record, 'title', 'product_name', 'name')
+        price = record.get('final_price') or record.get('price') or record.get('initial_price')
+        currency = record.get('currency') or ''
+        reviews = record.get('reviews_count') or record.get('review_count') or record.get('reviews')
+        rating = record.get('rating') or record.get('star_rating')
+        sold = record.get('sold') or record.get('number_sold') or record.get('bought_past_month')
+        gmv = record.get('gmv')
+
+        if price is not None:
+            prices.append(f'{currency} {price}'.strip())
+
+        summary_parts = [part for part in [
+            title,
+            f'price={price}' if price is not None else '',
+            f'rating={rating}' if rating is not None else '',
+            f'reviews={reviews}' if reviews is not None else '',
+            f'sold={sold}' if sold is not None else '',
+            f'gmv={gmv}' if gmv is not None else '',
+        ] if part]
+        if summary_parts:
+            mentions.append(' | '.join(summary_parts))
+
+        for tag in record.get('review_tags') or []:
+            review_tags.append({'tag': str(tag), 'count': 0})
+
+    return {
+        'marketplace': marketplace,
+        'pageBlocked': False,
+        'prices': list(dict.fromkeys(prices))[:20],
+        'reviewTags': review_tags[:20],
+        'productMentions': mentions[:12],
+        'dataQuality': {
+            'source': 'brightdata_dataset',
+            'recordCount': len(records),
+            'actualBuyerLocationAvailable': False,
+            'notes': 'Bright Data marketplace product datasets expose aggregate listing/review/sold signals, not raw buyer-level city sales.',
+        },
+    }
+
+
+def _discoveryInput(keyword: str, marketplace: str, country_code: str) -> dict[str, Any]:
+    normalized = marketplace.lower()
+    if normalized == 'lazada':
+        return {'keyword': keyword, 'domain': _lazadaDomain(country_code)}
+    if normalized == 'walmart':
+        return {'keyword': keyword, 'domain': 'https://www.walmart.com/', 'all_variations': True}
+    if normalized == 'amazon':
+        return {'keyword': keyword, 'zipcode': ''}
+    return {'keyword': keyword, 'sort_by': ''}
 
 
 def runMarketplaceScrape(
@@ -265,187 +342,74 @@ def runMarketplaceScrape(
     scroll: bool = False,
     block_resources: bool | None = None,
 ) -> dict:
-    if 'amazon.' in url.lower():
-        country_code = 'us' if country_code == 'cn' else country_code
+    endpoint = _endpointForMarketplaceUrl(url, include_reviews=include_reviews)
+    marketplace = detectSourceFromUrl(url)
 
-        if include_reviews:
-            result, error = scrapeAmazonWithReviews(
-                url=url, country_code=country_code, max_pages=max_review_pages,
-            )
-
-            if not error:
-                return {
-                    'status': 'success',
-                    'source': 'scrapingbee',
-                    'sourceUrl': url,
-                    'pageType': 'amazon_review_page',
-                    'signals': {
-                        'marketplace': 'amazon',
-                        'pageBlocked': False,
-                        'prices': [],
-                        'reviewTags': [],
-                        'productMentions': [],
-                        'amazonSpecific': {
-                            'reviews': result.get('reviews', []),
-                            'ratingSummary': result.get('ratingSummary', {}),
-                            'reviewCountScraped': result.get('reviewCountScraped', 0),
-                            'reviewSource': 'scrapingbee_live',
-                        },
-                    },
-                }
-
-            return {
-                'status': 'success',
-                'source': 'scrapingbee_with_fallback',
-                'sourceUrl': url,
-                'pageType': 'amazon_product_page',
-                'signals': {
-                    'marketplace': 'amazon',
-                    'pageBlocked': True,
-                    'prices': [],
-                    'reviewTags': [],
-                    'productMentions': [],
-                    'amazonSpecific': {
-                        'reviews': [],
-                        'ratingSummary': {},
-                        'reviewCountScraped': 0,
-                        'reviewSource': 'blocked_or_timed_out_live_scrape',
-                        'blockedReason': error.get('message') if isinstance(error, dict) else str(error),
-                        'liveReviewErrorStatus': error.get('status') if isinstance(error, dict) else None,
-                    },
-                },
-            }
-
-        page_text, error = scrapePageText(
-            url=url,
-            country_code=country_code,
-            render_js=render_js,
-            wait_ms=wait_ms,
-            wait_for=wait_for,
-            scroll_to='#averageCustomerReviewsAnchor' if scroll else None,
-            block_resources=block_resources,
-        )
-
-        if error and block_resources is None and shouldRetryWithFullAmazonRender(error):
-            page_text, error = scrapePageText(
-                url=url,
-                country_code=country_code,
-                render_js=render_js,
-                wait_ms=3000,
-                wait_for=wait_for,
-                scroll_to='#averageCustomerReviewsAnchor' if scroll else None,
-                block_resources=False,
-            )
-
-        if error and not render_js and shouldRetryWithFullAmazonRender(error):
-            page_text, error = scrapePageText(
-                url=url,
-                country_code=country_code,
-                render_js=True,
-                wait_ms=8000,
-                wait_for=wait_for,
-                scroll_to='#averageCustomerReviewsAnchor' if scroll else None,
-                block_resources=False,
-            )
-
-        if error:
-            return error
-
-        clean_text = normalizeText(page_text)
-        signals = extractMarketplaceSignals(url, page_text)
-
+    if endpoint is None:
         return {
-            'status': 'success',
-            'source': 'scrapingbee',
+            'status': 'unsupported_marketplace',
+            'source': 'brightdata',
             'sourceUrl': url,
-            'pageType': 'amazon_product_page',
-            'keyword': keyword,
-            'countryCode': country_code,
-            'signals': signals,
-            'textPreview': clean_text[:2500],
-            'rawTextLength': len(page_text),
+            'marketplace': marketplace,
+            'error': 'No Bright Data endpoint is configured for this URL.',
         }
 
-    page_text, error = scrapePageText(
-        url=url,
-        country_code=country_code,
-        render_js=render_js,
-        wait_ms=wait_ms if wait_ms else 5000,
-        wait_for=wait_for,
-        scroll_to='body' if scroll else None,
-        block_resources=block_resources,
-    )
-
-    if error:
-        return error
-
-    clean_text = normalizeText(page_text)
-    signals = extractMarketplaceSignals(url, page_text)
+    result = scrape_brightdata(endpoint_key=endpoint, input_records=[{'url': url}])
+    records = _recordsFromResult(result)
 
     return {
-        'status': 'success',
-        'source': 'scrapingbee',
+        **result,
         'sourceUrl': url,
         'pageType': classifyMarketplaceUrl(url),
         'keyword': keyword,
         'countryCode': country_code,
-        'signals': signals,
-        'textPreview': clean_text[:2500],
-        'rawTextLength': len(page_text),
+        'signals': _buildMarketplaceSignals(records, marketplace),
     }
 
 
 def runMarketplaceDiscovery(
     keyword: str,
-    marketplace: str = 'taobao',
+    marketplace: str = 'amazon',
     country_code: str = 'cn',
     language: str = 'en',
     limit: int = 5,
     include_scrape: bool = True,
 ) -> dict:
-    payload = MarketplaceDiscoveryRequest(
-        keyword=keyword, marketplace=marketplace, country_code=country_code,
-        language=language, limit=limit, include_scrape=include_scrape,
-    )
-    query = buildMarketplaceDiscoveryQuery(payload)
-    data, error = searchGoogle(query=query, country_code=country_code, language=language, nb_results=limit)
-
-    if error:
-        return error
-
-    serp_results = normalizeSerpResults(data)
-    marketplace_results = [
-        r for r in serp_results if classifyMarketplaceUrl(r['url']).startswith(marketplace.lower())
-    ]
-    if not marketplace_results:
-        marketplace_results = serp_results
-
-    if not include_scrape:
+    endpoint = _marketplaceDiscoveryEndpoint(marketplace)
+    if endpoint is None:
         return {
-            'status': 'success',
-            'source': 'scrapingbee_google',
-            'query': query,
+            'status': 'unsupported_marketplace',
+            'source': 'brightdata',
             'keyword': keyword,
             'marketplace': marketplace,
-            'results': marketplace_results,
-            'scrapeResults': [],
+            'error': 'No Bright Data keyword discovery endpoint is configured for this marketplace.',
         }
 
-    scrape_results = []
-    for result in marketplace_results[:limit]:
-        scrape_result = runMarketplaceScrape(
-            url=result['url'], keyword=keyword, country_code=country_code, render_js=True,
-        )
-        scrape_results.append({'discovered': result, 'scrape': scrape_result})
+    result = scrape_brightdata(
+        endpoint_key=endpoint,
+        input_records=[_discoveryInput(keyword, marketplace, country_code)],
+    )
+    records = _recordsFromResult(result)[:limit]
+    results = [
+        {
+            'title': _firstText(record, 'title', 'product_name', 'name'),
+            'url': _firstText(record, 'url', 'canonical_url'),
+            'description': _firstText(record, 'description', 'product_description', 'short_description'),
+            'source': marketplace.lower(),
+            'record': record,
+        }
+        for record in records
+    ]
 
     return {
-        'status': 'success',
-        'source': 'scrapingbee_google_then_scrapingbee',
-        'query': query,
+        **result,
         'keyword': keyword,
         'marketplace': marketplace,
-        'results': marketplace_results,
-        'scrapeResults': scrape_results,
+        'countryCode': country_code,
+        'language': language,
+        'results': results,
+        'scrapeResults': [],
+        'signals': _buildMarketplaceSignals(records, marketplace.lower()),
     }
 
 
@@ -481,14 +445,3 @@ async def marketplaceDiscovery(payload: MarketplaceDiscoveryRequest):
     )
     return JSONResponse(status_code=202, content={'taskId': task.id, 'status': 'queued', 'queue': 'scraping'})
 
-
-@router.get('/api/marketplace-url-template/taobao')
-async def taobaoUrlTemplate(keyword: str):
-    encoded_keyword = quote_plus(keyword)
-    return {
-        'keyword': keyword,
-        'templates': {
-            'searchUrl': f'https://s.taobao.com/search?q={encoded_keyword}',
-            'recommendedDynamicFlow': 'Use /api/marketplace-discovery first, then pass selected URLs to /api/marketplace-batch-scrape.',
-        },
-    }

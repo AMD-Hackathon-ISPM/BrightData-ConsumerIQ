@@ -959,6 +959,258 @@ class WalmartSellerInfoPayload(RootModel[list[WalmartSellerInfoRecord]]):
     pass
 
 
+class TikTokProfileRecord(LooseModel):
+    url: str | None = None
+    account_id: str | None = None
+    nickname: str | None = None
+    biography: str | None = None
+    followers: int | None = None
+    following: int | None = None
+    likes: int | None = None
+    videos_count: int | None = None
+    is_verified: bool | None = None
+    is_private: bool | None = None
+    profile_pic_url: str | None = None
+    top_videos: list[dict[str, Any]] | None = None
+    top_posts_data: list[dict[str, Any]] | None = None
+    timestamp: str | None = None
+    input: dict[str, Any] | None = None
+    discovery_input: dict[str, Any] | None = None
+
+
+class TikTokProfilePayload(RootModel[list[TikTokProfileRecord]]):
+    pass
+
+
+class TikTokPostRecord(LooseModel):
+    url: str | None = None
+    post_id: str | None = None
+    description: str | None = None
+    create_time: str | None = None
+    digg_count: int | None = None
+    share_count: str | int | None = None
+    collect_count: int | None = None
+    comment_count: int | None = None
+    play_count: int | None = None
+    video_duration: int | float | None = None
+    hashtags: list[str] | None = None
+    profile_id: str | None = None
+    profile_username: str | None = None
+    profile_url: str | None = None
+    profile_followers: int | None = None
+    region: str | None = None
+    video_url: str | None = None
+    timestamp: str | None = None
+    input: dict[str, Any] | None = None
+    discovery_input: dict[str, Any] | None = None
+
+
+class TikTokPostPayload(RootModel[list[TikTokPostRecord]]):
+    pass
+
+
+class TikTokCommentRecord(LooseModel):
+    url: str | None = None
+    post_url: str | None = None
+    post_id: str | None = None
+    post_date_created: str | None = None
+    date_created: str | None = None
+    comment_text: str | None = None
+    num_likes: int | None = None
+    num_replies: int | None = None
+    commenter_user_name: str | None = None
+    commenter_id: str | None = None
+    commenter_url: str | None = None
+    comment_id: str | None = None
+    comment_url: str | None = None
+    replies: list[dict[str, Any]] | None = None
+    timestamp: str | None = None
+    input: dict[str, Any] | None = None
+
+
+class TikTokCommentPayload(RootModel[list[TikTokCommentRecord]]):
+    pass
+
+
+class TikTokShopProductRecord(LooseModel):
+    url: str | None = None
+    title: str | None = None
+    product_id: str | None = None
+    id: str | None = None
+    available: bool | None = None
+    description: str | None = None
+    currency: str | None = None
+    initial_price: float | None = None
+    final_price: float | None = None
+    sold: int | None = None
+    product_rating: float | None = None
+    reviews_count: int | None = None
+    reviews: list[dict[str, Any]] | None = None
+    category: str | None = None
+    category_name: str | None = None
+    category_url: str | None = None
+    images: list[str] | None = None
+    image_url: str | None = None
+    store_name: str | None = None
+    seller_url: str | None = None
+    store_country: str | None = None
+    timestamp: str | None = None
+    input: dict[str, Any] | None = None
+    discovery_input: dict[str, Any] | None = None
+
+
+class TikTokShopProductPayload(RootModel[list[TikTokShopProductRecord]]):
+    pass
+
+
+class InstagramProfilePost(LooseModel):
+    caption: str | None = None
+    comments: int | None = None
+    datetime: str | None = None
+    id: str | None = None
+    image_url: str | None = None
+    likes: int | None = None
+    post_hashtags: list[str] | None = None
+    content_type: str | None = None
+    url: str | None = None
+    video_url: str | None = None
+    is_pinned: bool | None = None
+
+
+class InstagramProfileRecord(LooseModel):
+    account: str | None = None
+    id: str | None = None
+    followers: int | None = None
+    posts_count: int | None = None
+    is_business_account: bool | None = None
+    is_professional_account: bool | None = None
+    is_verified: bool | None = None
+    avg_engagement: float | None = None
+    biography: str | None = None
+    following: int | None = None
+    posts: list[InstagramProfilePost] | None = None
+    profile_image_link: str | None = None
+    profile_url: str | None = None
+    profile_name: str | None = None
+    full_name: str | None = None
+    is_private: bool | None = None
+    url: str | None = None
+    timestamp: str | None = None
+    input: dict[str, Any] | None = None
+
+
+class InstagramProfilePayload(RootModel[list[InstagramProfileRecord]]):
+    pass
+
+
+class InstagramPostRecord(LooseModel):
+    url: str | None = None
+    user_posted: str | None = None
+    description: str | None = None
+    hashtags: list[str] | None = None
+    num_comments: int | None = None
+    date_posted: str | None = None
+    likes: int | None = None
+    views: int | None = None
+    video_play_count: int | None = None
+    photos: list[str] | None = None
+    videos: list[str] | None = None
+    location: str | None = None
+    top_comments: list[dict[str, Any]] | None = None
+    latest_comments: list[dict[str, Any]] | None = None
+    post_id: str | None = None
+    shortcode: str | None = None
+    content_type: str | None = None
+    content_id: str | None = None
+    thumbnail: str | None = None
+    followers: int | None = None
+    posts_count: int | None = None
+    profile_url: str | None = None
+    user_profile_url: str | None = None
+    is_paid_partnership: bool | None = None
+    is_verified: bool | None = None
+
+
+class InstagramPostPayload(RootModel[list[InstagramPostRecord]]):
+    pass
+
+
+class InstagramCommentRecord(LooseModel):
+    url: str | None = None
+    comment_user: str | None = None
+    comment_user_url: str | None = None
+    comment_date: str | None = None
+    comment: str | None = None
+    likes_number: int | None = None
+    replies_number: int | None = None
+    replies: list[dict[str, Any]] | None = None
+    hashtag_comment: list[str] | None = None
+    tagged_users_in_comment: list[dict[str, Any]] | None = None
+    post_url: str | None = None
+    post_user: str | None = None
+    comment_id: str | None = None
+    post_id: str | None = None
+
+
+class InstagramCommentPayload(RootModel[list[InstagramCommentRecord]]):
+    pass
+
+
+class XPostRecord(LooseModel):
+    id: str | None = None
+    user_posted: str | None = None
+    name: str | None = None
+    description: str | None = None
+    date_posted: str | None = None
+    photos: list[str] | None = None
+    url: str | None = None
+    replies: int | None = None
+    reposts: int | None = None
+    likes: int | None = None
+    views: int | None = None
+    external_url: str | None = None
+    hashtags: list[str] | None = None
+    followers: int | None = None
+    biography: str | None = None
+    posts_count: int | None = None
+    profile_image_link: str | None = None
+    following: int | None = None
+    is_verified: bool | None = None
+    quotes: int | None = None
+    bookmarks: int | None = None
+    user_id: str | None = None
+    input: dict[str, Any] | None = None
+    discovery_input: dict[str, Any] | None = None
+
+
+class XPostPayload(RootModel[list[XPostRecord]]):
+    pass
+
+
+class XProfileRecord(LooseModel):
+    x_id: str | None = None
+    url: str | None = None
+    id: str | None = None
+    profile_name: str | None = None
+    biography: str | None = None
+    is_verified: bool | None = None
+    profile_image_link: str | None = None
+    external_link: str | None = None
+    date_joined: str | None = None
+    following: int | None = None
+    followers: int | None = None
+    subscriptions: int | None = None
+    location: str | None = None
+    posts_count: int | None = None
+    posts: list[XPostRecord] | None = None
+    banner_image: str | None = None
+    input: dict[str, Any] | None = None
+
+
+class XProfilePayload(RootModel[list[XProfileRecord]]):
+    pass
+
+
 BRIGHTDATA_SCHEMA_REGISTRY: dict[str, type[BaseModel]] = {
     "brightdata.error": BrightDataErrorPayload,
     "tokopedia.products": TokopediaProductPayload,
@@ -975,6 +1227,16 @@ BRIGHTDATA_SCHEMA_REGISTRY: dict[str, type[BaseModel]] = {
     "walmart.products": WalmartProductPayload,
     "walmart.products.search": WalmartSearchPayload,
     "walmart.seller_info": WalmartSellerInfoPayload,
+    "tiktok.profiles": TikTokProfilePayload,
+    "tiktok.posts": TikTokPostPayload,
+    "tiktok.comments": TikTokCommentPayload,
+    "tiktok.shop.products": TikTokShopProductPayload,
+    "instagram.profiles": InstagramProfilePayload,
+    "instagram.posts": InstagramPostPayload,
+    "instagram.reels": InstagramPostPayload,
+    "instagram.comments": InstagramCommentPayload,
+    "x.profiles": XProfilePayload,
+    "x.posts": XPostPayload,
 }
 
 
@@ -1050,6 +1312,7 @@ BRIGHTDATA_DATASET_KEYS: list[BrightDataDatasetKey] = [
             "Amazon - discover by best seller URL",
             "Amazon - discover by category URL",
             "Amazon - discover by keyword",
+            "Amazon - discover by UPC",
             "Amazon - discover by brand",
             "Amazon - discover by seller",
             "Amazon Product Global Dataset variants",
@@ -1098,6 +1361,81 @@ BRIGHTDATA_DATASET_KEYS: list[BrightDataDatasetKey] = [
         endpoints=["Walmart Seller Info - collect by URL"],
     ),
     BrightDataDatasetKey(
+        key="tiktok.profiles",
+        description="TikTok profile data and profile/search discovery results.",
+        model="TikTokProfilePayload",
+        endpoints=["TikTok - profile by URL", "TikTok - profile/search URL discovery"],
+    ),
+    BrightDataDatasetKey(
+        key="tiktok.posts",
+        description="TikTok post/video data collected by URL, keyword, profile, and discovery URLs.",
+        model="TikTokPostPayload",
+        endpoints=[
+            "TikTok - post by URL",
+            "TikTok - post by keyword",
+            "TikTok - posts by profile URL",
+            "TikTok - posts/discover pages by URL",
+        ],
+    ),
+    BrightDataDatasetKey(
+        key="tiktok.comments",
+        description="TikTok video comment collection results.",
+        model="TikTokCommentPayload",
+        endpoints=["TikTok - comments by URL"],
+    ),
+    BrightDataDatasetKey(
+        key="tiktok.shop.products",
+        description="TikTok Shop product detail, category, keyword, and shop discovery results.",
+        model="TikTokShopProductPayload",
+        endpoints=[
+            "TikTok Shop - product by URL",
+            "TikTok Shop - discover by category",
+            "TikTok Shop - discover by keyword",
+            "TikTok Shop - discover by shop",
+            "TikTok Shop - category listing by URL",
+        ],
+    ),
+    BrightDataDatasetKey(
+        key="instagram.profiles",
+        description="Instagram profile collection results.",
+        model="InstagramProfilePayload",
+        endpoints=["Instagram - profiles by URL"],
+    ),
+    BrightDataDatasetKey(
+        key="instagram.posts",
+        description="Instagram post collection results.",
+        model="InstagramPostPayload",
+        endpoints=["Instagram - posts by URL"],
+    ),
+    BrightDataDatasetKey(
+        key="instagram.reels",
+        description="Instagram reel collection results.",
+        model="InstagramPostPayload",
+        endpoints=["Instagram - reels by URL"],
+    ),
+    BrightDataDatasetKey(
+        key="instagram.comments",
+        description="Instagram comment collection results.",
+        model="InstagramCommentPayload",
+        endpoints=["Instagram - comments by URL"],
+    ),
+    BrightDataDatasetKey(
+        key="x.profiles",
+        description="X/Twitter profile collection results with recent posts.",
+        model="XProfilePayload",
+        endpoints=["X - profile by URL"],
+    ),
+    BrightDataDatasetKey(
+        key="x.posts",
+        description="X/Twitter post collection and profile-based post discovery results.",
+        model="XPostPayload",
+        endpoints=[
+            "X - posts by URL",
+            "X - posts by profiles array",
+            "X - most recent posts by profile URL",
+        ],
+    ),
+    BrightDataDatasetKey(
         key="brightdata.error",
         description="Bright Data crawler error records returned when include_errors=true.",
         model="BrightDataErrorPayload",
@@ -1107,8 +1445,11 @@ BRIGHTDATA_DATASET_KEYS: list[BrightDataDatasetKey] = [
 
 
 def get_schema_registry() -> dict[str, Any]:
+    from backend.brightdata.endpoints import get_endpoint_registry
+
     return {
         "datasets": [item.model_dump() for item in BRIGHTDATA_DATASET_KEYS],
+        "endpointRegistry": get_endpoint_registry(),
         "schemas": {
             key: model.model_json_schema()
             for key, model in BRIGHTDATA_SCHEMA_REGISTRY.items()
