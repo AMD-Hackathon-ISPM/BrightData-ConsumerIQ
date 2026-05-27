@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kubectl get *)",
+      "Bash(kubectl exec *)",
+      "Bash(kubectl logs *)",
+      "Bash(dir /s /b \"d:\\\\Hackathons\\\\ConsumerIQ\")",
+      "Bash(findstr \"dashboard.*sections\")",
+      "Bash(kubectl describe *)",
+      "Bash(docker network *)",
+      "Bash(Select-String \"consumeriq\")",
+      "Bash(cd /d/Hackathons/ConsumerIQ/backend/go-service && find . -type f -name \"*.go\" | head -20)",
+      "Read(//d/d/Hackathons/ConsumerIQ/backend/**)"
+    ]
+  }
+}

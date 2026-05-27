@@ -22,6 +22,8 @@ registries:
   use:
     - k3d-consumeriq-registry:5001
 options:
+  runtime:
+    gpuRequest: "all"
   k3s:
     extraArgs:
       - arg: --disable=traefik

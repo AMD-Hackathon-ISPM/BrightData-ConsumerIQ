@@ -234,12 +234,16 @@ def _endpointForMarketplaceUrl(url: str, include_reviews: bool = True) -> str | 
 
 
 def _marketplaceDiscoveryEndpoint(marketplace: str) -> str | None:
-    normalized = marketplace.lower()
+    normalized = marketplace.lower().replace(' ', '.')
     mapping = {
-        'tokopedia': 'tokopedia.products.discover_keyword',
-        'lazada': 'lazada.products.discover_keyword',
-        'walmart': 'walmart.products.discover_keyword',
         'amazon': 'amazon.products.discover_keyword',
+        'etsy': 'etsy.products.discover_keyword',
+        'lazada': 'lazada.products.discover_keyword',
+        'tokopedia': 'tokopedia.products.discover_keyword',
+        'tokped': 'tokopedia.products.discover_keyword',
+        'walmart': 'walmart.products.discover_keyword',
+        'google': 'google.shopping.discover_keyword',
+        'google.shopping': 'google.shopping.discover_keyword',
     }
     return mapping.get(normalized)
 
@@ -327,6 +331,8 @@ def _discoveryInput(keyword: str, marketplace: str, country_code: str) -> dict[s
         return {'keyword': keyword, 'domain': 'https://www.walmart.com/', 'all_variations': True}
     if normalized == 'amazon':
         return {'keyword': keyword, 'zipcode': ''}
+    if normalized in ('google', 'google.shopping'):
+        return {'keyword': keyword, 'country': country_code.upper()}
     return {'keyword': keyword, 'sort_by': ''}
 
 

@@ -1,49 +1,53 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { SpiralLoader } from '@/components/ui/spiral-loader'
-import { Shimmer } from '@/components/ai-elements/shimmer'
-import { startPersonaDecode, PERSONA_TASK_KEY } from './api'
-import { getAuthToken } from '@/lib/auth'
-import { cn } from '@/lib/utils'
-import type { FounderFormState } from './types'
+import { useEffect, useMemo, useRef, useState } from "react";
+import { SpiralLoader } from "@/components/ui/spiral-loader";
+import { Shimmer } from "@/components/ai-elements/shimmer";
+import { startPersonaDecode, PERSONA_TASK_KEY } from "./api";
+import { getAuthToken } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+import type { FounderFormState } from "./types";
 
 type PipelineStatus = {
-  scraping: { status: string; signalsStored: number }
-  inference: { status: string }
-}
+  scraping: { status: string; signalsStored: number };
+  inference: { status: string };
+};
 
-async function fetchPipelineStatus(formId: string): Promise<PipelineStatus | null> {
+async function fetchPipelineStatus(
+  formId: string,
+): Promise<PipelineStatus | null> {
   try {
-    const token = getAuthToken()
-    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
-    const res = await fetch(`/api/form-pipeline/${formId}`, { headers })
-    if (!res.ok) return null
-    return res.json() as Promise<PipelineStatus>
+    const token = getAuthToken();
+    const headers: Record<string, string> = token
+      ? { Authorization: `Bearer ${token}` }
+      : {};
+    const res = await fetch(`/api/form-pipeline/${formId}`, { headers });
+    if (!res.ok) return null;
+    return res.json() as Promise<PipelineStatus>;
   } catch {
-    return null
+    return null;
   }
 }
 
 function pipelineTarget(p: PipelineStatus | null): number {
-  if (!p) return 1
-  const scrape = p.scraping.status
-  const infer = p.inference.status
-  if (infer === 'completed' || infer === 'skipped') return 7
-  if (infer === 'processing') return 5
-  if (infer === 'failed') return 5
-  if (scrape === 'completed' || scrape === 'skipped') return 4
-  if (scrape === 'failed') return 4
-  if (scrape === 'processing') return 3
-  return 1
+  if (!p) return 1;
+  const scrape = p.scraping.status;
+  const infer = p.inference.status;
+  if (infer === "completed" || infer === "skipped" || infer === "failed")
+    return 7;
+  if (infer === "processing") return 5;
+  if (scrape === "completed" || scrape === "skipped" || scrape === "failed")
+    return 4;
+  if (scrape === "processing") return 3;
+  return 1;
 }
 
 type GeneratingStepProps = {
-  onComplete: () => void
-  submitStatus: 'idle' | 'submitting' | 'success' | 'error'
-  formId: string | null
-  formState: FounderFormState
-  region?: string
-  industry?: string
-}
+  onComplete: () => void;
+  submitStatus: "idle" | "submitting" | "success" | "error";
+  formId: string | null;
+  formState: FounderFormState;
+  region?: string;
+  industry?: string;
+};
 
 export function GeneratingStep({
   onComplete,
@@ -53,129 +57,133 @@ export function GeneratingStep({
   region,
   industry,
 }: GeneratingStepProps) {
-  const [pipeline, setPipeline] = useState<PipelineStatus | null>(null)
-  const [revealed, setRevealed] = useState(0)
-  const [timedOut, setTimedOut] = useState(false)
-  const personaStarted = useRef(false)
+  const [pipeline, setPipeline] = useState<PipelineStatus | null>(null);
+  const [revealed, setRevealed] = useState(0);
+  const [timedOut, setTimedOut] = useState(false);
+  const personaStarted = useRef(false);
 
-  const signalsStored = pipeline?.scraping.signalsStored ?? 0
+  const signalsStored = pipeline?.scraping.signalsStored ?? 0;
 
   const lines = useMemo(() => {
-    const scopeLabel = industry?.toLowerCase() ?? 'category'
+    const scopeLabel = industry?.toLowerCase() ?? "category";
     const firstLine =
       region && industry
         ? `Scanning ${region} marketplaces for ${scopeLabel} listings…`
-        : 'Scanning marketplace listings…'
+        : "Scanning marketplace listings…";
     const signalsLine =
       signalsStored > 0
         ? `${signalsStored.toLocaleString()} market signals collected`
-        : 'Gathering market signals…'
+        : "Gathering market signals…";
     return [
-      'Processing founder form inputs…',
-      'Structuring product and audience context…',
+      "Processing founder form inputs…",
+      "Structuring product and audience context…",
       firstLine,
       signalsLine,
-      'Reading verified-purchase reviews and demand cues…',
-      'Generating launch insight hypotheses…',
-      'Preparing your dashboard insights…',
-    ]
-  }, [region, industry, signalsStored])
+      "Reading verified-purchase reviews and demand cues…",
+      "Generating launch insight hypotheses…",
+      "Preparing your dashboard insights…",
+    ];
+  }, [region, industry, signalsStored]);
 
   useEffect(() => {
-    if (submitStatus !== 'success') return
-    const id = window.setTimeout(() => setTimedOut(true), 3 * 60 * 1000)
-    return () => window.clearTimeout(id)
-  }, [submitStatus])
+    if (submitStatus !== "success") return;
+    const id = window.setTimeout(() => setTimedOut(true), 3 * 60 * 1000);
+    return () => window.clearTimeout(id);
+  }, [submitStatus]);
 
   useEffect(() => {
-    if (!formId || submitStatus !== 'success') return
-    let cancelled = false
+    if (!formId || submitStatus !== "success") return;
+    let cancelled = false;
     const poll = async () => {
       while (!cancelled) {
-        const status = await fetchPipelineStatus(formId)
-        if (!cancelled) setPipeline(status)
-        if (status && pipelineTarget(status) >= lines.length) break
-        await new Promise<void>((r) => setTimeout(r, 3000))
+        const status = await fetchPipelineStatus(formId);
+        if (!cancelled) setPipeline(status);
+        if (status && pipelineTarget(status) >= lines.length) break;
+        await new Promise<void>((r) => setTimeout(r, 3000));
       }
-    }
-    poll()
+    };
+    poll();
     return () => {
-      cancelled = true
-    }
-  }, [formId, submitStatus, lines.length])
+      cancelled = true;
+    };
+  }, [formId, submitStatus, lines.length]);
 
-  const isMockRun = import.meta.env.DEV && submitStatus === 'success' && !formId
-  const target = isMockRun ? lines.length : pipelineTarget(pipeline)
+  const isMockRun =
+    import.meta.env.DEV && submitStatus === "success" && !formId;
+  const target = isMockRun ? lines.length : pipelineTarget(pipeline);
 
   useEffect(() => {
-    if (submitStatus !== 'success') return
-    if (revealed >= target) return
+    if (submitStatus !== "success") return;
+    if (revealed >= target) return;
     const revealDelay = isMockRun
       ? revealed === 0
         ? 900
         : 1300
       : revealed === 0
         ? 600
-        : 900
-    const id = window.setTimeout(() => setRevealed((r) => r + 1), revealDelay)
-    return () => window.clearTimeout(id)
-  }, [isMockRun, revealed, target, submitStatus])
+        : 900;
+    const id = window.setTimeout(() => setRevealed((r) => r + 1), revealDelay);
+    return () => window.clearTimeout(id);
+  }, [isMockRun, revealed, target, submitStatus]);
 
   useEffect(() => {
-    if (submitStatus !== 'success' || personaStarted.current) return
-    personaStarted.current = true
+    if (submitStatus !== "success" || personaStarted.current) return;
+    personaStarted.current = true;
+    try {
+      localStorage.removeItem("ciq_persona_data");
+    } catch {}
     startPersonaDecode(formState)
       .then(({ taskId }) => {
         try {
-          localStorage.setItem(PERSONA_TASK_KEY, taskId)
+          localStorage.setItem(PERSONA_TASK_KEY, taskId);
         } catch {}
       })
-      .catch(() => {})
-  }, [submitStatus, formState])
+      .catch(() => {});
+  }, [submitStatus, formState]);
 
-  const allDone = revealed >= lines.length
-  const isComplete = allDone || timedOut
-  const canContinue = isComplete || submitStatus === 'error'
+  const allDone = revealed >= lines.length;
+  const isComplete = allDone || timedOut;
+  const canContinue = isComplete || submitStatus === "error";
 
-  const currentStatus = lines[Math.max(0, revealed - 1)] ?? lines[0]
+  const currentStatus = lines[Math.max(0, revealed - 1)] ?? lines[0];
   const statusText =
-    submitStatus === 'submitting'
-      ? 'Submitting your founder form…'
-      : submitStatus === 'error'
-        ? 'Unable to finish analysis. Click the spiral to continue.'
+    submitStatus === "submitting"
+      ? "Submitting your founder form…"
+      : submitStatus === "error"
+        ? "Unable to finish analysis. Click the spiral to continue."
         : isComplete
-          ? 'Dashboard insights are ready. Click the spiral to continue.'
-          : currentStatus
+          ? "Dashboard insights are ready. Click the spiral to continue."
+          : currentStatus;
 
   const handleSpiralActivate = () => {
-    if (!canContinue) return
-    onComplete()
-  }
+    if (!canContinue) return;
+    onComplete();
+  };
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center">
       <button
         type="button"
-        aria-label={canContinue ? 'Open dashboard' : 'Loading'}
+        aria-label={canContinue ? "Open dashboard" : "Loading"}
         aria-disabled={!canContinue}
         disabled={!canContinue}
         onClick={handleSpiralActivate}
         className={cn(
-          'group grid size-80 place-items-center rounded-full outline-none transition-transform duration-500 ease-out',
-          'focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-4 focus-visible:ring-offset-background-default',
+          "group grid size-80 place-items-center rounded-full outline-none transition-transform duration-500 ease-out",
+          "focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-4 focus-visible:ring-offset-background-default",
           canContinue
-            ? 'cursor-pointer hover:scale-[1.03] active:scale-[0.99]'
-            : 'cursor-default',
+            ? "cursor-pointer hover:scale-[1.03] active:scale-[0.99]"
+            : "cursor-default",
         )}
       >
         <SpiralLoader
           className={cn(
-            'size-80 text-foreground-default transition-[filter,opacity] duration-500',
+            "size-80 text-foreground-default transition-[filter,opacity] duration-500",
             canContinue
-              ? 'opacity-100 group-hover:[filter:drop-shadow(0_0_24px_rgba(152,151,26,0.45))]'
-              : 'opacity-100',
+              ? "opacity-100 group-hover:[filter:drop-shadow(0_0_24px_rgba(152,151,26,0.45))]"
+              : "opacity-100",
           )}
-          innerColor={isComplete ? '#98971a' : '#cc241d'}
+          innerColor={isComplete ? "#98971a" : "#cc241d"}
         />
       </button>
 
@@ -184,7 +192,7 @@ export function GeneratingStep({
           <p className="animate-pulse text-sm tracking-tight text-foreground-light">
             {statusText}
           </p>
-        ) : submitStatus === 'success' ? (
+        ) : submitStatus === "success" ? (
           <Shimmer
             as="p"
             className="text-sm tracking-tight text-foreground-light"
@@ -199,5 +207,5 @@ export function GeneratingStep({
         )}
       </div>
     </div>
-  )
+  );
 }

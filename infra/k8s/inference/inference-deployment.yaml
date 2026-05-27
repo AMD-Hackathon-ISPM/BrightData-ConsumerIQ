@@ -22,8 +22,10 @@ spec:
           resources:
             requests:
               memory: "3Gi"
+              nvidia.com/gpu: "1"
             limits:
               memory: "5Gi"
+              nvidia.com/gpu: "1"
           readinessProbe:
             tcpSocket:
               port: 8080
