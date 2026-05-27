@@ -1,20 +1,17 @@
-FROM python:3.11-slim AS builder
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
 WORKDIR /app
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential cmake \
-    && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir --prefix=/install "llama-cpp-python[server]"
-
-FROM python:3.11-slim
-WORKDIR /app
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libstdc++6 libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /install /usr/local
+    && apt-get install -y --no-install-recommends \
+       python3.11 libstdc++6 libgomp1 curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
+RUN python3.11 -m pip install --no-cache-dir "llama-cpp-python[server]" \
+    --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
 COPY models/Qwen3.50.8B.gguf /models/model.gguf
 EXPOSE 8080
-CMD ["python", "-m", "llama_cpp.server", \
+CMD ["python3.11", "-m", "llama_cpp.server", \
      "--model", "/models/model.gguf", \
      "--host", "0.0.0.0", \
      "--port", "8080", \
-     "--n_ctx", "2048"]
+     "--n_ctx", "2048", \
+     "--n_gpu_layers", "-1"]

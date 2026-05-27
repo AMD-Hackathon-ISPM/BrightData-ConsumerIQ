@@ -141,7 +141,7 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.enqueueFormReceived(formID, userID, p.Industry, p.Country, p.CountryCode, p.Marketplace, p.SearchIntentKeywords)
+	h.enqueueFormReceived(formID, userID, p)
 
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"id":      formID,
@@ -177,15 +177,24 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) enqueueFormReceived(formID string, userID int64, category, country, countryCode, marketplace string, keywords []string) {
+func (h *Handler) enqueueFormReceived(formID string, userID int64, p FounderFormPayload) {
 	payload, err := json.Marshal(worker.FormReceivedPayload{
-		FormID:      formID,
-		UserID:      userID,
-		Category:    category,
-		Country:     country,
-		CountryCode: countryCode,
-		Marketplace: marketplace,
-		Keywords:    keywords,
+		FormID:               formID,
+		UserID:               userID,
+		Category:             p.Industry,
+		Country:              p.Country,
+		CountryCode:          p.CountryCode,
+		Marketplace:          p.Marketplace,
+		Keywords:             p.SearchIntentKeywords,
+		ProductName:          p.ProductName,
+		ProductDescription:   p.ProductDescription,
+		UniqueSellingPoint:   p.UniqueSellingPoint,
+		MainFeatures:         p.MainFeatures,
+		CompetitiveAdvantage: p.CompetitiveAdvantage,
+		PainPoint:            p.PainPoint,
+		CustomerSegment:      p.CustomerSegment,
+		PriceRangeMin:        p.PriceRangeMin,
+		PriceRangeMax:        p.PriceRangeMax,
 	})
 	if err != nil {
 		log.Printf("enqueueFormReceived marshal: %v", err)

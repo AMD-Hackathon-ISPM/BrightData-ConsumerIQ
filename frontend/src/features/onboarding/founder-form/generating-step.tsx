@@ -27,11 +27,9 @@ function pipelineTarget(p: PipelineStatus | null): number {
   if (!p) return 1
   const scrape = p.scraping.status
   const infer = p.inference.status
-  if (infer === 'completed' || infer === 'skipped') return 7
+  if (infer === 'completed' || infer === 'skipped' || infer === 'failed') return 7
   if (infer === 'processing') return 5
-  if (infer === 'failed') return 5
-  if (scrape === 'completed' || scrape === 'skipped') return 4
-  if (scrape === 'failed') return 4
+  if (scrape === 'completed' || scrape === 'skipped' || scrape === 'failed') return 4
   if (scrape === 'processing') return 3
   return 1
 }
@@ -116,6 +114,7 @@ export function GeneratingStep({
   useEffect(() => {
     if (submitStatus !== 'success' || personaStarted.current) return
     personaStarted.current = true
+    try { localStorage.removeItem('ciq_persona_data') } catch {}
     startPersonaDecode(formState)
       .then(({ taskId }) => {
         try {
@@ -126,7 +125,7 @@ export function GeneratingStep({
   }, [submitStatus, formState])
 
   const allDone = revealed >= lines.length
-  const canOpen = target >= 4 || submitStatus === 'error' || timedOut
+  const canOpen = target >= 7 || submitStatus === 'error' || timedOut
 
   return (
     <div className="mx-auto w-full max-w-xl">

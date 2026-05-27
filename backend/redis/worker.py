@@ -10,6 +10,50 @@ from backend.models.llm import createLlm
 from backend.models.translator import translateTextsIfNeeded
 
 REDIS_URL = os.getenv('REDIS_URL', 'redis://redis.consumeriq.svc.cluster.local:6379/0')
+
+CATEGORY_MARKETPLACES: dict[str, list[str]] = {
+    'fashion': ['amazon', 'etsy', 'lazada', 'tokopedia'],
+    'apparel': ['amazon', 'etsy', 'lazada', 'tokopedia'],
+    'clothing': ['amazon', 'etsy', 'lazada', 'tokopedia'],
+    'beauty': ['amazon', 'walmart', 'lazada'],
+    'skincare': ['amazon', 'walmart', 'lazada'],
+    'cosmetics': ['amazon', 'walmart', 'lazada'],
+    'makeup': ['amazon', 'walmart', 'lazada'],
+    'electronics': ['amazon', 'walmart', 'lazada', 'tokopedia'],
+    'tech': ['amazon', 'walmart', 'lazada', 'tokopedia'],
+    'gadgets': ['amazon', 'walmart', 'lazada', 'tokopedia'],
+    'phone': ['amazon', 'walmart', 'lazada', 'tokopedia'],
+    'laptop': ['amazon', 'walmart', 'lazada'],
+    'home': ['amazon', 'walmart', 'etsy'],
+    'furniture': ['amazon', 'walmart', 'lazada'],
+    'kitchen': ['amazon', 'walmart', 'lazada'],
+    'decor': ['amazon', 'etsy', 'walmart'],
+    'handmade': ['etsy', 'amazon'],
+    'craft': ['etsy', 'amazon'],
+    'art': ['etsy', 'amazon'],
+    'jewelry': ['etsy', 'amazon', 'walmart'],
+    'accessories': ['amazon', 'etsy', 'lazada'],
+    'bags': ['amazon', 'etsy', 'lazada', 'tokopedia'],
+    'shoes': ['amazon', 'lazada', 'tokopedia'],
+    'sports': ['amazon', 'walmart'],
+    'fitness': ['amazon', 'walmart'],
+    'outdoor': ['amazon', 'walmart'],
+    'camping': ['amazon', 'walmart'],
+    'toys': ['amazon', 'walmart', 'lazada'],
+    'games': ['amazon', 'walmart'],
+    'baby': ['amazon', 'walmart', 'lazada'],
+    'grocery': ['amazon', 'walmart'],
+    'food': ['amazon', 'walmart'],
+    'health': ['amazon', 'walmart'],
+    'supplements': ['amazon', 'walmart'],
+    'pet': ['amazon', 'walmart'],
+    'automotive': ['amazon', 'walmart'],
+    'tools': ['amazon', 'walmart'],
+    'books': ['amazon'],
+    'stationery': ['amazon', 'etsy'],
+}
+
+_DEFAULT_MARKETPLACES = ['amazon', 'google.shopping']
 DATABASE_URL = os.getenv(
     'DATABASE_URL',
     'postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.local:5432/consumeriq',
@@ -225,16 +269,90 @@ def _saveCategoryInsights(categoryName: str, country: str, insights: dict[str, A
             )
 
 
+def _generateScrapingKeywords(
+    category: str,
+    product_name: str,
+    product_description: str,
+    unique_selling_point: str,
+    main_features: str,
+    competitive_advantage: str,
+    pain_point: str,
+    customer_segment: str,
+) -> list[str]:
+    from backend.models.llm import createLlm
+    import re
+
+    llm = createLlm()
+    prompt = (
+        'You are a market research assistant. Based on the product details below, '
+        'generate exactly 6 targeted search keywords to find similar products, '
+        'competitor products, and customer demand on e-commerce marketplaces.\n\n'
+        f'Category: {category}\n'
+        f'Product Name: {product_name}\n'
+        f'Product Description: {product_description}\n'
+        f'Unique Selling Point: {unique_selling_point}\n'
+        f'Key Features: {main_features}\n'
+        f'Problem Solved: {pain_point}\n'
+        f'Target Customer: {customer_segment}\n'
+        f'Competitive Advantage: {competitive_advantage}\n\n'
+        'Return ONLY a JSON array of 6 short keyword strings suitable for marketplace search. '
+        'No explanation, no markdown, no extra text.\n'
+        'JSON array:'
+    )
+    try:
+        response = llm.create_completion(prompt=prompt, max_tokens=150, temperature=0.3, stop=['\n\n'])
+        text = response['choices'][0]['text'].strip()
+        match = re.search(r'\[.*?\]', text, re.DOTALL)
+        if match:
+            parsed = json.loads(match.group())
+            if isinstance(parsed, list) and parsed:
+                return [str(k).strip() for k in parsed if k][:8]
+    except Exception as exc:
+        print(f'[scraping] Keyword LLM generation failed: {exc}')
+    return [w for w in [product_name, category] if w]
+
+
 @celeryApp.task(name='scrapeMarketSignals', queue='scraping')
-def scrapeMarketSignals(category: str, keywords: list[str], country: str = 'us', marketplace: str = 'amazon') -> dict[str, Any]:
+def scrapeMarketSignals(
+    category: str,
+    keywords: list[str],
+    country: str = 'us',
+    marketplace: str = 'amazon',
+    product_name: str = '',
+    product_description: str = '',
+    unique_selling_point: str = '',
+    main_features: str = '',
+    competitive_advantage: str = '',
+    pain_point: str = '',
+    customer_segment: str = '',
+    price_range_min: int = 0,
+    price_range_max: int = 0,
+    form_id: str = '',
+) -> dict[str, Any]:
     from backend.api.marketplaceScrape import runMarketplaceDiscovery
     from backend.api.socialScrape import runSocialDiscovery
 
+    has_context = any([product_name, product_description, unique_selling_point, main_features, pain_point])
+    if has_context:
+        keywords = _generateScrapingKeywords(
+            category, product_name, product_description,
+            unique_selling_point, main_features, competitive_advantage,
+            pain_point, customer_segment,
+        )
+        print(f'[scraping] LLM-generated keywords: {keywords}')
+    else:
+        print(f'[scraping] Using provided keywords: {keywords}')
+
     print(f'[scraping] Starting signal scrape for category={category}, country={country}, keywords={keywords}')
 
+    _MAX_SIGNALS = 1000
+    marketplaces = CATEGORY_MARKETPLACES.get(category.lower(), _DEFAULT_MARKETPLACES)
     rows: list[tuple[str, str, str, str, str]] = []
 
     for keyword in keywords[:5]:
+        if len(rows) >= _MAX_SIGNALS:
+            break
+
         socialData = runSocialDiscovery(
             keyword=keyword,
             country_code=country,
@@ -247,26 +365,29 @@ def scrapeMarketSignals(category: str, keywords: list[str], country: str = 'us',
                 if text.strip():
                     rows.append((text[:1000], result.get('source', 'social'), result.get('url', ''), country, category))
 
-        marketData = runMarketplaceDiscovery(
-            keyword=keyword,
-            marketplace=marketplace,
-            country_code=country,
-            limit=3,
-            include_scrape=False,
-        )
-        if marketData.get('status') == 'success':
-            for result in marketData.get('results', [])[:3]:
-                record = result.get('record') or {}
-                metrics = []
-                for key in ['final_price', 'price', 'rating', 'reviews_count', 'review_count', 'sold', 'number_sold', 'gmv']:
-                    if isinstance(record, dict) and record.get(key) is not None:
-                        metrics.append(f'{key}={record.get(key)}')
-                text = f"{result.get('title', '')} — {result.get('description', '')}"
-                if metrics:
-                    text = f"{text} ({', '.join(metrics)})"
-                if text.strip():
-                    rows.append((text[:1000], 'marketplace', result.get('url', ''), country, category))
+        for mp in marketplaces:
+            if len(rows) >= _MAX_SIGNALS:
+                break
 
+            marketData = runMarketplaceDiscovery(
+                keyword=keyword,
+                marketplace=mp,
+                country_code=country,
+                limit=3,
+                include_scrape=False,
+            )
+            if marketData.get('status') == 'success':
+                for result in marketData.get('results', [])[:3]:
+                    record = result.get('record') or {}
+                    metrics = []
+                    for key in ['final_price', 'price', 'rating', 'reviews_count', 'review_count', 'sold', 'number_sold', 'gmv']:
+                        if isinstance(record, dict) and record.get(key) is not None:
+                            metrics.append(f'{key}={record.get(key)}')
+                    text = f"{result.get('title', '')} — {result.get('description', '')}"
+                    if metrics:
+                        text = f"{text} ({', '.join(metrics)})"
+                    if text.strip():
+                        rows.append((text[:1000], mp, result.get('url', ''), country, category))
     if rows:
         with psycopg2.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
@@ -278,6 +399,18 @@ def scrapeMarketSignals(category: str, keywords: list[str], country: str = 'us',
 
     stored = len(rows)
     print(f'[scraping] Done. Stored {stored} signals for category={category}, country={country}')
+
+    inference_task = processLlmInsights.delay(category, country)
+    print(f'[scraping] Dispatched processLlmInsights task_id={inference_task.id}')
+
+    if form_id:
+        from backend.agent.session import getRedisClient
+        rdb = getRedisClient()
+        raw = rdb.get(f'form_pipeline:{form_id}')
+        current = json.loads(raw) if raw else {}
+        current['inference_task_id'] = inference_task.id
+        rdb.set(f'form_pipeline:{form_id}', json.dumps(current), ex=3600)
+
     return {'category': category, 'country': country, 'keywords': keywords, 'signals_stored': stored, 'status': 'completed'}
 
 

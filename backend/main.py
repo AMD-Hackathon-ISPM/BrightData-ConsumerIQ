@@ -66,8 +66,18 @@ class AgentRunRequest(BaseModel):
 class ScrapeMarketSignalsRequest(BaseModel):
     category: str
     keywords: list[str]
+    form_id: str = ''
     country: str = 'us'
     marketplace: str = 'amazon'
+    product_name: str = ''
+    product_description: str = ''
+    unique_selling_point: str = ''
+    main_features: str = ''
+    competitive_advantage: str = ''
+    pain_point: str = ''
+    customer_segment: str = ''
+    price_range_min: int = 0
+    price_range_max: int = 0
 
 
 class ScanMarketRequest(BaseModel):
@@ -120,7 +130,22 @@ async def agentSession(session_id: str = Path(..., alias='session_id')):
 @app.post('/api/scrape-market-signals')
 async def scrapeMarketSignals(payload: ScrapeMarketSignalsRequest):
     from backend.redis.worker import scrapeMarketSignals as scrapeTask
-    task = scrapeTask.delay(payload.category, payload.keywords, payload.country, payload.marketplace)
+    task = scrapeTask.delay(
+        payload.category,
+        payload.keywords,
+        payload.country,
+        payload.marketplace,
+        payload.product_name,
+        payload.product_description,
+        payload.unique_selling_point,
+        payload.main_features,
+        payload.competitive_advantage,
+        payload.pain_point,
+        payload.customer_segment,
+        payload.price_range_min,
+        payload.price_range_max,
+        payload.form_id,
+    )
     return {'taskId': task.id, 'status': 'processing', 'queue': 'scraping'}
 
 
@@ -159,7 +184,10 @@ async def getFormPipeline(formId: str = Path(..., alias='form_id')):
         raise HTTPException(status_code=503, detail='Redis unavailable')
 
     if not raw:
-        raise HTTPException(status_code=404, detail='Pipeline not found')
+        return {
+            'scraping': {'status': 'pending', 'signalsStored': 0},
+            'inference': {'status': 'pending'},
+        }
 
     pipeline = json.loads(raw)
 

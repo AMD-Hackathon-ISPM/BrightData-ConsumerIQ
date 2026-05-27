@@ -52,7 +52,7 @@ export async function submitFounderForm(
     region: state.region,
     marketplace: state.salesChannel,
     competitors: [] as string[],
-    searchIntentKeywords: state.researchGoals,
+    searchIntentKeywords: [state.productName, state.industry].filter(Boolean),
     customerSegment: [state.targetGen, state.targetGender]
       .filter(Boolean)
       .join(", "),
