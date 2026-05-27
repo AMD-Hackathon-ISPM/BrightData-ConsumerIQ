@@ -1,0 +1,210 @@
+<style>
+  .vibe-card {
+    background: #0f0f10;
+    border: 1px solid #2a2a2c;
+    border-radius: 10px;
+    padding: 28px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    color: #e6e6e6;
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .vibe-label {
+    font-family: ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #6e6e72;
+  }
+  .vibe-title {
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .vibe-sub {
+    font-size: 13px;
+    color: #9a9aa0;
+    margin: -8px 0 6px;
+  }
+  .vibe-field-label {
+    font-size: 12px;
+    color: #c0c0c4;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .vibe-input {
+    background: #18181a;
+    border: 1px solid #2e2e30;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #e6e6e6;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .vibe-chip {
+    display: inline-block;
+    border: 1px solid #2e2e30;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: #c0c0c4;
+    margin: 0 4px 4px 0;
+  }
+  .vibe-chip.on { background: #f5f5f7; color: #0f0f10; border-color: #f5f5f7; }
+  .vibe-btn {
+    background: #f5f5f7;
+    color: #0f0f10;
+    padding: 8px 14px;
+    font-size: 12px;
+    border-radius: 6px;
+    display: inline-block;
+    font-weight: 500;
+  }
+  .vibe-btn.ghost { background: transparent; color: #c0c0c4; border: 1px solid #2e2e30; }
+
+  /* Terminal variant */
+  .term {
+    background: #0a0a0b;
+    font-family: ui-monospace, "JetBrains Mono", monospace;
+    border-color: #1f1f22;
+  }
+  .term .vibe-title { font-family: ui-monospace, monospace; font-size: 14px; color: #a1d4a6; }
+  .term .vibe-sub { color: #6e6e72; font-size: 11px; }
+  .term .vibe-field-label { font-family: ui-monospace, monospace; font-size: 11px; color: #6e6e72; }
+  .term .vibe-field-label::before { content: "▸ "; color: #5a8c5e; }
+  .term .vibe-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed #2e2e30;
+    border-radius: 0;
+    padding: 6px 0 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .term .vibe-input::before { content: "$ "; }
+  .term .ascii-divider {
+    color: #2e2e30;
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    margin: 4px 0;
+  }
+  .term .vibe-btn {
+    background: transparent;
+    color: #a1d4a6;
+    border: 1px solid #5a8c5e;
+    border-radius: 3px;
+    font-family: ui-monospace, monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 10px;
+  }
+
+  /* Conversational variant */
+  .conv {
+    background: #fafafa;
+    color: #18181a;
+    border-color: #e6e6e8;
+  }
+  .conv .vibe-title { font-size: 28px; font-weight: 400; line-height: 1.2; }
+  .conv .vibe-sub { font-size: 14px; color: #6e6e72; }
+  .conv .vibe-input {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #18181a;
+    border-radius: 0;
+    padding: 12px 0;
+    font-size: 18px;
+    color: #18181a;
+  }
+  .conv .vibe-field-label { display: none; }
+  .conv .vibe-btn { background: #18181a; color: #fafafa; padding: 10px 18px; }
+  .conv .progress-dots { display: flex; gap: 6px; margin-bottom: 4px; }
+  .conv .dot { width: 6px; height: 6px; border-radius: 50%; background: #d4d4d8; }
+  .conv .dot.on { background: #18181a; }
+
+  .footer-row { display: flex; justify-content: space-between; margin-top: auto; padding-top: 10px; }
+</style>
+
+<h2>Pick the form's overall feel</h2>
+<p class="subtitle">Same fields, same data — three different aesthetic systems. Each carries through every step including the AI processing screen.</p>
+
+<div class="options" style="grid-template-columns: 1fr 1fr 1fr; gap: 18px;">
+
+  <div class="option" data-choice="terminal" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content" style="width: 100%;">
+      <h3>Terminal / Computational</h3>
+      <p style="margin-bottom: 12px;">CLI-inspired. Monospace, dashed dividers, ASCII rules. Cohesive with the ASCII processing screen — the whole flow feels like one console session.</p>
+      <div class="vibe-card term">
+        <div class="vibe-label">consumeriq // setup ─ 01/04</div>
+        <h4 class="vibe-title">// business setup</h4>
+        <p class="vibe-sub">Frame the lens. 4 inputs.</p>
+        <div class="ascii-divider">─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─</div>
+        <label class="vibe-field-label">workspace_name</label>
+        <input class="vibe-input" placeholder="lina's beauty co." />
+        <label class="vibe-field-label">industry</label>
+        <input class="vibe-input" placeholder="[ select ▾ ]" />
+        <label class="vibe-field-label">region :: country</label>
+        <input class="vibe-input" placeholder="asia :: indonesia" />
+        <div class="footer-row">
+          <span class="vibe-btn ghost">[ back ]</span>
+          <span class="vibe-btn">[ continue → ]</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="conversational" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content" style="width: 100%;">
+      <h3>Conversational / Typeform-y</h3>
+      <p style="margin-bottom: 12px;">One section at a time, big type, lots of air. Inputs feel like answers, not fields. Calmer, less "dashboard-y" — but breaks tone with the processing screen.</p>
+      <div class="vibe-card conv">
+        <div class="progress-dots">
+          <div class="dot on"></div><div class="dot on"></div>
+          <div class="dot"></div><div class="dot"></div>
+        </div>
+        <div class="vibe-label">Step 2 of 4</div>
+        <h4 class="vibe-title">What are you launching, and where?</h4>
+        <p class="vibe-sub">Two quick details, then we'll move on.</p>
+        <input class="vibe-input" placeholder="Workspace name" />
+        <input class="vibe-input" placeholder="Industry" />
+        <input class="vibe-input" placeholder="Region · Country" />
+        <div class="footer-row">
+          <span class="vibe-btn" style="background: transparent; color: #6e6e72;">← Back</span>
+          <span class="vibe-btn">Continue →</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="refined-current" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content" style="width: 100%;">
+      <h3>Refined Current</h3>
+      <p style="margin-bottom: 12px;">Keep the bordered card shell you already have. Tighten typography, sharpen section dividers, add a sticky context summary, polish micro-interactions. Lowest-risk path.</p>
+      <div class="vibe-card">
+        <div class="vibe-label">Step 02 / 04 · Lina's Beauty Co. · Beauty</div>
+        <h4 class="vibe-title">Business setup</h4>
+        <p class="vibe-sub">A few framing details so we know where to point the lens.</p>
+        <label class="vibe-field-label">Workspace name</label>
+        <input class="vibe-input" placeholder="e.g. Lina's Beauty Co." />
+        <label class="vibe-field-label">Industry</label>
+        <input class="vibe-input" placeholder="Choose a product category" />
+        <label class="vibe-field-label">Region · Country</label>
+        <input class="vibe-input" placeholder="Asia · Indonesia" />
+        <div class="footer-row">
+          <span class="vibe-btn ghost">Back</span>
+          <span class="vibe-btn">Continue</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top: 28px; font-size: 12px;">My recommendation: <strong>A (Terminal/Computational)</strong>. It makes the ASCII processing screen feel like a natural climax rather than a surprise, gives the brand a sharper signature, and reads as "this is a serious analysis tool" without sacrificing usability.</p>

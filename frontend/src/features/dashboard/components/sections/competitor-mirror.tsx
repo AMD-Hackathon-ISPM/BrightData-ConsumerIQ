@@ -2,6 +2,15 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Panel } from "../dashboard-primitives";
 import { AdvisorIntelligence } from "./shared";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ScrollableTableWrapper } from "@/components/ui/scrollable-table-wrapper";
 
 export function CompetitorMirror() {
   const competitorRows = [
@@ -109,63 +118,88 @@ export function CompetitorMirror() {
         </div>
 
         {/* Desktop */}
-        <div className="hidden overflow-x-auto md:block">
-          <div className="min-w-[52rem]">
-            <div className="grid grid-cols-[1.5fr_0.8fr_0.8fr_0.9fr_0.9fr] gap-3 border-y bg-background-default px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              <span>Brand / Hero SKU</span>
-              <span>Avg Price (USD)</span>
-              <span>Promo Intensity</span>
-              <span>Est. Monthly Sales</span>
-              <span>Rating / Reviews</span>
-            </div>
-            {competitorRows.map((row) => (
-              <div
-                className="grid grid-cols-[1.5fr_0.8fr_0.8fr_0.9fr_0.9fr] items-center gap-3 border-b px-3 py-3 text-sm last:border-b-0"
-                key={row.sku}
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold">{row.brand}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {row.sku}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-mono font-semibold tabular-nums">
-                    {row.avgPrice}
-                  </p>
-                  <DeltaPill value={row.priceDelta} />
-                </div>
-                <div>
-                  <div className="h-2 rounded-full bg-muted">
-                    <span
-                      className={cn(
-                        "block h-full rounded-full",
-                        promoBarClasses[row.promoLevel] ??
-                          "w-1/2 bg-foreground"
-                      )}
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {row.promoIntensity}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-mono font-semibold tabular-nums">
-                    {row.monthlySales}
-                  </p>
-                  <DeltaPill value={row.salesDelta} />
-                </div>
-                <div>
-                  <p className="font-semibold">
-                    {row.rating}
-                    <span className="ml-1 font-mono text-xs tabular-nums text-muted-foreground">
-                      ({row.reviews})
-                    </span>
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="hidden md:block">
+          <ScrollableTableWrapper>
+            <Table className="min-w-[52rem]">
+              <colgroup>
+                <col className="w-[30%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
+                <col className="w-[19%]" />
+                <col className="w-[15%]" />
+              </colgroup>
+              <TableHeader>
+                <TableRow className="bg-background-default hover:bg-background-default">
+                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-lighter">
+                    Brand / Hero SKU
+                  </TableHead>
+                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-lighter">
+                    Avg Price (USD)
+                  </TableHead>
+                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-lighter">
+                    Promo Intensity
+                  </TableHead>
+                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-lighter">
+                    Est. Monthly Sales
+                  </TableHead>
+                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-lighter">
+                    Rating / Reviews
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {competitorRows.map((row) => (
+                  <TableRow
+                    className="bg-card hover:bg-card"
+                    key={row.sku}
+                  >
+                    <TableCell className="px-4 py-4 text-sm align-top">
+                      <div className="min-w-0">
+                        <p className="font-semibold">{row.brand}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {row.sku}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-4 text-sm align-top">
+                      <p className="font-mono font-semibold tabular-nums">
+                        {row.avgPrice}
+                      </p>
+                      <DeltaPill value={row.priceDelta} />
+                    </TableCell>
+                    <TableCell className="px-4 py-4 text-sm align-top">
+                      <div className="h-2 rounded-full bg-muted">
+                        <span
+                          className={cn(
+                            "block h-full rounded-full",
+                            promoBarClasses[row.promoLevel] ??
+                              "w-1/2 bg-foreground"
+                          )}
+                        />
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {row.promoIntensity}
+                      </p>
+                    </TableCell>
+                    <TableCell className="px-4 py-4 text-sm align-top">
+                      <p className="font-mono font-semibold tabular-nums">
+                        {row.monthlySales}
+                      </p>
+                      <DeltaPill value={row.salesDelta} />
+                    </TableCell>
+                    <TableCell className="px-4 py-4 text-sm align-top">
+                      <p className="font-semibold">
+                        {row.rating}
+                        <span className="ml-1 font-mono text-xs tabular-nums text-muted-foreground">
+                          ({row.reviews})
+                        </span>
+                      </p>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollableTableWrapper>
         </div>
       </Panel>
 

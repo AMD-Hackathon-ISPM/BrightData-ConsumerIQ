@@ -163,6 +163,7 @@ export function StepFooter({
       {onBack ? (
         <Button
           variant="outline"
+          size="sm"
           type="button"
           onClick={onBack}
           disabled={isSubmitting}
@@ -173,7 +174,7 @@ export function StepFooter({
         <span />
       )}
       <Button
-        variant="submit"
+        size="sm"
         type="submit"
         disabled={isDisabled || isSubmitting}
       >

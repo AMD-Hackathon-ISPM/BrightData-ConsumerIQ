@@ -149,17 +149,16 @@ export function ProductContextStep({
                   {priceCurrency}
                 </span>
                 <Input
-                  className="bg-background-surface-100 pl-32 dark:bg-background-surface-100"
+                  className="bg-background-surface-100 pl-14 dark:bg-background-surface-100"
                   id="price"
                   inputMode="numeric"
-                  min={0}
                   placeholder="0"
-                  step={1000}
-                  type="number"
-                  value={price || ''}
-                  onChange={(event) =>
-                    onPriceChange(Number(event.target.value) || 0)
-                  }
+                  type="text"
+                  value={price ? price.toLocaleString('en-US') : ''}
+                  onChange={(event) => {
+                    const digits = event.target.value.replace(/\D/g, '')
+                    onPriceChange(digits ? Number(digits) : 0)
+                  }}
                 />
               </div>
               <FieldError />

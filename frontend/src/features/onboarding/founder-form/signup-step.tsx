@@ -34,7 +34,7 @@ export function SignupStep({ onNext, signedInAs }: SignupStepProps) {
         ) : null}
 
         <Field>
-          <Button variant="submit" onClick={onNext}>
+          <Button size="sm" onClick={onNext}>
             Begin
           </Button>
           <FieldDescription className="pt-2 text-center">

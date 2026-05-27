@@ -29,14 +29,18 @@ export function ConsumerIQExperience() {
   const [activeSection, setActiveSection] =
     useState<DashboardSection>("dashboard");
 
-  const handleOnboardingComplete = useCallback(() => {
+  const persistOnboarded = useCallback(() => {
     try {
       if (user?.email) {
         window.localStorage.setItem(CONSUMER_IQ_ONBOARDED_KEY, user.email);
       }
     } catch {}
-    setIsOnboarded(true);
   }, [user?.email]);
+
+  const handleOnboardingComplete = useCallback(() => {
+    persistOnboarded();
+    setIsOnboarded(true);
+  }, [persistOnboarded]);
 
   const handleToggleChat = useCallback(() => {
     setIsChatOpen((open) => !open);

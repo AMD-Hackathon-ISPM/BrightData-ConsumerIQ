@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { SectionFade } from "@/components/animated-page";
 import {
   MapCard,
   MetricCard,
@@ -10,35 +11,44 @@ export function MarketOverview() {
   return (
     <div className="grid gap-3">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9.75rem),1fr))] gap-3">
-        <MetricCard
-          label="Trend Velocity"
-          status="+12% from last month"
-          title="+67%"
-          tone="success"
-        />
-        <MetricCard
-          label="Est. Demand"
-          status="High confidence signal"
-          title="12.4K"
-        />
-        <MetricCard
-          label="Price Target"
-          status="Optimal market fit"
-          title="$19"
-        />
-        <MetricCard
-          label="Market Gaps"
-          status="High potential entry"
-          title="3 Found"
-          tone="danger"
-        />
+        <SectionFade transitionKey="metric-0" delay={200}>
+          <MetricCard
+            label="Trend Velocity"
+            status="+12% from last month"
+            title="+67%"
+            tone="success"
+          />
+        </SectionFade>
+        <SectionFade transitionKey="metric-1" delay={320}>
+          <MetricCard
+            label="Est. Demand"
+            status="High confidence signal"
+            title="12.4K"
+          />
+        </SectionFade>
+        <SectionFade transitionKey="metric-2" delay={440}>
+          <MetricCard
+            label="Price Target"
+            status="Optimal market fit"
+            title="$19"
+          />
+        </SectionFade>
+        <SectionFade transitionKey="metric-3" delay={560}>
+          <MetricCard
+            label="Market Gaps"
+            status="High potential entry"
+            title="3 Found"
+            tone="danger"
+          />
+        </SectionFade>
       </div>
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)]">
-        <Panel
-          title="Marketplace Pulse"
-          subtitle="Real-time SKU tracking across platforms"
-        >
+        <SectionFade transitionKey="panel-pulse" delay={720}>
+          <Panel
+            title="Marketplace Pulse"
+            subtitle="Real-time SKU tracking across platforms"
+          >
           <div className="mb-2 flex gap-2">
             {["Amazon", "Temu"].map((item, index) => (
               <span
@@ -104,21 +114,24 @@ export function MarketOverview() {
               </div>
             ))}
           </div>
-        </Panel>
+          </Panel>
+        </SectionFade>
 
-        <Panel
-          title="Demand Density"
-          subtitle="Geographic distribution of interest"
-        >
-          <MapCard />
-          <RegionBars
-            rows={[
-              ["Los Angeles", 58.2],
-              ["New York", 19.4],
-              ["Dallas", 12.1],
-            ]}
-          />
-        </Panel>
+        <SectionFade transitionKey="panel-density" delay={860}>
+          <Panel
+            title="Demand Density"
+            subtitle="Geographic distribution of interest"
+          >
+            <MapCard />
+            <RegionBars
+              rows={[
+                ["Los Angeles", 58.2],
+                ["New York", 19.4],
+                ["Dallas", 12.1],
+              ]}
+            />
+          </Panel>
+        </SectionFade>
       </div>
     </div>
   );
