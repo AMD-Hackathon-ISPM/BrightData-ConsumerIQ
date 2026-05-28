@@ -111,9 +111,8 @@ def _extract_dataset_record(payload: Any) -> dict[str, Any]:
 
     for key in ('results', 'data', 'items'):
         items = payload.get(key)
-        if isinstance(items, list) and items:
-            if isinstance(items[0], dict):
-                return items[0]
+        if isinstance(items, list) and items and isinstance(items[0], dict):
+            return items[0]
     return payload
 
 
