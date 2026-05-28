@@ -1,4 +1,3 @@
-import { nanoid } from "nanoid";
 import type { MessageType } from "../types";
 
 export const initialSources = [
@@ -16,76 +15,7 @@ export const initialSources = [
   },
 ];
 
-export const initialMessages: MessageType[] = [
-  {
-    from: "user",
-    key: nanoid(),
-    versions: [
-      {
-        content: "Compare consumer sentiment across premium snack brands.",
-        id: nanoid(),
-      },
-    ],
-  },
-  {
-    from: "assistant",
-    key: nanoid(),
-    sources: initialSources.slice(0, 2),
-    versions: [
-      {
-        content: `## Premium Snack Sentiment
-
-ConsumerIQ is seeing three useful gaps across the premium snack set:
-
-1. **Flavor curiosity is rising**, especially around sweet-salty profiles.
-2. **Texture complaints are more predictive than price complaints** for repeat purchase risk.
-3. **Ingredient transparency is now a trust signal**, not just a health-positioning claim.
-
-The strongest opportunity is a concise product story that connects texture, clean ingredients, and a clear flavor promise.`,
-        id: nanoid(),
-      },
-    ],
-  },
-  {
-    from: "user",
-    key: nanoid(),
-    versions: [
-      {
-        content: "Find the strongest negative review drivers this quarter.",
-        id: nanoid(),
-      },
-      {
-        content: "Rank the review themes most likely to suppress repeat buys.",
-        id: nanoid(),
-      },
-      {
-        content: "Which complaints should the insights team escalate first?",
-        id: nanoid(),
-      },
-    ],
-  },
-  {
-    from: "assistant",
-    key: nanoid(),
-    reasoning: {
-      content:
-        "I grouped recent reviews by complaint theme, weighted them by purchase intent language, then compared the themes against competitor mentions to find the issues most likely to affect retention.",
-      duration: 8,
-    },
-    versions: [
-      {
-        content: `## Negative Driver Priority
-
-- **Stale or inconsistent texture** is the highest-risk theme because it appears in reviews that also mention switching brands.
-- **Small pack size versus price** is the second priority, but it is often softened when consumers believe the ingredient quality is premium.
-- **Unclear flavor naming** creates trial friction for new buyers, especially when seasonal flavors are described with broad claims.
-
-Recommended next step: brief product and merchandising teams on texture consistency first, then test clearer shelf copy for flavor expectations.`,
-        id: nanoid(),
-      },
-    ],
-  },
-];
+export const initialMessages: MessageType[] = [];
 
 export const suggestions = [
   "Find negative review drivers",

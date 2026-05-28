@@ -5,7 +5,6 @@ import {
   FileText,
   Globe2,
   LayoutDashboard,
-  Settings,
   ShieldCheck,
   Target,
   TrendingUp,
@@ -22,11 +21,7 @@ export const navGroups = [
   ],
 ] as const;
 
-export const footerNavItems = [
-  { id: "settings", label: "Settings", icon: Settings },
-] as const;
-
-export const navItems = [...navGroups.flat(), ...footerNavItems];
+export const navItems = [...navGroups.flat()];
 
 export const pipelineSteps = [
   { label: "Marketplaces", icon: Globe2, caption: "External Source" },

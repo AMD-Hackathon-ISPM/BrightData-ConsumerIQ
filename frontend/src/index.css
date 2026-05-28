@@ -118,7 +118,7 @@
 
 :root {
   --background-default: #171717;
-  --background-200: #f2e5bc;
+  --background-200: #282828;
   --background-muted: #1a1a1a;
   --background-surface-75: #fdf6d3;
   --background-surface-100: var(--background-muted);
@@ -127,18 +127,18 @@
   --background-surface-400: #bdae93;
   --background-alternative-default: #f9f5d7;
   --background-alternative-200: #fbf1c7;
-  --background-dialog-default: #fbf1c7;
+  --background-dialog-default: #282828;
   --background-dash-canvas: #f2e5bc;
   --background-dash-sidebar: #f9f5d7;
   --background-button-default: #f9f5d7;
-  --background-overlay-hover: #ebdbb2;
-  --background-overlay-default: #f9f5d7;
-  --background-control: #ebdbb2;
-  --background-selection: #ebdbb2;
-  --foreground-default: #3c3836;
-  --foreground-light: #665c54;
-  --foreground-lighter: #7c6f64;
-  --foreground-muted: #928374;
+  --background-overlay-hover: #2a2a2a;
+  --background-overlay-default: #282828;
+  --background-control: #3c3836;
+  --background-selection: #2a2a2a;
+  --foreground-default: #fafafa;
+  --foreground-light: #b4b4b4;
+  --foreground-lighter: #898989;
+  --foreground-muted: #4d4d4d;
   --foreground-contrast: #fbf1c7;
   --border-default: #2e2e2e;
   --border-strong: #363636;
@@ -333,7 +333,7 @@
 
 @layer components {
   .prose-chat {
-    font-size: 15.5px;
+    font-size: 14px;
     line-height: 1.7;
     letter-spacing: -0.005em;
     font-weight: 400;
@@ -353,6 +353,33 @@
   .prose-chat code {
     font-feature-settings: normal;
     letter-spacing: 0;
+  }
+
+  .chat-slide-panel {
+    transition:
+      transform 320ms cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 320ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .chat-slide-panel[data-state="closed"] {
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform 240ms cubic-bezier(0.23, 1, 0.32, 1),
+      opacity 240ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .chat-slide-panel[data-state="open"] {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-slide-panel,
+  .chat-slide-panel[data-state="closed"],
+  .chat-slide-panel[data-state="open"] {
+    transform: none;
+    transition: opacity 200ms ease;
   }
 }
 

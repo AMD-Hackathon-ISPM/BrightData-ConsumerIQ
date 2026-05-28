@@ -343,27 +343,6 @@ export const searchIndex: Array<{
       },
     ],
   },
-  {
-    section: "settings",
-    suggestions: [
-      {
-        label: "Data Settings",
-        keywords: ["settings", "data", "api", "integration", "preferences"],
-      },
-      {
-        label: "Network Health",
-        keywords: ["network health", "uptime", "incident history"],
-      },
-      {
-        label: "Pipeline Architecture",
-        keywords: ["pipeline architecture", "architecture", "pipeline"],
-      },
-      {
-        label: "Bright Data Integrations",
-        keywords: ["bright data", "integration", "connector", "sources"],
-      },
-    ],
-  },
 ];
 
 export const searchSuggestions = [

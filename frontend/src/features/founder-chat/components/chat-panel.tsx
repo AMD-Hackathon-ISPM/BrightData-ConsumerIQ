@@ -1,7 +1,7 @@
+import { IconRobot } from '@tabler/icons-react'
 import {
   PanelRightCloseIcon,
   PanelRightOpenIcon,
-  SparklesIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
@@ -29,21 +29,23 @@ export function ChatPanel({
   return (
     <aside
       className={cn(
-        'flex h-screen min-h-0 shrink-0 flex-col border-l bg-card',
+        'relative flex h-screen min-h-0 shrink-0 flex-col border-l bg-card',
         !isOpen && 'items-center',
         className,
       )}
     >
       <div
         className={cn(
-          'flex h-14 w-full shrink-0 items-center border-b px-3',
-          isOpen ? 'justify-between' : 'justify-center',
+          'z-20 flex h-14 shrink-0 items-center px-3',
+          isOpen
+            ? 'absolute inset-x-0 top-0 justify-between bg-card'
+            : 'w-full justify-center',
         )}
       >
         {isOpen ? (
           <div className="flex min-w-0 items-center gap-2">
-            <SparklesIcon className="size-4 shrink-0 text-muted-foreground" />
-            <span className="truncate font-medium">ConsumerIQ</span>
+            <IconRobot className="size-4 shrink-0 text-foreground-light" stroke={1.8} />
+            <span className="truncate font-medium">Advisor Bot</span>
           </div>
         ) : null}
 
