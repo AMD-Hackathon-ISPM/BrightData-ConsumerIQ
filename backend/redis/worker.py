@@ -914,17 +914,19 @@ def processLlmInsights(self, categoryName: str, country: str = '', form_id: str 
     insights['extraAnalysis'] = _runOpenAiExtraAnalysis(categoryName, country, insights, translatedSignals)
     _saveCategoryInsights(categoryName, country, insights)
 
+    _updateInferenceStage(form_id, 'completed')
+
     extra = insights.get('extraAnalysis') or {}
     dashboard = extra.get('dashboardData') if isinstance(extra, dict) else None
-    if isinstance(dashboard, dict) and any(dashboard.get(k) for k in ('marketOverview', 'demandPulse', 'competitorMirror', 'launchCompass')):
-        _updateInferenceStage(form_id, 'completed')
-        if _COGNEE_ENABLED:
-            try:
-                ingestDashboardIntoMemory.delay(categoryName, country, dashboard)
-            except Exception as exc:
-                print(f'[cognee] Dashboard dispatch failed: {exc}')
-    else:
-        _updateInferenceStage(form_id, 'failed')
+    if (
+        _COGNEE_ENABLED
+        and isinstance(dashboard, dict)
+        and any(dashboard.get(k) for k in ('marketOverview', 'demandPulse', 'competitorMirror', 'launchCompass'))
+    ):
+        try:
+            ingestDashboardIntoMemory.delay(categoryName, country, dashboard)
+        except Exception as exc:
+            print(f'[cognee] Dashboard dispatch failed: {exc}')
 
     print(f'Job complete for {categoryName}! Saved to Postgres.')
     return {

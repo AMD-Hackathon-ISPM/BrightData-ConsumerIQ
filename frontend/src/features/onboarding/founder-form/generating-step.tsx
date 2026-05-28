@@ -37,8 +37,10 @@ async function fetchPipelineStatus(
 function pipelineTarget(p: PipelineStatus | null): number {
   if (!p) return 1;
   const scrape = p.scraping.status;
+  const inference = p.inference.status;
   const stage = p.inference.stage ?? "pending";
-  if (stage === "completed") return 7;
+  if (inference === "completed" || stage === "completed") return 7;
+  if (inference === "failed" || stage === "failed") return 7;
   if (stage === "cross_referencing") return 6;
   if (stage === "analyzing") return 5;
   if (scrape === "completed" || scrape === "skipped" || scrape === "failed")
@@ -95,11 +97,13 @@ export function GeneratingStep({
     if (!formId || submitStatus !== "success") return;
     let cancelled = false;
     const poll = async () => {
+      let intervalMs = 3000;
       while (!cancelled) {
         const status = await fetchPipelineStatus(formId);
         if (!cancelled) setPipeline(status);
         if (status && pipelineTarget(status) >= lines.length) break;
-        await new Promise<void>((r) => setTimeout(r, 3000));
+        await new Promise<void>((r) => setTimeout(r, intervalMs));
+        intervalMs = Math.min(intervalMs + 1000, 10000);
       }
     };
     poll();
@@ -144,7 +148,9 @@ export function GeneratingStep({
   const inferenceFailed =
     pipeline?.inference.stage === "failed" ||
     pipeline?.inference.status === "failed";
-  const inferenceCompleted = pipeline?.inference.stage === "completed";
+  const inferenceCompleted =
+    pipeline?.inference.stage === "completed" ||
+    pipeline?.inference.status === "completed";
   const mockComplete = isMockRun && revealed >= lines.length;
   const isComplete = inferenceCompleted || mockComplete;
   const canContinue = isComplete;

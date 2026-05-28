@@ -12,6 +12,24 @@ KEYWORDS = [
     "serum wajah non sticky indonesia",
 ]
 
+ELECTRONICS_KEYWORDS = [
+    "smart gadget reviews",
+    "electronics accessories online",
+    "portable tech gadgets",
+    "smart device marketplace",
+    "gadget product alternatives",
+    "tech accessories customer demand",
+]
+
+BEAUTY_KEYWORDS = [
+    "radiance cleansing bar reviews",
+    "gentle soap glowing skin",
+    "daily cleansing bar beauty",
+    "brightening soap customer review",
+    "skin cleansing bar competitor",
+    "beauty personal care soap demand",
+]
+
 
 INSIGHTS = {
     "gtmIntelligence": {
@@ -28,6 +46,15 @@ INSIGHTS = {
         "dataRisk": "Track customer reviews without storing unnecessary personal identifiers.",
     },
 }
+
+
+def _keywords_for_prompt(prompt: str):
+    normalized = prompt.lower()
+    if any(term in normalized for term in ["electronics", "gadget", "smartgear", "smart gadget", "tech"]):
+        return ELECTRONICS_KEYWORDS
+    if any(term in normalized for term in ["beauty", "makeup", "soap", "cleansing", "cleaning bar", "radiance"]):
+        return BEAUTY_KEYWORDS
+    return KEYWORDS
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -54,7 +81,7 @@ class Handler(BaseHTTPRequestHandler):
 
         prompt = str(payload.get("prompt", ""))
         if "JSON array" in prompt or "targeted search keywords" in prompt:
-            text = json.dumps(KEYWORDS)
+            text = json.dumps(_keywords_for_prompt(prompt))
         elif "Translate the following text" in prompt:
             text = prompt.split("Text:", 1)[-1].split("Translation:", 1)[0].strip()
         else:
