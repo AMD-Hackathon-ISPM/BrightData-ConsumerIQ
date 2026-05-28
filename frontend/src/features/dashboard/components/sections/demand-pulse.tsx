@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -9,7 +9,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   type ClaimTrendItem,
-  demandPulseFixture,
   type DemandPulseData,
   type DemandPulseIntent,
   type DemandPulseTone,
@@ -22,24 +21,11 @@ import {
   PlatformShareChart,
 } from "../dashboard-primitives";
 import { AdvisorIntelligence } from "./shared";
-
-const DEMAND_PULSE_DATA_KEY = "ciq_demand_pulse_data";
-
-function loadStoredDemandPulseData(): DemandPulseData {
-  try {
-    const raw = localStorage.getItem(DEMAND_PULSE_DATA_KEY);
-    if (!raw) return demandPulseFixture;
-    return normalizeDemandPulseData(JSON.parse(raw));
-  } catch {
-    return demandPulseFixture;
-  }
-}
+import { useInsights } from "../../api";
 
 export function DemandPulse() {
-  const [liveData] = useState<DemandPulseData>(() =>
-    loadStoredDemandPulseData()
-  );
-  const data = liveData;
+  const { dashboardData } = useInsights();
+  const data = normalizeDemandPulseData(dashboardData?.demandPulse ?? null);
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-3">

@@ -5,31 +5,55 @@ import {
   Panel,
   RegionBars,
 } from "../dashboard-primitives";
+import { useInsights } from "../../api";
+
+const FALLBACK_SKUS = [
+  ["Barrier Repair Serum", "Amazon Hero SKU", "$18.99", "82%", "+12.4%"],
+  ["SPF Moisture Duo", "Temu Bundle", "$14.50", "Low Stock", "+28.1%"],
+  ["Peptide Night Cream", "Amazon Premium", "$22.00", "55%", "-1.2%"],
+];
+
+const FALLBACK_REGIONS: [string, number][] = [
+  ["Los Angeles", 58.2],
+  ["New York", 19.4],
+  ["Dallas", 12.1],
+];
 
 export function MarketOverview() {
+  const { dashboardData, loading } = useInsights();
+  const mo = dashboardData?.marketOverview;
+
+  const skus = mo?.topSkus?.length
+    ? mo.topSkus.map((s) => [s.name, s.tag, s.price, s.stock, s.momentum])
+    : FALLBACK_SKUS;
+
+  const regions: [string, number][] = mo?.regionDemand?.length
+    ? mo.regionDemand.map((r) => [r.city, r.percentage])
+    : FALLBACK_REGIONS;
+
   return (
     <div className="grid gap-3">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9.75rem),1fr))] gap-3">
         <MetricCard
           label="Trend Velocity"
-          status="+12% from last month"
-          title="+67%"
+          status={mo?.trendVelocityStatus ?? "+12% from last month"}
+          title={loading ? "..." : (mo?.trendVelocity ?? "+67%")}
           tone="success"
         />
         <MetricCard
           label="Est. Demand"
           status="High confidence signal"
-          title="12.4K"
+          title={loading ? "..." : (mo?.estimatedDemand ?? "12.4K")}
         />
         <MetricCard
           label="Price Target"
           status="Optimal market fit"
-          title="$19"
+          title={loading ? "..." : (mo?.priceTarget ?? "$19")}
         />
         <MetricCard
           label="Market Gaps"
           status="High potential entry"
-          title="3 Found"
+          title={loading ? "..." : `${mo?.marketGaps ?? 3} Found`}
           tone="danger"
         />
       </div>
@@ -53,32 +77,10 @@ export function MarketOverview() {
             ))}
           </div>
           <div className="overflow-hidden rounded-lg border">
-            {[
-              [
-                "Barrier Repair Serum",
-                "Amazon Hero SKU",
-                "$18.99",
-                "82%",
-                "+12.4%",
-              ],
-              [
-                "SPF Moisture Duo",
-                "Temu Bundle",
-                "$14.50",
-                "Low Stock",
-                "+28.1%",
-              ],
-              [
-                "Peptide Night Cream",
-                "Amazon Premium",
-                "$22.00",
-                "55%",
-                "-1.2%",
-              ],
-            ].map((row) => (
+            {skus.map((row) => (
               <div
                 className="grid grid-cols-[1.3fr_0.8fr_1fr_0.7fr] items-center border-b px-3 py-2.5 text-sm last:border-b-0"
-                key={row[0]}
+                key={String(row[0])}
               >
                 <div>
                   <p className="font-semibold">{row[0]}</p>
@@ -94,7 +96,7 @@ export function MarketOverview() {
                 <p
                   className={cn(
                     "text-right font-medium",
-                    row[4].startsWith("+")
+                    String(row[4]).startsWith("+")
                       ? "text-chart-4"
                       : "text-muted-foreground",
                   )}
@@ -111,13 +113,7 @@ export function MarketOverview() {
           subtitle="Geographic distribution of interest"
         >
           <MapCard />
-          <RegionBars
-            rows={[
-              ["Los Angeles", 58.2],
-              ["New York", 19.4],
-              ["Dallas", 12.1],
-            ]}
-          />
+          <RegionBars rows={regions} />
         </Panel>
       </div>
     </div>

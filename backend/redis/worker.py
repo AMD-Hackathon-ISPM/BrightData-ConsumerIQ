@@ -57,8 +57,8 @@ _DEFAULT_MARKETPLACES = ['amazon', 'google.shopping']
 _PIPELINE_KEYWORD_LIMIT = int(os.getenv('PIPELINE_KEYWORD_LIMIT', '6'))
 _PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS = int(os.getenv('PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS', '180'))
 _PIPELINE_SNAPSHOT_WAIT_SECONDS = int(os.getenv('PIPELINE_SNAPSHOT_WAIT_SECONDS', '600'))
-_PIPELINE_MAX_SIGNALS = int(os.getenv('PIPELINE_MAX_SIGNALS', '12'))
-_PIPELINE_MARKETPLACE_RECORD_LIMIT = int(os.getenv('PIPELINE_MARKETPLACE_RECORD_LIMIT', '50'))
+_PIPELINE_MAX_SIGNALS = int(os.getenv('PIPELINE_MAX_SIGNALS', '50'))
+_PIPELINE_MARKETPLACE_RECORD_LIMIT = int(os.getenv('PIPELINE_MARKETPLACE_RECORD_LIMIT', '100'))
 _PIPELINE_SKIP_MARKETPLACES = {
     item.strip().lower()
     for item in os.getenv('PIPELINE_SKIP_MARKETPLACES', 'lazada').split(',')
@@ -202,27 +202,25 @@ def _buildPrompt(categoryName: str, signals: list[dict[str, Any]]) -> str:
         meta: list[str] = []
         sourceType = signal.get('sourceType')
         sentimentScore = signal.get('sentimentScore')
-        sourceUrl = signal.get('sourceUrl')
         if sourceType:
-            meta.append(f'sourceType: {sourceType}')
+            meta.append(f'src:{sourceType}')
         if sentimentScore is not None:
-            meta.append(f'sentimentScore: {sentimentScore}')
-        if sourceUrl:
-            meta.append(f'sourceUrl: {sourceUrl}')
+            meta.append(f'sent:{sentimentScore:.2f}')
         if meta:
-            metaText = ', '.join(meta)
-            line = f'{line} ({metaText})'
+            line = f'{line} [{", ".join(meta)}]'
         contextLines.append(line)
 
     context = '\n'.join(contextLines)
 
     return (
-        'You are a market intelligence analyst. Return only JSON with these keys: '
-        'gtmIntelligence, financeIntelligence, securityCompliance.\n'
-        'Focus on demand signals, pricing, and compliance or safety risks.\n\n'
+        'You are a market intelligence analyst. Analyze the signals and return ONLY JSON with exactly these keys: '
+        'gtmIntelligence, financeIntelligence, securityCompliance, extractedData.\n\n'
+        'extractedData must contain: {"competitors":[{"name":"str","price":"str","rating":"str","reviews":"str","sales":"str"}],'
+        '"priceRange":{"min":"str","max":"str","avg":"str"},'
+        '"topProducts":["str"],"geographicSignals":["str"]}\n\n'
         f'Category: {categoryName}\n\n'
         f'Signals:\n{context}\n\n'
-        'JSON:'
+        'Extract real product names, prices, ratings, review counts from the signals. JSON:'
     )
 
 
@@ -250,7 +248,7 @@ def _runLlmInsights(categoryName: str, signals: list[dict[str, Any]]) -> dict[st
     try:
         response = llm.create_completion(
             prompt=prompt,
-            max_tokens=512,
+            max_tokens=900,
             temperature=0.2,
             stop=['\n\n'],
         )
@@ -267,6 +265,7 @@ def _runLlmInsights(categoryName: str, signals: list[dict[str, Any]]) -> dict[st
         'gtmIntelligence': parsed.get('gtmIntelligence', {}),
         'financeIntelligence': parsed.get('financeIntelligence', {}),
         'securityCompliance': parsed.get('securityCompliance', {}),
+        'extractedData': parsed.get('extractedData', {}),
         'rawOutput': parsed.get('rawOutput'),
     }
 
@@ -472,6 +471,21 @@ def scrapeMarketSignals(
             mp for mp in marketplaces if mp.lower() not in _PIPELINE_SKIP_MARKETPLACES
         ]
     rows: list[tuple[str, str, str, str, str]] = []
+
+    if has_context:
+        brief_parts = [
+            f'Product: {product_name}',
+            f'Description: {product_description}',
+            f'USP: {unique_selling_point}',
+            f'Features: {main_features}',
+            f'Pain point: {pain_point}',
+            f'Customer segment: {customer_segment}',
+            f'Competitive advantage: {competitive_advantage}',
+            f'Price range: {price_range_min}-{price_range_max}',
+        ]
+        brief_text = ' | '.join(p for p in brief_parts if not p.endswith(': ') and not p.endswith(':0') and not p.endswith(':0-0'))
+        if brief_text.strip():
+            rows.append((brief_text[:1000], 'product_brief', '', country, category))
 
     for keyword in keywords[:_PIPELINE_KEYWORD_LIMIT]:
         if len(rows) >= _MAX_SIGNALS:

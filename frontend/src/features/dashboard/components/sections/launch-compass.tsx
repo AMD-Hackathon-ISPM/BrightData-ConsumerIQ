@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Panel } from "../dashboard-primitives";
 import { AdvisorIntelligence } from "./shared";
+import { useInsights, type LaunchCompassData } from "../../api";
 
 const LazyLaunchReadinessMap = lazy(() =>
   import("./launch-readiness-map").then((module) => ({
@@ -22,7 +23,85 @@ const LazyLaunchReadinessMap = lazy(() =>
   }))
 );
 
+const FALLBACK_SEASONALITY: LaunchCompassData["seasonality"] = [
+  { id: "jan", month: "J", index: 72, status: "normal" },
+  { id: "feb", month: "F", index: 134, status: "peak" },
+  { id: "mar", month: "M", index: 96, status: "peak" },
+  { id: "apr", month: "A", index: 66, status: "normal" },
+  { id: "may", month: "M", index: 54, status: "normal" },
+  { id: "jun", month: "J", index: 76, status: "normal" },
+  { id: "jul", month: "J", index: 146, status: "peak" },
+  { id: "aug", month: "A", index: 98, status: "peak" },
+  { id: "sep", month: "S", index: 74, status: "normal" },
+  { id: "oct", month: "O", index: 138, status: "peak" },
+  { id: "nov", month: "N", index: -46, status: "avoid" },
+  { id: "dec", month: "D", index: -38, status: "avoid" },
+];
+
+const FALLBACK_CITY_SALES: LaunchCompassData["citySales"] = [
+  {
+    city: "Los Angeles",
+    sales: "25.6K units",
+    growth: "+18%",
+    channels: "Amazon 72% - Temu 28%",
+    rating: "4.3 stars (1,240 reviews)",
+    searchDemand: "Index 132 (high)",
+    personaFit: "68% - 480K target pop",
+    gdpPerCapita: "$74K",
+    signal: "Best first city",
+  },
+  {
+    city: "New York",
+    sales: "22.9K units",
+    growth: "+11%",
+    channels: "Amazon 70% - Temu 30%",
+    rating: "4.2 stars (980 reviews)",
+    searchDemand: "Index 118 (high)",
+    personaFit: "61% - 520K target pop",
+    gdpPerCapita: "$82K",
+    signal: "High intent",
+  },
+  {
+    city: "Dallas",
+    sales: "22.2K units",
+    growth: "+24%",
+    channels: "Amazon 42% - Temu 58%",
+    rating: "4.1 stars (710 reviews)",
+    searchDemand: "Index 104 (medium)",
+    personaFit: "64% - 390K target pop",
+    gdpPerCapita: "$69K",
+    signal: "Expansion pocket",
+  },
+  {
+    city: "Phoenix",
+    sales: "16.3K units",
+    growth: "+21%",
+    channels: "Amazon 41% - Temu 59%",
+    rating: "4.0 stars (560 reviews)",
+    searchDemand: "Index 96 (medium)",
+    personaFit: "59% - 310K target pop",
+    gdpPerCapita: "$66K",
+    signal: "Low competition",
+  },
+];
+
 export function LaunchCompass() {
+  const { dashboardData } = useInsights();
+  const lc = dashboardData?.launchCompass;
+
+  const seasonality = lc?.seasonality?.length ? lc.seasonality : FALLBACK_SEASONALITY;
+  const citySales = lc?.citySales?.length ? lc.citySales : FALLBACK_CITY_SALES;
+  const advisorRecommendation =
+    lc?.advisorRecommendation ??
+    "Los Angeles has the strongest Amazon sales density and enough competitor distance to validate premium positioning. Use Amazon Sponsored Products and creator review seeding first. Once review confidence is visible, use Temu coupon bundles in Dallas and Phoenix to capture value-sensitive expansion demand.";
+  const advisorSignals = lc?.advisorSignals?.length
+    ? lc.advisorSignals
+    : [
+        { label: "Pilot City", value: "Los Angeles · Amazon-first" },
+        { label: "Launch Tactic", value: "Sponsored Products + creator review seeding" },
+        { label: "Expansion", value: "Temu coupon bundles in Dallas & Phoenix" },
+      ];
+
   return (
     <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden">
       <Panel>
@@ -39,47 +118,20 @@ export function LaunchCompass() {
 
       <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden xl:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)]">
         <Panel>
-          <LaunchSeasonalityCalendar />
+          <LaunchSeasonalityCalendar chartData={seasonality} />
         </Panel>
 
         <Panel>
-          <LaunchCitySales />
+          <LaunchCitySales rows={citySales} />
         </Panel>
       </div>
 
-      <AdvisorIntelligence
-        recommendation="Los Angeles has the strongest Amazon sales density and enough competitor distance to validate premium positioning. Use Amazon Sponsored Products and creator review seeding first. Once review confidence is visible, use Temu coupon bundles in Dallas and Phoenix to capture value-sensitive expansion demand."
-        signals={[
-          { label: "Pilot City", value: "Los Angeles · Amazon-first" },
-          {
-            label: "Launch Tactic",
-            value: "Sponsored Products + creator review seeding",
-          },
-          {
-            label: "Expansion",
-            value: "Temu coupon bundles in Dallas & Phoenix",
-          },
-        ]}
-      />
+      <AdvisorIntelligence recommendation={advisorRecommendation} signals={advisorSignals} />
     </div>
   );
 }
 
-function LaunchSeasonalityCalendar() {
-  const chartData = [
-    { id: "jan", month: "J", index: 72, status: "normal" },
-    { id: "feb", month: "F", index: 134, status: "peak" },
-    { id: "mar", month: "M", index: 96, status: "peak" },
-    { id: "apr", month: "A", index: 66, status: "normal" },
-    { id: "may", month: "M", index: 54, status: "normal" },
-    { id: "jun", month: "J", index: 76, status: "normal" },
-    { id: "jul", month: "J", index: 146, status: "peak" },
-    { id: "aug", month: "A", index: 98, status: "peak" },
-    { id: "sep", month: "S", index: 74, status: "normal" },
-    { id: "oct", month: "O", index: 138, status: "peak" },
-    { id: "nov", month: "N", index: -46, status: "avoid" },
-    { id: "dec", month: "D", index: -38, status: "avoid" },
-  ];
+function LaunchSeasonalityCalendar({ chartData }: { chartData: LaunchCompassData["seasonality"] }) {
 
   const chartConfig = {
     index: { label: "Demand index", color: "var(--chart-blue)" },
@@ -161,53 +213,7 @@ const citySignalToneClass: Record<string, string> = {
   "Low competition": "text-[#98971a] dark:text-[#b8bb26]",
 };
 
-function LaunchCitySales() {
-  const rows = [
-    {
-      city: "Los Angeles",
-      sales: "25.6K units",
-      growth: "+18%",
-      channels: "Amazon 72% - Temu 28%",
-      rating: "4.3 stars (1,240 reviews)",
-      searchDemand: "Index 132 (high)",
-      personaFit: "68% - 480K target pop",
-      gdpPerCapita: "$74K",
-      signal: "Best first city",
-    },
-    {
-      city: "New York",
-      sales: "22.9K units",
-      growth: "+11%",
-      channels: "Amazon 70% - Temu 30%",
-      rating: "4.2 stars (980 reviews)",
-      searchDemand: "Index 118 (high)",
-      personaFit: "61% - 520K target pop",
-      gdpPerCapita: "$82K",
-      signal: "High intent",
-    },
-    {
-      city: "Dallas",
-      sales: "22.2K units",
-      growth: "+24%",
-      channels: "Amazon 42% - Temu 58%",
-      rating: "4.1 stars (710 reviews)",
-      searchDemand: "Index 104 (medium)",
-      personaFit: "64% - 390K target pop",
-      gdpPerCapita: "$69K",
-      signal: "Expansion pocket",
-    },
-    {
-      city: "Phoenix",
-      sales: "16.3K units",
-      growth: "+21%",
-      channels: "Amazon 41% - Temu 59%",
-      rating: "4.0 stars (560 reviews)",
-      searchDemand: "Index 96 (medium)",
-      personaFit: "59% - 310K target pop",
-      gdpPerCapita: "$66K",
-      signal: "Low competition",
-    },
-  ];
+function LaunchCitySales({ rows }: { rows: LaunchCompassData["citySales"] }) {
 
   return (
     <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden">

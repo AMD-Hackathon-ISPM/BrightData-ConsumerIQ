@@ -208,6 +208,56 @@ async def createInsightExtraAnalysis(payload: ExtraAnalysisRequest):
         raise HTTPException(status_code=502, detail=f'OpenAI extra analysis failed: {error}') from error
 
 
+@app.get('/api/insights/me')
+async def getInsightsForCurrentUser(request: Request):
+    import psycopg2
+
+    user_id = request.headers.get('X-User-Id')
+    if not user_id:
+        raise HTTPException(status_code=401, detail='Unauthorized')
+
+    def _fetch() -> dict | None:
+        with psycopg2.connect(_DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'SELECT payload FROM founderforms WHERE user_id = %s ORDER BY createdat DESC LIMIT 1',
+                    (int(user_id),),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                form = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+                category = form.get('industry', '')
+                country = form.get('countryCode', 'us')
+                cur.execute(
+                    '''SELECT gtmintelligence, financeintelligence, securitycompliance,
+                              extraanalysis, status, lastupdated
+                       FROM categoryinsights
+                       WHERE category = %s AND country = %s
+                       ORDER BY lastupdated DESC LIMIT 1''',
+                    (category, country),
+                )
+                ins = cur.fetchone()
+                if not ins:
+                    return {'status': 'pending', 'category': category, 'country': country}
+                return {
+                    'status': ins[4],
+                    'category': category,
+                    'country': country,
+                    'gtmIntelligence': ins[0],
+                    'financeIntelligence': ins[1],
+                    'securityCompliance': ins[2],
+                    'extraAnalysis': ins[3],
+                    'lastUpdated': ins[5].isoformat() if ins[5] else None,
+                }
+
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _fetch)
+    if result is None:
+        raise HTTPException(status_code=404, detail='No form found for this user')
+    return result
+
+
 @app.get('/api/form-pipeline/{form_id}')
 async def getFormPipeline(formId: str = Path(..., alias='form_id')):
     import redis as redis_lib

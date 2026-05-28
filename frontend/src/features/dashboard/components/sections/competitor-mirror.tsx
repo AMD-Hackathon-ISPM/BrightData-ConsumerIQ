@@ -2,106 +2,119 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Panel } from "../dashboard-primitives";
 import { AdvisorIntelligence } from "./shared";
+import { useInsights, type CompetitorMirrorData } from "../../api";
+
+const FALLBACK_COMPETITORS: CompetitorMirrorData["competitors"] = [
+  {
+    brand: "CeraVe",
+    sku: "AM Facial Moisturizing Lotion SPF 30",
+    avgPrice: "$16.99",
+    priceDelta: "-2.1%",
+    promoIntensity: "High",
+    promoLevel: "high",
+    monthlySales: "45.2K",
+    salesDelta: "+5.4%",
+    rating: "4.7",
+    reviews: "94K",
+  },
+  {
+    brand: "COSRX",
+    sku: "Snail Mucin Essence 100ml",
+    avgPrice: "$13.80",
+    priceDelta: "-0.8%",
+    promoIntensity: "Low",
+    promoLevel: "low",
+    monthlySales: "18.5K",
+    salesDelta: "-1.2%",
+    rating: "4.6",
+    reviews: "72K",
+  },
+  {
+    brand: "The Ordinary",
+    sku: "Hyaluronic Acid 2% + B5",
+    avgPrice: "$18.50",
+    priceDelta: "+5.8%",
+    promoIntensity: "Very High",
+    promoLevel: "very-high",
+    monthlySales: "82.1K",
+    salesDelta: "+12.4%",
+    rating: "4.5",
+    reviews: "118K",
+  },
+];
+
+const FALLBACK_PRICING_TIERS: CompetitorMirrorData["pricingTiers"] = [
+  { label: "50-80K", note: "saturated", demand: "28% demand", percentage: 28, type: "saturated" },
+  { label: "100-130K", note: "sweet spot", demand: "23% demand", percentage: 23, type: "sweet-spot" },
+  { label: "150-200K", note: "premium opp", demand: "15% demand", percentage: 15, type: "premium" },
+];
+
+const promoBarClasses: Record<string, string> = {
+  low: "w-1/4 bg-muted-foreground/50",
+  medium: "w-1/2 bg-muted-foreground/70",
+  high: "w-3/4 bg-foreground",
+  "very-high": "w-5/6 bg-foreground",
+};
+
+const pricingTierToneClass: Record<string, string> = {
+  saturated: "bg-destructive",
+  "sweet-spot": "bg-[#98971a] dark:bg-[#b8bb26]",
+  premium: "bg-chart-3",
+};
 
 export function CompetitorMirror() {
-  const competitorRows = [
-    {
-      brand: "CeraVe",
-      sku: "AM Facial Moisturizing Lotion SPF 30",
-      avgPrice: "$16.99",
-      priceDelta: "-2.1%",
-      promoIntensity: "High",
-      promoLevel: "high",
-      monthlySales: "45.2K",
-      salesDelta: "+5.4%",
-      rating: "4.7",
-      reviews: "94K",
-    },
-    {
-      brand: "COSRX",
-      sku: "Snail Mucin Essence 100ml",
-      avgPrice: "$13.80",
-      priceDelta: "-0.8%",
-      promoIntensity: "Low",
-      promoLevel: "low",
-      monthlySales: "18.5K",
-      salesDelta: "-1.2%",
-      rating: "4.6",
-      reviews: "72K",
-    },
-    {
-      brand: "The Ordinary",
-      sku: "Hyaluronic Acid 2% + B5",
-      avgPrice: "$18.50",
-      priceDelta: "+5.8%",
-      promoIntensity: "Very High",
-      promoLevel: "very-high",
-      monthlySales: "82.1K",
-      salesDelta: "+12.4%",
-      rating: "4.5",
-      reviews: "118K",
-    },
-  ];
+  const { dashboardData } = useInsights();
+  const cm = dashboardData?.competitorMirror;
 
-  const promoBarClasses: Record<string, string> = {
-    low: "w-1/4 bg-muted-foreground/50",
-    medium: "w-1/2 bg-muted-foreground/70",
-    high: "w-3/4 bg-foreground",
-    "very-high": "w-5/6 bg-foreground",
-  };
+  const competitors = cm?.competitors?.length ? cm.competitors : FALLBACK_COMPETITORS;
+  const pricingTiers = cm?.pricingTiers?.length ? cm.pricingTiers : FALLBACK_PRICING_TIERS;
+  const advisorRecommendation =
+    cm?.advisorRecommendation ??
+    "Competitors are either credible but expensive on Amazon, or cheap but low-trust on Temu. Position the product as a clinically clear, affordable barrier-repair routine with enough proof for Amazon and enough bundle value for Temu.";
+  const advisorSignals = cm?.advisorSignals?.length
+    ? cm.advisorSignals
+    : [
+        { label: "Key Advantage", value: "Proof-led barrier repair positioning" },
+        { label: "Pricing Advice", value: "$18–$22 Amazon core SKU" },
+        { label: "Positioning", value: "Premium efficacy without premium friction" },
+      ];
 
   return (
     <div className="grid min-w-0 gap-3">
       <Panel title="Top Competitor Matrix">
         {/* Mobile */}
         <div className="grid gap-3 md:hidden">
-          {competitorRows.map((row) => (
+          {competitors.map((row) => (
             <article
               className="min-w-0 rounded-lg border bg-background-default p-3"
               key={row.sku}
             >
               <div className="min-w-0">
                 <p className="font-semibold">{row.brand}</p>
-                <p className="break-words text-xs text-muted-foreground">
-                  {row.sku}
-                </p>
+                <p className="break-words text-xs text-muted-foreground">{row.sku}</p>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <div className="rounded-lg border bg-card p-2.5">
                   <p className="text-xs text-muted-foreground">Avg Price</p>
-                  <p className="font-mono font-semibold tabular-nums">
-                    {row.avgPrice}
-                  </p>
+                  <p className="font-mono font-semibold tabular-nums">{row.avgPrice}</p>
                   <DeltaPill value={row.priceDelta} />
                 </div>
                 <div className="rounded-lg border bg-card p-2.5">
                   <p className="text-xs text-muted-foreground">Sales</p>
-                  <p className="font-mono font-semibold tabular-nums">
-                    {row.monthlySales}
-                  </p>
+                  <p className="font-mono font-semibold tabular-nums">{row.monthlySales}</p>
                   <DeltaPill value={row.salesDelta} />
                 </div>
                 <div className="rounded-lg border bg-card p-2.5">
                   <p className="text-xs text-muted-foreground">Promo</p>
                   <div className="mt-2 h-2 rounded-full bg-muted">
-                    <span
-                      className={cn(
-                        "block h-full rounded-full",
-                        promoBarClasses[row.promoLevel] ??
-                          "w-1/2 bg-foreground"
-                      )}
-                    />
+                    <span className={cn("block h-full rounded-full", promoBarClasses[row.promoLevel] ?? "w-1/2 bg-foreground")} />
                   </div>
                   <p className="mt-1 text-xs">{row.promoIntensity}</p>
                 </div>
                 <div className="rounded-lg border bg-card p-2.5">
                   <p className="text-xs text-muted-foreground">Rating</p>
-                  <p className="font-mono font-semibold tabular-nums">
-                    {row.rating}
-                  </p>
-                  <p className="font-mono text-xs tabular-nums text-muted-foreground">
-                    {row.reviews}
-                  </p>
+                  <p className="font-mono font-semibold tabular-nums">{row.rating}</p>
+                  <p className="font-mono text-xs tabular-nums text-muted-foreground">{row.reviews}</p>
                 </div>
               </div>
             </article>
@@ -118,49 +131,33 @@ export function CompetitorMirror() {
               <span>Est. Monthly Sales</span>
               <span>Rating / Reviews</span>
             </div>
-            {competitorRows.map((row) => (
+            {competitors.map((row) => (
               <div
                 className="grid grid-cols-[1.5fr_0.8fr_0.8fr_0.9fr_0.9fr] items-center gap-3 border-b px-3 py-3 text-sm last:border-b-0"
                 key={row.sku}
               >
                 <div className="min-w-0">
                   <p className="font-semibold">{row.brand}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {row.sku}
-                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{row.sku}</p>
                 </div>
                 <div>
-                  <p className="font-mono font-semibold tabular-nums">
-                    {row.avgPrice}
-                  </p>
+                  <p className="font-mono font-semibold tabular-nums">{row.avgPrice}</p>
                   <DeltaPill value={row.priceDelta} />
                 </div>
                 <div>
                   <div className="h-2 rounded-full bg-muted">
-                    <span
-                      className={cn(
-                        "block h-full rounded-full",
-                        promoBarClasses[row.promoLevel] ??
-                          "w-1/2 bg-foreground"
-                      )}
-                    />
+                    <span className={cn("block h-full rounded-full", promoBarClasses[row.promoLevel] ?? "w-1/2 bg-foreground")} />
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {row.promoIntensity}
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{row.promoIntensity}</p>
                 </div>
                 <div>
-                  <p className="font-mono font-semibold tabular-nums">
-                    {row.monthlySales}
-                  </p>
+                  <p className="font-mono font-semibold tabular-nums">{row.monthlySales}</p>
                   <DeltaPill value={row.salesDelta} />
                 </div>
                 <div>
                   <p className="font-semibold">
                     {row.rating}
-                    <span className="ml-1 font-mono text-xs tabular-nums text-muted-foreground">
-                      ({row.reviews})
-                    </span>
+                    <span className="ml-1 font-mono text-xs tabular-nums text-muted-foreground">({row.reviews})</span>
                   </p>
                 </div>
               </div>
@@ -170,27 +167,11 @@ export function CompetitorMirror() {
       </Panel>
 
       <div className="grid min-w-0 gap-3 lg:grid-cols-2">
-        <PricingSweetSpotPanel />
+        <PricingSweetSpotPanel tiers={pricingTiers} />
         <AvgSalesMovementPanel />
       </div>
 
-      <AdvisorIntelligence
-        recommendation="Competitors are either credible but expensive on Amazon, or cheap but low-trust on Temu. Position the product as a clinically clear, affordable barrier-repair routine with enough proof for Amazon and enough bundle value for Temu."
-        signals={[
-          {
-            label: "Key Advantage",
-            value: "Proof-led barrier repair positioning",
-          },
-          {
-            label: "Pricing Advice",
-            value: "$18–$22 Amazon core SKU",
-          },
-          {
-            label: "Positioning",
-            value: "Premium efficacy without premium friction",
-          },
-        ]}
-      />
+      <AdvisorIntelligence recommendation={advisorRecommendation} signals={advisorSignals} />
     </div>
   );
 }
@@ -202,9 +183,7 @@ function DeltaPill({ value }: { value: string }) {
     <span
       className={cn(
         "mt-0.5 inline-flex items-center gap-0.5 font-mono text-xs font-semibold tabular-nums",
-        positive
-          ? "text-[#98971a] dark:text-[#b8bb26]"
-          : "text-destructive"
+        positive ? "text-[#98971a] dark:text-[#b8bb26]" : "text-destructive",
       )}
     >
       <Icon aria-hidden className="size-3" />
@@ -213,35 +192,11 @@ function DeltaPill({ value }: { value: string }) {
   );
 }
 
-function PricingSweetSpotPanel() {
-  const rows = [
-    {
-      label: "50-80K",
-      note: "saturated",
-      demand: "28% demand",
-      width: "28%",
-      tone: "bg-destructive",
-    },
-    {
-      label: "100-130K",
-      note: "sweet spot",
-      demand: "23% demand",
-      width: "23%",
-      tone: "bg-[#98971a] dark:bg-[#b8bb26]",
-    },
-    {
-      label: "150-200K",
-      note: "premium opp",
-      demand: "15% demand",
-      width: "15%",
-      tone: "bg-chart-3",
-    },
-  ];
-
+function PricingSweetSpotPanel({ tiers }: { tiers: CompetitorMirrorData["pricingTiers"] }) {
   return (
     <Panel title="Pricing Sweet Spot">
       <div className="grid gap-3">
-        {rows.map((row) => (
+        {tiers.map((row) => (
           <div className="grid gap-2" key={row.label}>
             <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
               <p className="min-w-0 break-words font-semibold">
@@ -253,14 +208,13 @@ function PricingSweetSpotPanel() {
             </div>
             <div className="h-2.5 rounded-full bg-muted/70">
               <span
-                className={cn("block h-full rounded-full", row.tone)}
-                style={{ width: row.width }}
+                className={cn("block h-full rounded-full", pricingTierToneClass[row.type] ?? "bg-chart-3")}
+                style={{ width: `${Math.min(row.percentage, 100)}%` }}
               />
             </div>
           </div>
         ))}
       </div>
-
     </Panel>
   );
 }
@@ -277,16 +231,8 @@ function AvgSalesMovementPanel() {
         >
           <defs>
             <linearGradient id="salesMovementFill" x1="0" x2="0" y1="0" y2="1">
-              <stop
-                offset="0%"
-                stopColor="var(--chart-blue)"
-                stopOpacity="0.35"
-              />
-              <stop
-                offset="100%"
-                stopColor="var(--chart-blue)"
-                stopOpacity="0.04"
-              />
+              <stop offset="0%" stopColor="var(--chart-blue)" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="var(--chart-blue)" stopOpacity="0.04" />
             </linearGradient>
           </defs>
           <path
@@ -302,7 +248,6 @@ function AvgSalesMovementPanel() {
           />
         </svg>
       </div>
-
     </Panel>
   );
 }

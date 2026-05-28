@@ -70,12 +70,12 @@ def _openai_api_key() -> str | None:
     )
 
 
-def _trim_signals(signals: list[dict[str, Any]], limit: int = 20) -> list[dict[str, Any]]:
+def _trim_signals(signals: list[dict[str, Any]], limit: int = 50) -> list[dict[str, Any]]:
     trimmed: list[dict[str, Any]] = []
     for signal in signals[:limit]:
         trimmed.append(
             {
-                'signalText': str(signal.get('signalText', ''))[:500],
+                'signalText': str(signal.get('signalText', ''))[:800],
                 'sourceType': signal.get('sourceType'),
                 'sentimentScore': signal.get('sentimentScore'),
             }
@@ -225,6 +225,120 @@ def _synthesize_extra_analysis_from_text(
     }
 
 
+def _generate_dashboard_data(
+    category: str,
+    country: str,
+    insights: dict[str, Any],
+    signals: list[dict[str, Any]],
+) -> dict[str, Any]:
+    api_key = _openai_api_key()
+    if not api_key:
+        return {}
+
+    _MARKETPLACE_SOURCES = {'amazon', 'walmart', 'etsy', 'lazada', 'tokopedia', 'google.shopping', 'shopee'}
+    product_brief = ''
+    marketplace_lines: list[str] = []
+    social_lines: list[str] = []
+    other_lines: list[str] = []
+
+    for s in signals:
+        text = (s.get('signalText') or '').strip()
+        if not text:
+            continue
+        src = (s.get('sourceType') or '').lower()
+        if src == 'product_brief':
+            product_brief = text
+        elif src in _MARKETPLACE_SOURCES:
+            marketplace_lines.append(f'[{src}] {text[:700]}')
+        elif src in ('social', 'tiktok', 'instagram', 'reddit', 'twitter'):
+            social_lines.append(f'[{src}] {text[:500]}')
+        elif src == 'pipeline_fallback':
+            if not product_brief:
+                product_brief = text
+        else:
+            other_lines.append(f'[{src}] {text[:400]}')
+
+    signal_block = '\n'.join(marketplace_lines[:25] + social_lines[:15] + other_lines[:5])
+
+    extracted = insights.get('extractedData', {})
+    gtm = json.dumps(insights.get('gtmIntelligence', {}), ensure_ascii=False)
+    finance = json.dumps(insights.get('financeIntelligence', {}), ensure_ascii=False)
+
+    system_msg = (
+        'You are a senior market intelligence analyst generating a structured dashboard for a founder. '
+        'Ground every specific number — prices, ratings, review counts, sales figures, brand names — '
+        'in the scraped signals provided. If a data point appears in the signals, use it exactly. '
+        'If a data point is not in the signals, derive a realistic estimate from category and country context. '
+        'Never invent brand names not found in the signals. '
+        'Return ONLY a valid JSON object. No markdown, no code blocks, no commentary.'
+    )
+
+    prompt = (
+        f'Generate complete market dashboard data for a founder in the {category} category launching in {country}.\n\n'
+        f'PRODUCT CONTEXT:\n{product_brief or f"Category: {category}, Country: {country}"}\n\n'
+        'LOCAL MODEL ANALYSIS (pre-processed intelligence — use as supporting context):\n'
+        f'GTM Intelligence: {gtm}\n'
+        f'Finance Intelligence: {finance}\n'
+        f'Extracted Competitors from Signals: {json.dumps(extracted.get("competitors", []), ensure_ascii=False)}\n'
+        f'Extracted Price Range: {json.dumps(extracted.get("priceRange", {}), ensure_ascii=False)}\n'
+        f'Top Products Seen: {json.dumps(extracted.get("topProducts", []), ensure_ascii=False)}\n\n'
+        f'LIVE SCRAPED MARKET SIGNALS (primary source — ground your analysis here):\n'
+        f'{signal_block or "(no live signals — use product context and category knowledge)"}\n\n'
+        '---\n\n'
+        'Return a JSON object with exactly these 4 top-level keys: marketOverview, demandPulse, competitorMirror, launchCompass\n\n'
+        'marketOverview schema:\n'
+        '{"trendVelocity":"string e.g. +67%","trendVelocityStatus":"context e.g. +12% vs last month","estimatedDemand":"string e.g. 12.4K","priceTarget":"string e.g. $19","marketGaps":integer,'
+        '"topSkus":[{"name":"str","tag":"str e.g. Amazon Hero SKU","price":"$X.XX","stock":"str e.g. 82% or In Stock","momentum":"str e.g. +12.4%"}],'
+        '"regionDemand":[{"city":"str","percentage":float}]}\n\n'
+        'demandPulse schema:\n'
+        '{"demandSupply":{"points":[{"product":"str","demand":0-100,"saturation":0-100}],"insights":[{"label":"str","formula":"str","tone":"opportunity|danger|muted|default"}]},'
+        '"marketplaceShare":[{"name":"str","value":0-100,"change":number}],'
+        '"searchIntent":{"groups":[{"tone":"commercial|informational|transactional","label":"str"}],"keywords":[{"keyword":"str","volume":number,"change":number,"tone":"commercial|informational|transactional"}]},'
+        '"priceTierMovement":[{"name":"str","range":"str","value":number,"change":number,"tone":"opportunity|danger|muted|default"}],'
+        '"claimTrends":{"rising":[{"name":"str","change":number,"volume":"str","saturation":"str"}],"falling":[{"name":"str","change":number,"volume":"str","saturation":"str"}]},'
+        '"advisor":{"recommendation":"str","signals":[{"label":"str","value":"str","detail":"str","icon":"up|down|trend|target","tone":"positive|negative|neutral"}]}}\n\n'
+        'competitorMirror schema:\n'
+        '{"competitors":[{"brand":"str","sku":"str","avgPrice":"$X.XX","priceDelta":"str e.g. -2.1%","promoIntensity":"Low|Medium|High|Very High","promoLevel":"low|medium|high|very-high","monthlySales":"str e.g. 45.2K","salesDelta":"str e.g. +5.4%","rating":"str e.g. 4.7","reviews":"str e.g. 94K"}],'
+        '"pricingTiers":[{"label":"$X-$Y","note":"str","demand":"str e.g. 23% demand","percentage":number,"type":"saturated|sweet-spot|premium"}],'
+        '"advisorRecommendation":"str","advisorSignals":[{"label":"str","value":"str"}]}\n\n'
+        'launchCompass schema:\n'
+        '{"seasonality":[{"id":"jan","month":"J","index":number,"status":"peak|normal|avoid"},{"id":"feb","month":"F",...},...],'
+        '"citySales":[{"city":"str","sales":"str","growth":"str","channels":"str","rating":"str","searchDemand":"str","personaFit":"str","gdpPerCapita":"str","signal":"Best first city|High intent|Expansion pocket|Low competition"}],'
+        '"advisorRecommendation":"str","advisorSignals":[{"label":"str","value":"str"}]}\n\n'
+        'Constraints:\n'
+        '- seasonality: exactly 12 entries jan through dec, in order\n'
+        '- topSkus: 3-5 entries, use real product names from signals where available\n'
+        f'- competitors: 3-5 entries, use real brand names from signals where available\n'
+        f'- regionDemand: 3-5 cities relevant to {country}\n'
+        f'- citySales: 3-4 cities relevant to {country}\n'
+        '- demandSupply.points: 3-6 entries\n'
+        f'- All values must be realistic for the {category} category in {country}'
+    )
+
+    try:
+        response = httpx.post(
+            f'{OPENAI_BASE_URL}/chat/completions',
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={
+                'model': OPENAI_MODEL,
+                'messages': [
+                    {'role': 'system', 'content': system_msg},
+                    {'role': 'user', 'content': prompt},
+                ],
+                'max_tokens': 6000,
+                'temperature': 0.2,
+                'response_format': {'type': 'json_object'},
+            },
+            timeout=max(OPENAI_TIMEOUT_SECONDS, 120),
+        )
+        response.raise_for_status()
+        content = response.json()['choices'][0]['message']['content']
+        return json.loads(content)
+    except Exception as exc:
+        print(f'[openai] Dashboard data generation failed: {exc}')
+        return {}
+
+
 def create_extra_analysis(
     *,
     category: str,
@@ -284,13 +398,15 @@ def create_extra_analysis(
                 'reason': 'dataset response missing answer_text',
             }
 
-        return _synthesize_extra_analysis_from_text(
+        result = _synthesize_extra_analysis_from_text(
             category=category,
             country=country,
             insights=insights,
             signals=signals,
             answer_text=answer_text,
         )
+        result['dashboardData'] = _generate_dashboard_data(category, country, insights, signals)
+        return result
 
     review_payload = {
         'category': category,
@@ -348,4 +464,5 @@ def create_extra_analysis(
         'source': 'openai',
         'model': payload.get('model', OPENAI_MODEL),
         **parsed,
+        'dashboardData': _generate_dashboard_data(category, country, insights, signals),
     }
