@@ -1,34 +1,44 @@
 # ConsumerIQ
 
-AI-powered consumer intelligence platform. Scrapes marketplace and social signals via Bright Data, runs LLM inference on-device (GPU), and synthesises persona reports.
+AI-powered consumer intelligence platform for founders launching e-commerce products. Live BrightData scraping → local Llama 3.2 3B synthesis → GPT dashboard generation → persistent knowledge graph memory via Cognee.
+
+For the deep technical writeup (3-layer LLM pipeline, GPU-in-k3d workaround, recency-weighted pgvector, Cognee integration), see [ForHackathon.md](ForHackathon.md).
 
 ## Architecture
 
 | Layer | Service | Language | Role |
 |---|---|---|---|
+| Frontend | `consumeriq-frontend` | React / Vite / TS | Onboarding flow, dashboard, agent chat |
 | Gateway | `consumeriq-nginx` | NGINX | Reverse proxy, `auth_request` token validation |
-| Auth / Orchestration | `consumeriq-go` | Go | Auth, opaque session tokens, founder form |
-| Orchestration worker | `consumeriq-go-worker` | Go / asynq | `background` queue — pipeline orchestration |
-| API | `consumeriq-api` | Python / FastAPI | REST endpoints, task dispatch |
-| Inference worker | `consumeriq-worker-inference` | Python / Celery | `inference` + `synthesis` queues (concurrency 1 each) |
+| Auth / Orchestration | `consumeriq-go` | Go | Auth, opaque session tokens, founder form ingestion |
+| Orchestration worker | `consumeriq-go-worker` | Go / asynq | `background` queue — form-received fan-out |
+| API | `consumeriq-api` | Python / FastAPI | REST endpoints, task dispatch, admin endpoints |
+| Inference worker | `consumeriq-worker-inference` | Python / Celery | `inference` + `synthesis` queues |
 | Scraping worker | `consumeriq-worker-scraping` | Python / Celery | `scraping` queue (concurrency 4) |
-| LLM | `consumeriq-inference` | llama.cpp | Llama 3.2 3B GGUF — GPU |
-| Embeddings | `consumeriq-embeddings` | llama.cpp | Multilingual MiniLM L12 GGUF |
-| Translator | `consumeriq-translator` | llama.cpp | Qwen 3.5 0.8B GGUF — GPU (CJK → EN) |
-| Store | PostgreSQL + Redis | — | Persistence + task queues |
+| LLM | `consumeriq-inference` | llama-cpp-python | Llama 3.2 3B GGUF — GPU |
+| Embeddings | `consumeriq-embeddings` | FastAPI + fastembed | Multilingual MiniLM L12 — OpenAI-compatible `/v1/embeddings` |
+| Translator | `consumeriq-translator` | llama-cpp-python | Qwen 3.5 0.8B GGUF — GPU (CJK → EN) |
+| Store | PostgreSQL + Redis | — | Persistence + task queues + pipeline state |
+| Memory | Cognee | — | Persistent knowledge graph (env-gated, default off) |
 
 ### Pipeline (founder form → dashboard)
 
 ```
 POST /go-api/founder-form/submit
-  → Go enqueues background:form_received
-    → go-worker writes form_pipeline:{formId} key to Redis
-    → go-worker calls POST /api/scrape-market-signals  → scraping queue
-    → go-worker calls POST /api/scan-market/{category} → inference queue
-      → inference worker runs ReAct agent, writes persona to Postgres
+  └─ Go writes form_pipeline:{formId} to Redis, enqueues asynq form_received
+     └─ go-worker calls POST /api/scrape-market-signals  → scraping queue
+        ├─ Layer 0: Llama generates 6 keywords from product brief
+        ├─ BrightData scrapes up to 50 signals (marketplace + social)
+        ├─ Signals embedded (BGE) + inserted into marketSignals (pgvector)
+        ├─ [optional] Cognee ingests signals into knowledge graph
+        └─ dispatches processLlmInsights → synthesis queue
+           ├─ Layer 1: Llama omni-prompt → gtm/finance/security/extractedData
+           ├─ Layer 2: GPT omni-prompt → marketOverview/demandPulse/competitorMirror/launchCompass
+           ├─ [optional] Cognee ingests dashboard entities into graph
+           └─ writes categoryInsights row, sets inference_stage=completed
 ```
 
-Frontend polls `/api/form-pipeline/{formId}` every 3 s. Dashboard unlocks once inference status is `completed` (or `failed`).
+The frontend polls `/api/form-pipeline/{formId}` every 3 s. Five granular stages are surfaced (`pending → analyzing → cross_referencing → completed | failed`); the "Open dashboard" button stays disabled until `completed` is verified with non-empty `dashboardData`. No timeout escape, no mock-data fallback — see [ForHackathon.md §4](ForHackathon.md).
 
 ---
 
@@ -144,13 +154,48 @@ kubectl get pods -n consumeriq -w
 
 ## Environment Variables
 
-| Variable | Required | Description |
+See [infra/k8s/backend/.env.example](infra/k8s/backend/.env.example) for the complete list with inline docs. Highlights:
+
+**Required**
+
+| Variable | Description |
+|---|---|
+| `BRIGHTDATA_API_TOKEN` | BrightData API key for marketplace + social scraping |
+| `OPENAI_API_KEY` | OpenAI key for Layer 2 dashboard generation (and Cognee, when enabled) |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_URL` | Redis connection string |
+| `JWT_SECRET` | Go service session token signing key |
+
+**Pipeline tuning**
+
+| Variable | Default | Description |
 |---|---|---|
-| `BRIGHTDATA_API_TOKEN` | Yes | Bright Data API key for marketplace + social scraping |
-| `SCRAPINGBEE_API_KEY` | No | Google SERP fallback (optional) |
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `REDIS_URL` | Yes | Redis connection string |
-| `JWT_SECRET` | Yes | Go service session token signing key |
+| `PIPELINE_MAX_SIGNALS` | `50` | Cap on signals stored per scrape run |
+| `PIPELINE_MARKETPLACE_RECORD_LIMIT` | `100` | Records pulled per marketplace per keyword |
+| `PIPELINE_SKIP_MARKETPLACES` | `lazada` | CSV of marketplaces to skip |
+| `SIGNAL_RECENCY_WEIGHT` | `0.005` | Penalty per day added to pgvector distance |
+
+**Daily cron jobs** — all default `false` so dev runs don't burn credits
+
+| Variable | Cron | Description |
+|---|---|---|
+| `DAILY_REFRESH_ENABLED` | 02:00 UTC | Re-scrape market signals for every user |
+| `COMPLIANCE_SCRAPE_ENABLED` | 03:00 UTC | LLM generates 5 compliance keywords per user, scrapes them via SERP |
+| `SIGNAL_TTL_ENABLED` + `SIGNAL_TTL_MONTHS=4` | 01:00 UTC | DELETE marketSignals rows older than the cutoff |
+
+**Cognee memory** — env-gated knowledge graph layer
+
+| Variable | Default | Description |
+|---|---|---|
+| `COGNEE_ENABLED` | `false` | Master switch — ingests every scrape + dashboard into a graph; adds `memory_search` tool to ReAct agent |
+| `COGNEE_USE_LOCAL_INFERENCE` | `false` | When `true`, Cognee uses local Llama + embeddings instead of OpenAI |
+| `COGNEE_LLM_MODEL` | `gpt-4o-mini` | Cloud-mode entity-extraction model |
+
+**Admin / cron auth**
+
+| Variable | Description |
+|---|---|
+| `ADMIN_API_TOKEN` | Required for `/api/admin/*` endpoints and the three CronJobs (must match the `consumeriq-admin` Secret value) |
 
 ---
 
@@ -201,14 +246,43 @@ POST /api/brightdata/snapshots/{snapshot_id}/download
 
 | Queue | Worker | Tasks | Priority |
 |---|---|---|---|
-| `inference` | `consumeriq-worker-inference` | `runAgentTask` | HIGH — drained first |
-| `synthesis` | `consumeriq-worker-inference` | `processLlmInsights` | LOW — drained after inference |
-| `scraping` | `consumeriq-worker-scraping` | `scrapeMarketSignals`, marketplace/social scrape tasks | — |
+| `inference` | `consumeriq-worker-inference` | `runAgentTask`, `runPersonaDecodeTask` | HIGH |
+| `synthesis` | `consumeriq-worker-inference` | `processLlmInsights`, `ingestSignalsIntoMemory`, `ingestDashboardIntoMemory` | MEDIUM |
+| `scraping` | `consumeriq-worker-scraping` | `scrapeMarketSignals`, `refreshUserMarketSignals`, `scrapeComplianceSignals`, marketplace/social tasks | LOW |
 | `background` | `consumeriq-go-worker` | `background:form_received` | — |
 
-**Backpressure:**
-- Python API `/api/agent/run` returns `503` when `inference` queue depth ≥ 5
-- Go worker skips inference trigger when `inference` Redis list length ≥ 10
+**Backpressure** (enable with `BACKPRESSURE_ENABLED=true`):
+- Python API `/api/agent/run` and `/api/persona-decode` return `503` when `inference` queue depth ≥ `INFERENCE_QUEUE_LIMIT`
+
+## Daily Automation (CronJobs)
+
+Three Kubernetes CronJobs ship with the cluster, all idle by default. Each runs a `curl` container that hits an admin endpoint on the FastAPI service. The endpoint short-circuits with `{"status": "skipped"}` unless the corresponding env flag is `true`.
+
+| CronJob | Schedule | Endpoint | Env flag |
+|---|---|---|---|
+| `consumeriq-prune-signals` | 01:00 UTC | `/api/admin/prune-old-signals` | `SIGNAL_TTL_ENABLED` |
+| `consumeriq-daily-refresh` | 02:00 UTC | `/api/admin/trigger-daily-refresh` | `DAILY_REFRESH_ENABLED` |
+| `consumeriq-compliance-scrape` | 03:00 UTC | `/api/admin/trigger-compliance-scrape` | `COMPLIANCE_SCRAPE_ENABLED` |
+
+**To enable in production:**
+
+```powershell
+# 1. Create the admin token Secret
+kubectl create secret generic consumeriq-admin -n consumeriq `
+  --from-literal=ADMIN_API_TOKEN="$(openssl rand -hex 32)"
+
+# 2. Flip the env flags in infra/k8s/backend/api-deployment.yaml
+#    and worker-scraping-deployment.yaml from "false" to "true"
+
+# 3. Reapply
+kubectl apply -k infra/k8s/backend/
+```
+
+Inspect a manual run:
+```powershell
+kubectl create job --from=cronjob/consumeriq-daily-refresh manual-refresh-1 -n consumeriq
+kubectl logs -n consumeriq job/manual-refresh-1
+```
 
 ---
 
