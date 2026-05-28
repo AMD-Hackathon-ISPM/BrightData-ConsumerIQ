@@ -54,6 +54,17 @@ CATEGORY_MARKETPLACES: dict[str, list[str]] = {
 }
 
 _DEFAULT_MARKETPLACES = ['amazon', 'google.shopping']
+_PIPELINE_KEYWORD_LIMIT = int(os.getenv('PIPELINE_KEYWORD_LIMIT', '6'))
+_PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS = int(os.getenv('PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS', '180'))
+_PIPELINE_SNAPSHOT_WAIT_SECONDS = int(os.getenv('PIPELINE_SNAPSHOT_WAIT_SECONDS', '600'))
+_PIPELINE_MAX_SIGNALS = int(os.getenv('PIPELINE_MAX_SIGNALS', '12'))
+_PIPELINE_MARKETPLACE_RECORD_LIMIT = int(os.getenv('PIPELINE_MARKETPLACE_RECORD_LIMIT', '50'))
+_PIPELINE_SKIP_MARKETPLACES = {
+    item.strip().lower()
+    for item in os.getenv('PIPELINE_SKIP_MARKETPLACES', 'lazada').split(',')
+    if item.strip()
+}
+_PIPELINE_ALLOW_FALLBACK_SIGNALS = os.getenv('PIPELINE_ALLOW_FALLBACK_SIGNALS', 'true').lower() == 'true'
 DATABASE_URL = os.getenv(
     'DATABASE_URL',
     'postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.local:5432/consumeriq',
@@ -88,6 +99,31 @@ celeryApp.conf.update(
 
 def _formatVector(values: list[float]) -> str:
     return '[' + ','.join(f'{value:.6f}' for value in values) + ']'
+
+
+def _recordFallbackText(record: dict[str, Any]) -> str:
+    compact = {
+        key: value
+        for key, value in record.items()
+        if key
+        in {
+            'title',
+            'product_name',
+            'name',
+            'description',
+            'url',
+            'post_url',
+            'rating',
+            'reviews_count',
+            'final_price',
+            'sold',
+            'play_count',
+            'digg_count',
+            'comment_count',
+        }
+        and value not in (None, '', [], {})
+    }
+    return json.dumps(compact or record, ensure_ascii=False, default=str)[:1000]
 
 
 def _fetchRelevantSignals(categoryName: str, country: str = '', *, limit: int = 50) -> list[dict[str, Any]]:
@@ -235,7 +271,26 @@ def _runLlmInsights(categoryName: str, signals: list[dict[str, Any]]) -> dict[st
     }
 
 
-def _saveCategoryInsights(categoryName: str, country: str, insights: dict[str, Any]) -> None:
+def _runOpenAiExtraAnalysis(categoryName: str, country: str, insights: dict[str, Any], signals: list[dict[str, Any]]) -> dict[str, Any]:
+    try:
+        from backend.models.openai_cross_reference import create_extra_analysis
+
+        return create_extra_analysis(
+            category=categoryName,
+            country=country,
+            insights=insights,
+            signals=signals,
+        )
+    except Exception as exc:
+        print(f'[openai] Extra analysis failed: {exc}')
+        return {
+            'status': 'failed',
+            'source': 'openai',
+            'error': str(exc),
+        }
+
+
+def _saveCategoryInsightsLegacy(categoryName: str, country: str, insights: dict[str, Any]) -> None:
     with psycopg2.connect(DATABASE_URL) as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -267,6 +322,47 @@ def _saveCategoryInsights(categoryName: str, country: str, insights: dict[str, A
                     json.dumps(insights.get('securityCompliance', {})),
                 ),
             )
+
+
+def _saveCategoryInsights(categoryName: str, country: str, insights: dict[str, Any]) -> None:
+    try:
+        with psycopg2.connect(DATABASE_URL) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    '''
+                    INSERT INTO categoryInsights (
+                        category,
+                        country,
+                        status,
+                        gtmIntelligence,
+                        financeIntelligence,
+                        securityCompliance,
+                        extraAnalysis,
+                        lastUpdated
+                    )
+                    VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, NOW())
+                    ON CONFLICT (category, country)
+                    DO UPDATE SET
+                        status = EXCLUDED.status,
+                        gtmIntelligence = EXCLUDED.gtmIntelligence,
+                        financeIntelligence = EXCLUDED.financeIntelligence,
+                        securityCompliance = EXCLUDED.securityCompliance,
+                        extraAnalysis = EXCLUDED.extraAnalysis,
+                        lastUpdated = NOW()
+                    ''',
+                    (
+                        categoryName,
+                        country,
+                        insights['status'],
+                        json.dumps(insights.get('gtmIntelligence', {})),
+                        json.dumps(insights.get('financeIntelligence', {})),
+                        json.dumps(insights.get('securityCompliance', {})),
+                        json.dumps(insights.get('extraAnalysis', {})),
+                    ),
+                )
+    except psycopg2.errors.UndefinedColumn:
+        print('[openai] extraAnalysis column is missing; saving legacy insight fields only.')
+        _saveCategoryInsightsLegacy(categoryName, country, insights)
 
 
 def _generateScrapingKeywords(
@@ -306,10 +402,34 @@ def _generateScrapingKeywords(
         if match:
             parsed = json.loads(match.group())
             if isinstance(parsed, list) and parsed:
-                return [str(k).strip() for k in parsed if k][:8]
+                keywords = []
+                seen = set()
+                for keyword in parsed:
+                    normalized = str(keyword).strip()
+                    if not normalized:
+                        continue
+                    key = normalized.lower()
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    keywords.append(normalized)
+                    if len(keywords) == 6:
+                        return keywords
+                if keywords:
+                    while len(keywords) < 6:
+                        keywords.append(f'{product_name or category} {len(keywords) + 1}')
+                    return keywords
     except Exception as exc:
         print(f'[scraping] Keyword LLM generation failed: {exc}')
-    return [w for w in [product_name, category] if w]
+    fallback_seed = product_name or category or 'product'
+    return [
+        fallback_seed,
+        f'{fallback_seed} reviews',
+        f'{fallback_seed} price',
+        f'{fallback_seed} alternatives',
+        f'{category or fallback_seed} best seller',
+        f'{fallback_seed} customer demand',
+    ]
 
 
 @celeryApp.task(name='scrapeMarketSignals', queue='scraping')
@@ -343,25 +463,36 @@ def scrapeMarketSignals(
     else:
         print(f'[scraping] Using provided keywords: {keywords}')
 
-    print(f'[scraping] Starting signal scrape for category={category}, country={country}, keywords={keywords}')
+    print(f'[scraping] Starting signal scrape for category={category}, country={country}, keywords={keywords}', flush=True)
 
-    _MAX_SIGNALS = 1000
+    _MAX_SIGNALS = max(1, _PIPELINE_MAX_SIGNALS)
     marketplaces = CATEGORY_MARKETPLACES.get(category.lower(), _DEFAULT_MARKETPLACES)
+    if _PIPELINE_SKIP_MARKETPLACES:
+        marketplaces = [
+            mp for mp in marketplaces if mp.lower() not in _PIPELINE_SKIP_MARKETPLACES
+        ]
     rows: list[tuple[str, str, str, str, str]] = []
 
-    for keyword in keywords[:5]:
+    for keyword in keywords[:_PIPELINE_KEYWORD_LIMIT]:
         if len(rows) >= _MAX_SIGNALS:
             break
 
+        print(f'[scraping] Social discovery keyword={keyword}', flush=True)
         socialData = runSocialDiscovery(
             keyword=keyword,
             country_code=country,
             limit=3,
             include_scrape=False,
+            wait_for_snapshot=True,
+            timeout_seconds=_PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS,
+            snapshot_wait_seconds=_PIPELINE_SNAPSHOT_WAIT_SECONDS,
         )
+        print(f'[scraping] Social discovery status={socialData.get("status")} keyword={keyword}', flush=True)
         if socialData.get('status') == 'success':
             for result in socialData.get('serpResults', [])[:3]:
                 text = f"{result.get('title', '')} — {result.get('description', '')}"
+                if not text.strip(' —'):
+                    text = _recordFallbackText(result.get('record') or {})
                 if text.strip():
                     rows.append((text[:1000], result.get('source', 'social'), result.get('url', ''), country, category))
 
@@ -369,13 +500,19 @@ def scrapeMarketSignals(
             if len(rows) >= _MAX_SIGNALS:
                 break
 
+            print(f'[scraping] Marketplace discovery marketplace={mp} keyword={keyword}', flush=True)
             marketData = runMarketplaceDiscovery(
                 keyword=keyword,
                 marketplace=mp,
                 country_code=country,
                 limit=3,
                 include_scrape=False,
+                wait_for_snapshot=True,
+                timeout_seconds=_PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS,
+                snapshot_wait_seconds=_PIPELINE_SNAPSHOT_WAIT_SECONDS,
+                record_limit=_PIPELINE_MARKETPLACE_RECORD_LIMIT,
             )
+            print(f'[scraping] Marketplace discovery status={marketData.get("status")} marketplace={mp} keyword={keyword}', flush=True)
             if marketData.get('status') == 'success':
                 for result in marketData.get('results', [])[:3]:
                     record = result.get('record') or {}
@@ -386,15 +523,43 @@ def scrapeMarketSignals(
                     text = f"{result.get('title', '')} — {result.get('description', '')}"
                     if metrics:
                         text = f"{text} ({', '.join(metrics)})"
+                    if not text.strip(' —'):
+                        text = _recordFallbackText(record)
                     if text.strip():
                         rows.append((text[:1000], mp, result.get('url', ''), country, category))
+    if not rows and _PIPELINE_ALLOW_FALLBACK_SIGNALS:
+        fallback_parts = [
+            f'Product: {product_name or category}',
+            f'Category: {category}',
+            f'Description: {product_description}',
+            f'USP: {unique_selling_point}',
+            f'Features: {main_features}',
+            f'Customer segment: {customer_segment}',
+            f'Pain point: {pain_point}',
+            'Bright Data live collection did not return records before the pipeline timeout.',
+        ]
+        fallback_text = ' | '.join(part for part in fallback_parts if part and not part.endswith(': '))
+        rows.append((fallback_text[:1000], 'pipeline_fallback', '', country, category))
+        print('[scraping] Stored fallback signal because Bright Data returned no records before timeout.', flush=True)
     if rows:
+        embedder = createEmbedder()
+        try:
+            vectors = embedTexts(embedder, [row[0] for row in rows])
+        finally:
+            del embedder
+            gc.collect()
+
+        embedded_rows = [
+            (signal_text, source_type, source_url, country_value, category_value, _formatVector(vector))
+            for (signal_text, source_type, source_url, country_value, category_value), vector in zip(rows, vectors)
+        ]
+
         with psycopg2.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
                 cur.executemany(
-                    'INSERT INTO marketSignals (signalText, sourceType, sourceUrl, signalDate, country, category) '
-                    'VALUES (%s, %s, %s, CURRENT_DATE, %s, %s)',
-                    rows,
+                    'INSERT INTO marketSignals (signalText, sourceType, sourceUrl, signalDate, country, category, embedding) '
+                    'VALUES (%s, %s, %s, CURRENT_DATE, %s, %s, %s::vector)',
+                    embedded_rows,
                 )
 
     stored = len(rows)
@@ -510,6 +675,7 @@ def processLlmInsights(self, categoryName: str, country: str = ''):
 
     translatedSignals = _translateSignalsIfNeeded(signals)
     insights = _runLlmInsights(categoryName, translatedSignals)
+    insights['extraAnalysis'] = _runOpenAiExtraAnalysis(categoryName, country, insights, translatedSignals)
     _saveCategoryInsights(categoryName, country, insights)
 
     print(f'Job complete for {categoryName}! Saved to Postgres.')

@@ -218,6 +218,7 @@ BRIGHTDATA_ENDPOINTS: dict[str, BrightDataEndpoint] = {
         scrape_type='discover_new',
         discover_by='keyword',
         required_fields=('keyword', 'domain'),
+        optional_fields=('limit',),
     ),
     'lazada.products.discover_seller': BrightDataEndpoint(
         key='lazada.products.discover_seller',

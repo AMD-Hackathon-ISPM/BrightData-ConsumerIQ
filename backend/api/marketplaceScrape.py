@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from backend.brightdata.client import scrape_brightdata
+from backend.brightdata.client import resolve_snapshot_if_needed, scrape_brightdata
 
 router = APIRouter(tags=['marketplace'])
 
@@ -323,10 +323,18 @@ def _buildMarketplaceSignals(records: list[dict[str, Any]], marketplace: str) ->
     }
 
 
-def _discoveryInput(keyword: str, marketplace: str, country_code: str) -> dict[str, Any]:
+def _discoveryInput(
+    keyword: str,
+    marketplace: str,
+    country_code: str,
+    record_limit: int | None = None,
+) -> dict[str, Any]:
     normalized = marketplace.lower()
     if normalized == 'lazada':
-        return {'keyword': keyword, 'domain': _lazadaDomain(country_code)}
+        payload: dict[str, Any] = {'keyword': keyword, 'domain': _lazadaDomain(country_code)}
+        if record_limit and record_limit > 0:
+            payload['limit'] = record_limit
+        return payload
     if normalized == 'walmart':
         return {'keyword': keyword, 'domain': 'https://www.walmart.com/', 'all_variations': True}
     if normalized == 'amazon':
@@ -380,6 +388,10 @@ def runMarketplaceDiscovery(
     language: str = 'en',
     limit: int = 5,
     include_scrape: bool = True,
+    wait_for_snapshot: bool = False,
+    timeout_seconds: int = 120,
+    snapshot_wait_seconds: int = 90,
+    record_limit: int | None = None,
 ) -> dict:
     endpoint = _marketplaceDiscoveryEndpoint(marketplace)
     if endpoint is None:
@@ -393,8 +405,11 @@ def runMarketplaceDiscovery(
 
     result = scrape_brightdata(
         endpoint_key=endpoint,
-        input_records=[_discoveryInput(keyword, marketplace, country_code)],
+        input_records=[_discoveryInput(keyword, marketplace, country_code, record_limit)],
+        timeout_seconds=timeout_seconds,
     )
+    if wait_for_snapshot:
+        result = resolve_snapshot_if_needed(result, max_wait_seconds=snapshot_wait_seconds)
     records = _recordsFromResult(result)[:limit]
     results = [
         {

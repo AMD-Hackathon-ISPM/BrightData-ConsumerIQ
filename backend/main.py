@@ -2,9 +2,10 @@ import asyncio
 import json
 import os
 from functools import partial
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Path, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 _DATABASE_URL = os.getenv(
     'DATABASE_URL',
@@ -98,6 +99,13 @@ class PersonaDecodeRequest(BaseModel):
     region: str = ''
 
 
+class ExtraAnalysisRequest(BaseModel):
+    category: str
+    country: str = ''
+    insights: dict[str, Any]
+    signals: list[dict[str, Any]] = Field(default_factory=list)
+
+
 @app.post('/api/agent/run')
 async def agentRun(payload: AgentRunRequest, request: Request):
     if _BACKPRESSURE_ENABLED and _inferenceQueueDepth() >= _INFERENCE_QUEUE_LIMIT:
@@ -174,6 +182,32 @@ async def personaDecodeRun(payload: PersonaDecodeRequest):
     return {'taskId': task.id, 'status': 'processing'}
 
 
+@app.post('/api/insights/extra-analysis')
+async def createInsightExtraAnalysis(payload: ExtraAnalysisRequest):
+    try:
+        from backend.models.openai_cross_reference import create_extra_analysis
+    except ModuleNotFoundError as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f'OpenAI extra analysis dependency is not installed: {error.name}',
+        ) from error
+
+    loop = asyncio.get_event_loop()
+    try:
+        return await loop.run_in_executor(
+            None,
+            partial(
+                create_extra_analysis,
+                category=payload.category,
+                country=payload.country,
+                insights=payload.insights,
+                signals=payload.signals,
+            ),
+        )
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f'OpenAI extra analysis failed: {error}') from error
+
+
 @app.get('/api/form-pipeline/{form_id}')
 async def getFormPipeline(formId: str = Path(..., alias='form_id')):
     import redis as redis_lib
@@ -209,7 +243,7 @@ async def getFormPipeline(formId: str = Path(..., alias='form_id')):
         except Exception:
             result['scraping'] = {'status': 'unknown', 'signalsStored': 0}
     else:
-        result['scraping'] = {'status': 'skipped', 'signalsStored': 0}
+        result['scraping'] = {'status': 'pending', 'signalsStored': 0}
 
     inference_task_id = pipeline.get('inference_task_id', '')
     if inference_task_id:
@@ -226,7 +260,7 @@ async def getFormPipeline(formId: str = Path(..., alias='form_id')):
         except Exception:
             result['inference'] = {'status': 'unknown'}
     else:
-        result['inference'] = {'status': 'skipped'}
+        result['inference'] = {'status': 'pending'}
 
     return result
 

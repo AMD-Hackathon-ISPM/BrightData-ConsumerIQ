@@ -56,6 +56,7 @@ CREATE TABLE categoryInsights (
     gtmIntelligence     JSONB,
     financeIntelligence JSONB,
     securityCompliance  JSONB,
+    extraAnalysis       JSONB,
     UNIQUE (category, country)
 );
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -287,4 +288,72 @@ def download_snapshot(
         'datasetKey': dataset_key,
         'records': data,
         'validation': validation,
+    }
+
+
+def _snapshot_progress_status(progress: Any) -> str:
+    if isinstance(progress, dict):
+        for key in ('status', 'state'):
+            value = progress.get(key)
+            if isinstance(value, str):
+                return value.lower()
+        for key in ('snapshot', 'data', 'result'):
+            value = progress.get(key)
+            nested = _snapshot_progress_status(value)
+            if nested:
+                return nested
+    return ''
+
+
+def _snapshot_is_ready(progress: Any) -> bool:
+    if isinstance(progress, dict):
+        for key in ('ready', 'is_ready', 'completed'):
+            if progress.get(key) is True:
+                return True
+    status = _snapshot_progress_status(progress)
+    return status in {'ready', 'completed', 'complete', 'done', 'success', 'finished'}
+
+
+def resolve_snapshot_if_needed(
+    result: dict[str, Any],
+    *,
+    dataset_key: str | None = None,
+    max_wait_seconds: int = 90,
+    poll_interval_seconds: int = 5,
+    timeout_seconds: int = 120,
+) -> dict[str, Any]:
+    snapshot_id = result.get('snapshotId')
+    if result.get('status') != 'snapshot_pending' or not snapshot_id:
+        return result
+
+    dataset_key = dataset_key or result.get('datasetKey')
+    deadline = time.monotonic() + max_wait_seconds
+    progress_checks: list[Any] = []
+
+    while time.monotonic() < deadline:
+        progress_result = get_snapshot_progress(snapshot_id, timeout_seconds=min(timeout_seconds, 30))
+        progress_checks.append(progress_result.get('progress', progress_result))
+
+        if progress_result.get('status') == 'success' and _snapshot_is_ready(progress_result.get('progress')):
+            downloaded = download_snapshot(
+                snapshot_id,
+                dataset_key=dataset_key,
+                timeout_seconds=timeout_seconds,
+            )
+            return {
+                **result,
+                **downloaded,
+                'endpoint': result.get('endpoint'),
+                'query': result.get('query'),
+                'input': result.get('input'),
+                'snapshotProgress': progress_checks,
+            }
+
+        time.sleep(poll_interval_seconds)
+
+    return {
+        **result,
+        'status': 'snapshot_timeout',
+        'snapshotProgress': progress_checks,
+        'error': f'Bright Data snapshot was not ready after {max_wait_seconds} seconds.',
     }

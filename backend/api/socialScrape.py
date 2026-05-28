@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from backend.brightdata.client import scrape_brightdata
+from backend.brightdata.client import resolve_snapshot_if_needed, scrape_brightdata
 
 router = APIRouter(tags=['social'])
 
@@ -234,12 +234,18 @@ def runSocialDiscovery(
     language: str = 'en',
     limit: int = 5,
     include_scrape: bool = True,
+    wait_for_snapshot: bool = False,
+    timeout_seconds: int = 120,
+    snapshot_wait_seconds: int = 90,
 ) -> dict:
     country = country_code.upper() if country_code else ''
     result = scrape_brightdata(
         endpoint_key='tiktok.posts.discover_keyword',
         input_records=[{'search_keyword': keyword, 'country': country}],
+        timeout_seconds=timeout_seconds,
     )
+    if wait_for_snapshot:
+        result = resolve_snapshot_if_needed(result, max_wait_seconds=snapshot_wait_seconds)
     records = _recordsFromResult(result)
     serp_results = [
         {
