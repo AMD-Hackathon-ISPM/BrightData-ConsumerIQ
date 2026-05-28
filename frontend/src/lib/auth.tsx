@@ -6,9 +6,16 @@ import {
     useState,
     type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const STORAGE_KEY = "consumer-iq-auth";
 const TOKEN_KEY = "consumer-iq-token";
+const SESSION_CACHE_KEYS = [
+    "ciq_persona_data",
+    "ciq_persona_task_id",
+    "ciq_demand_pulse_data",
+    "ciq_insights_data",
+] as const;
 
 export interface AuthUser {
     fullName: string;
@@ -78,13 +85,32 @@ function persistUser(user: AuthUser | null, token?: string) {
     }
 }
 
+function clearSessionCache() {
+    if (typeof window === "undefined") return;
+    for (const key of SESSION_CACHE_KEYS) {
+        localStorage.removeItem(key);
+    }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+    const queryClient = useQueryClient();
     const [user, setUser] = useState<AuthUser | null>(() => readStoredUser());
 
+    const setAuthenticatedUser = useCallback(
+        (next: AuthUser, token: string) => {
+            if (user?.email !== next.email) {
+                clearSessionCache();
+                queryClient.clear();
+            }
+            setUser(next);
+            persistUser(next, token);
+        },
+        [queryClient, user?.email],
+    );
+
     const loginWithToken = useCallback((next: AuthUser, token: string) => {
-        setUser(next);
-        persistUser(next, token);
-    }, []);
+        setAuthenticatedUser(next, token);
+    }, [setAuthenticatedUser]);
 
     const login = useCallback(async ({ email, password }: LoginInput) => {
         if (!email.trim() || !password) {
@@ -110,13 +136,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 fullName: email.split("@")[0] || "User",
                 email,
             };
-            setUser(next);
-            persistUser(next, token);
+            setAuthenticatedUser(next, token);
             return { ok: true };
         } catch {
             return { ok: false, error: "Network error" };
         }
-    }, []);
+    }, [setAuthenticatedUser]);
 
     const register = useCallback(
         async ({ fullName, email, password, confirmPassword }: RegisterInput) => {
@@ -143,14 +168,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
                 const { token } = (await res.json()) as { token: string };
                 const next: AuthUser = { fullName, email };
-                setUser(next);
-                persistUser(next, token);
+                setAuthenticatedUser(next, token);
                 return { ok: true };
             } catch {
                 return { ok: false, error: "Network error" };
             }
         },
-        [],
+        [setAuthenticatedUser],
     );
 
     const logout = useCallback(() => {
@@ -163,7 +187,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setUser(null);
         persistUser(null);
-    }, []);
+        clearSessionCache();
+        queryClient.clear();
+    }, [queryClient]);
 
     const value = useMemo<AuthContextValue>(
         () => ({ user, login, register, logout, loginWithToken }),

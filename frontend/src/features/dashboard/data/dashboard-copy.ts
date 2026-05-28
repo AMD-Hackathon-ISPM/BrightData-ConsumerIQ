@@ -3,7 +3,7 @@ import type { DashboardSection } from "../constants";
 export function getSectionTitle(section: DashboardSection) {
   switch (section) {
     case "dashboard":
-      return "Market Intelligence";
+      return "Dashboard";
     case "pulse":
       return "Demand Pulse";
     case "persona":
@@ -12,15 +12,13 @@ export function getSectionTitle(section: DashboardSection) {
       return "Competitor Mirror";
     case "compass":
       return "Launch Compass";
-    case "settings":
-      return "Data Sources & Infrastructure";
   }
 }
 
 export function getSectionLabel(section: DashboardSection) {
   switch (section) {
     case "dashboard":
-      return "Market data control center with Trend Velocity, Estimated Demand, and Market Gaps metrics.";
+      return "Live market opportunity overview — demand, competition, pricing, and category whitespace at a glance.";
     case "pulse":
       return "Real-time analysis of trend movements and consumer search signals (SERP data).";
     case "persona":
@@ -29,7 +27,5 @@ export function getSectionLabel(section: DashboardSection) {
       return "Monitor relative performance, pricing, and Share of Voice against competitors.";
     case "compass":
       return "Optimal launch strategy with data-driven Go-to-Market recommendations.";
-    case "settings":
-      return "Technical transparency for Bright Data infrastructure (Web Unlocker, Scraper API, etc.).";
   }
 }

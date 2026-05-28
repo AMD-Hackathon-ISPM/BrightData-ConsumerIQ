@@ -116,7 +116,7 @@ function MultiList({
       <PopoverTrigger asChild>
         <button
           aria-label={placeholder}
-          className="flex h-11 w-full cursor-pointer items-center justify-between gap-1.5 rounded-md border border-control bg-background-surface-100 px-3 py-2 text-left text-sm font-normal whitespace-nowrap transition-colors outline-none hover:border-border-stronger hover:bg-background-selection focus-visible:border-sidebar-ring focus-visible:ring-3 focus-visible:ring-sidebar-ring/50 data-[state=open]:border-border-stronger data-[state=open]:bg-background-selection"
+          className="flex h-9 w-full cursor-pointer items-center justify-between gap-1.5 rounded-md border border-control bg-background-surface-100 px-3 py-2 text-left text-sm font-normal whitespace-nowrap transition-colors outline-none hover:border-border-stronger hover:bg-background-selection focus-visible:border-sidebar-ring focus-visible:ring-3 focus-visible:ring-sidebar-ring/50 data-[state=open]:border-border-stronger data-[state=open]:bg-background-selection"
           id={id}
           type="button"
         >

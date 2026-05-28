@@ -112,6 +112,7 @@ export function ChatComposer({
   return (
     <div className="w-full px-4 pb-4">
       <PromptInput
+        className="[&_[data-slot=input-group]]:!bg-input/30 [&_[data-slot=input-group]]:!opacity-100"
         globalDrop
         multiple
         onError={(error) => {
@@ -122,6 +123,7 @@ export function ChatComposer({
         <PromptInputAttachmentsDisplay />
         <PromptInputBody>
           <PromptInputTextarea
+            className="placeholder:text-foreground-lighter placeholder:opacity-100"
             onChange={onTextChange}
             placeholder="Ask the LLM..."
             value={text}

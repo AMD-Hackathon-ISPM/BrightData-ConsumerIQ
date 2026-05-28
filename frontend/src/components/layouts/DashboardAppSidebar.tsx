@@ -1,4 +1,4 @@
-import { IconLogout, IconMessageCircle } from "@tabler/icons-react";
+import { IconLogout, IconRobot } from "@tabler/icons-react";
 
 import {
     Sidebar,
@@ -11,9 +11,10 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarTrigger,
+    useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
-import { footerNavItems, navGroups, type DashboardSection } from "@/features/dashboard/constants";
+import { navGroups, type DashboardSection } from "@/features/dashboard/constants";
 
 interface DashboardAppSidebarProps {
     active: DashboardSection;
@@ -27,6 +28,7 @@ export function DashboardAppSidebar({
     onToggleChat,
 }: DashboardAppSidebarProps) {
     const { logout } = useAuth();
+    const { isMobile, setOpenMobile } = useSidebar();
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -71,30 +73,19 @@ export function DashboardAppSidebar({
 
             <SidebarFooter className="px-2">
                 <SidebarMenu>
-                    {footerNavItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = active === item.id;
-                        return (
-                            <SidebarMenuItem key={item.id}>
-                                <SidebarMenuButton
-                                    isActive={isActive}
-                                    onClick={() => onActiveChange(item.id)}
-                                    tooltip={item.label}
-                                >
-                                    <Icon className="size-4" />
-                                    <span>{item.label}</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        );
-                    })}
                     {onToggleChat ? (
                         <SidebarMenuItem>
                             <SidebarMenuButton
-                                onClick={onToggleChat}
-                                tooltip="Founder Chat"
+                                onClick={() => {
+                                    onToggleChat();
+                                    if (isMobile) {
+                                        setOpenMobile(false);
+                                    }
+                                }}
+                                tooltip="Advisor Bot"
                             >
-                                <IconMessageCircle className="size-4" stroke={1.8} />
-                                <span>Founder Chat</span>
+                                <IconRobot className="size-4" stroke={1.8} />
+                                <span>Advisor Bot</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     ) : null}

@@ -1,11 +1,11 @@
 import { IconChevronRight } from "@tabler/icons-react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { SectionFade } from "@/components/animated-page";
 import { type DashboardSection, navItems } from "./constants";
 import { getSectionLabel, getSectionTitle } from "./data/dashboard-copy";
 import {
   CompetitorMirror,
-  DataSettings,
   DemandPulse,
   LaunchCompass,
   MarketOverview,
@@ -20,6 +20,22 @@ export function ConsumerIQDashboard({
   active: DashboardSection;
   onActiveChange: (next: DashboardSection) => void;
 }) {
+  const dashboardAnimatedRef = useRef(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const animateDashboard = active === "dashboard" && !dashboardAnimatedRef.current;
+
+  useLayoutEffect(() => {
+    if (active === "persona") {
+      mainRef.current?.scrollTo({ left: 0, top: 0 });
+    }
+  }, [active]);
+
+  useEffect(() => {
+    if (active === "dashboard") {
+      dashboardAnimatedRef.current = true;
+    }
+  }, [active]);
+
   return (
     <section
       className={cn(
@@ -28,32 +44,38 @@ export function ConsumerIQDashboard({
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <main
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
+          ref={mainRef}
+        >
           <div className="min-w-0 w-full px-6 py-5 sm:px-8 sm:py-7 lg:px-10 lg:py-9 xl:px-12 xl:py-9">
-            <div className="mb-10 flex min-w-0 flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="mb-5 flex items-center gap-2 text-xs text-foreground-muted">
-                  Analysis <IconChevronRight className="size-3" stroke={1.8} />
-                  <span className="font-medium text-foreground-default">
-                    {navItems.find((item) => item.id === active)?.label}
-                  </span>
-                </p>
-                <h2 className="break-words text-2xl font-semibold tracking-tight">
-                  {getSectionTitle(active)}
-                </h2>
-                <p className="mt-1.5 max-w-3xl break-words text-sm text-foreground-light">
-                  {getSectionLabel(active)}
-                </p>
+            <SectionFade transitionKey={`header-${active}`}>
+              <div className="mb-10 flex min-w-0 flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="mb-5 flex items-center gap-2 text-xs text-foreground-muted">
+                    Analysis <IconChevronRight className="size-3" stroke={1.8} />
+                    <span className="font-medium text-foreground-default">
+                      {navItems.find((item) => item.id === active)?.label}
+                    </span>
+                  </p>
+                  <h2 className="break-words text-2xl font-semibold tracking-tight">
+                    {getSectionTitle(active)}
+                  </h2>
+                  <p className="mt-1.5 max-w-3xl break-words text-sm text-foreground-light">
+                    {getSectionLabel(active)}
+                  </p>
+                </div>
               </div>
-            </div>
+            </SectionFade>
 
-            <SectionFade key={active} transitionKey={active}>
-              {active === "dashboard" && <MarketOverview />}
+            <SectionFade key={active} transitionKey={active} delay={70}>
+              {active === "dashboard" && (
+                <MarketOverview animate={animateDashboard} />
+              )}
               {active === "pulse" && <DemandPulse />}
               {active === "persona" && <PersonaDecode />}
               {active === "competitor" && <CompetitorMirror />}
               {active === "compass" && <LaunchCompass />}
-              {active === "settings" && <DataSettings />}
             </SectionFade>
           </div>
         </main>

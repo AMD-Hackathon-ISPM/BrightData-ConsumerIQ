@@ -1,7 +1,7 @@
+import { IconRobot } from "@tabler/icons-react";
 import {
   ArrowDownRight,
   ArrowUpRight,
-  Sparkles,
   Target,
   TrendingUp,
 } from "lucide-react";
@@ -54,31 +54,16 @@ export function AdvisorIntelligence({
 }: AdvisorIntelligenceProps) {
   return (
     <section className="relative min-w-0 overflow-hidden rounded-xl border border-chart-5/25 bg-card shadow-sm">
-      {/* Hairline accent at the top */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-chart-5/70 to-chart-4/60" />
-      {/* Soft glow in the corner for depth */}
       <div className="pointer-events-none absolute -left-24 -top-24 size-56 rounded-full bg-chart-5/[0.08] blur-3xl" />
       <div className="pointer-events-none absolute -right-32 -bottom-32 size-64 rounded-full bg-chart-4/[0.06] blur-3xl" />
 
       <div className="relative p-4 xl:p-5">
         <div className="flex items-center gap-2">
-          <Sparkles
-            className="size-[18px] shrink-0"
-            color="url(#advisor-ai-icon-gradient)"
-          >
-            <defs>
-              <linearGradient
-                id="advisor-ai-icon-gradient"
-                x1="0"
-                y1="0"
-                x2="1"
-                y2="1"
-              >
-                <stop stopColor="var(--chart-5)" />
-                <stop offset="100%" stopColor="var(--chart-4)" />
-              </linearGradient>
-            </defs>
-          </Sparkles>
+          <IconRobot
+            className="size-[18px] shrink-0 text-chart-5"
+            stroke={1.8}
+          />
           <p className="bg-gradient-to-r from-chart-5 to-chart-4 bg-clip-text text-base font-semibold tracking-tight text-transparent">
             Advisor Intelligence
           </p>

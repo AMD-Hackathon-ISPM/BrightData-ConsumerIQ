@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { Database, Globe2 } from "lucide-react";
 import {
   ChartContainer,
@@ -12,44 +12,50 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Line,
   LineChart,
   Pie,
   PieChart,
   Scatter,
   ScatterChart,
+  Sector,
   XAxis,
   YAxis,
   ZAxis,
 } from "recharts";
+import type { PieSectorShapeProps } from "recharts";
 import type {
   DemandSupplyPoint,
   MarketplaceShareItem,
 } from "../data/demand-pulse";
 
 export function Panel({
+  action,
   children,
   subtitle,
   title,
 }: {
+  action?: ReactNode;
   children: ReactNode;
   subtitle?: string;
   title?: string;
 }) {
   return (
-    <section className="flex h-full flex-col rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
+    <section className="flex h-full min-w-0 flex-col rounded-xl border bg-card p-3.5 shadow-sm xl:p-4">
       {title ? (
-        <div className="mb-3 min-w-0 shrink-0">
-          <h3 className="break-words font-semibold">{title}</h3>
-          {subtitle ? (
-            <p className="mt-1 break-words text-sm text-muted-foreground">
-              {subtitle}
-            </p>
-          ) : null}
+        <div className="mb-3 flex min-w-0 shrink-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="break-words font-semibold">{title}</h3>
+            {subtitle ? (
+              <p className="mt-1 break-words text-sm text-muted-foreground">
+                {subtitle}
+              </p>
+            ) : null}
+          </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       ) : null}
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
     </section>
   );
 }
@@ -59,48 +65,172 @@ export function MetricCard({
   status,
   title,
   tone,
+  visual,
 }: {
   label: string;
   status: string;
   title: string;
-  tone?: "success" | "danger";
+  tone?: "success";
+  visual?: ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        "rounded-xl border bg-card p-3.5 shadow-sm",
-        tone === "danger" && "border-destructive/30 bg-destructive/5"
-      )}
-    >
-      <p className="text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
+    <div className="flex h-full min-h-[10.5rem] flex-col rounded-xl border border-border-default bg-card p-4 shadow-sm transition-colors hover:border-border-stronger">
+      <p className="text-sm font-medium tracking-normal text-foreground-light">
         {label}
       </p>
-      <p
-        className={cn(
-          "mt-3 text-2xl font-semibold tracking-tight",
-          tone === "danger" && "text-destructive"
-        )}
-      >
+      <p className="mt-4 text-[1.65rem] font-semibold leading-none tracking-tight text-foreground-default">
         {title}
       </p>
       <p
         className={cn(
-          "mt-1.5 text-sm text-muted-foreground",
-          tone === "success" && "text-chart-4",
-          tone === "danger" && "text-destructive"
+          "mt-2 text-sm leading-snug text-foreground-light",
+          tone === "success" && "text-chart-4"
         )}
       >
         {status}
       </p>
-      <div className="mt-3 h-1.5 rounded-full bg-muted">
-        <div
-          className={cn(
-            "h-full rounded-full bg-foreground",
-            tone === "danger" && "bg-destructive"
-          )}
-          style={{ width: tone === "danger" ? "45%" : "67%" }}
-        />
+      {visual ? (
+        <div className="mt-auto flex flex-1 flex-col justify-end pt-5">{visual}</div>
+      ) : null}
+    </div>
+  );
+}
+
+export function MetricSparkline({
+  data,
+  positive = true,
+}: {
+  data: number[];
+  positive?: boolean;
+}) {
+  const gradientId = useId();
+  const width = 100;
+  const height = 36;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((value, index) => {
+    const x = (index / (data.length - 1)) * width;
+    const y = height - ((value - min) / range) * (height - 4) - 2;
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  });
+  const line = points.join(" ");
+  const area = `0,${height} ${line} ${width},${height}`;
+  const stroke = positive ? "var(--chart-4)" : "var(--muted-foreground)";
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-9 w-full"
+      preserveAspectRatio="none"
+      viewBox={`0 0 ${width} ${height}`}
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity={0.22} />
+          <stop offset="100%" stopColor={stroke} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <polygon fill={`url(#${gradientId})`} points={area} />
+      <polyline
+        fill="none"
+        points={line}
+        stroke={stroke}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
+const LEVEL_SEGMENTS = ["Low", "Med", "High"] as const;
+
+export function LevelMeter({
+  level,
+}: {
+  level: "low" | "medium" | "high";
+}) {
+  const filled = level === "low" ? 1 : level === "medium" ? 2 : 3;
+
+  return (
+    <div className="w-full">
+      <div className="flex gap-1">
+        {LEVEL_SEGMENTS.map((segment, index) => (
+          <div
+            className={cn(
+              "h-1.5 flex-1 rounded-full",
+              index < filled ? "bg-foreground" : "bg-muted"
+            )}
+            key={segment}
+          />
+        ))}
       </div>
+      <div className="mt-1.5 flex justify-between">
+        {LEVEL_SEGMENTS.map((segment, index) => (
+          <span
+            className={cn(
+              "text-[10px] font-medium uppercase tracking-wide",
+              index === filled - 1
+                ? "text-foreground-light"
+                : "text-muted-foreground/50"
+            )}
+            key={segment}
+          >
+            {segment}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const GAP_SLOTS = ["premium", "mid", "budget"] as const;
+
+export function GapMarkers() {
+  return (
+    <div className="flex items-center gap-1.5">
+      {GAP_SLOTS.map((slot) => (
+        <span
+          className="h-1.5 flex-1 rounded-full border border-chart-5/50 bg-chart-5/20"
+          key={slot}
+        />
+      ))}
+    </div>
+  );
+}
+
+export function ScoreRing({ value, max = 100 }: { value: number; max?: number }) {
+  const radius = 16;
+  const circumference = 2 * Math.PI * radius;
+  const pct = Math.min(Math.max(value / max, 0), 1);
+  const dash = circumference * pct;
+  const tier = value >= 70 ? "Strong" : value >= 40 ? "Moderate" : "Weak";
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <svg aria-hidden="true" className="size-10 -rotate-90" viewBox="0 0 40 40">
+        <circle
+          cx="20"
+          cy="20"
+          fill="none"
+          r={radius}
+          stroke="var(--muted)"
+          strokeWidth={4}
+        />
+        <circle
+          cx="20"
+          cy="20"
+          fill="none"
+          r={radius}
+          stroke="var(--chart-4)"
+          strokeDasharray={`${dash} ${circumference}`}
+          strokeLinecap="round"
+          strokeWidth={4}
+        />
+      </svg>
+      <span className="text-xs font-medium text-chart-4">{tier}</span>
     </div>
   );
 }
@@ -232,6 +362,23 @@ export function PlatformShareChart({
   const chartConfig = {
     value: { label: "Share", color: "var(--chart-1)" },
   };
+
+  const renderSector = (props: PieSectorShapeProps) => (
+    <Sector
+      cornerRadius={props.cornerRadius}
+      cx={props.cx}
+      cy={props.cy}
+      endAngle={props.endAngle}
+      fill={chartData[props.index]?.fill}
+      innerRadius={props.innerRadius}
+      outerRadius={
+        props.index === activeIndex ? props.outerRadius + 10 : props.outerRadius
+      }
+      startAngle={props.startAngle}
+      stroke="var(--background-default)"
+      strokeWidth={1}
+    />
+  );
   const columns = chartData.length <= 3 ? 1 : 2;
   const rows: (typeof chartData)[] = [];
   for (let i = 0; i < chartData.length; i += columns) {
@@ -277,20 +424,8 @@ export function PlatformShareChart({
               nameKey="name"
               outerRadius="82%"
               paddingAngle={2}
-            >
-              {chartData.map((entry, index) => (
-                <Cell
-                  fill={entry.fill}
-                  key={entry.name}
-                  stroke={
-                    index === activeIndex
-                      ? "var(--foreground)"
-                      : "var(--background-default)"
-                  }
-                  strokeWidth={index === activeIndex ? 2 : 1}
-                />
-              ))}
-            </Pie>
+              shape={renderSector}
+            />
           </PieChart>
         </ChartContainer>
       </div>

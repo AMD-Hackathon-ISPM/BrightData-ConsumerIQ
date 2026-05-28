@@ -1,55 +1,60 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { StatusLine } from './shared'
-import { startPersonaDecode, PERSONA_TASK_KEY } from './api'
-import { getAuthToken } from '@/lib/auth'
-import type { FounderFormState } from './types'
-
-type InferenceStage =
-  | 'pending'
-  | 'analyzing'
-  | 'cross_referencing'
-  | 'completed'
-  | 'failed'
+import { useEffect, useMemo, useRef, useState } from "react";
+import { SpiralLoader } from "@/components/ui/spiral-loader";
+import { Shimmer } from "@/components/ai-elements/shimmer";
+import { startPersonaDecode, PERSONA_TASK_KEY } from "./api";
+import { getAuthToken } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+import type { FounderFormState } from "./types";
 
 type PipelineStatus = {
-  scraping: { status: string; signalsStored: number }
-  inference: { status: string; stage?: InferenceStage }
-}
+  scraping: { status: string; signalsStored: number };
+  inference: { status: string; stage?: InferenceStage };
+};
 
-async function fetchPipelineStatus(formId: string): Promise<PipelineStatus | null> {
+type InferenceStage =
+  | "pending"
+  | "analyzing"
+  | "cross_referencing"
+  | "completed"
+  | "failed";
+
+async function fetchPipelineStatus(
+  formId: string,
+): Promise<PipelineStatus | null> {
   try {
-    const token = getAuthToken()
-    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
-    const res = await fetch(`/api/form-pipeline/${formId}`, { headers })
-    if (!res.ok) return null
-    return res.json() as Promise<PipelineStatus>
+    const token = getAuthToken();
+    const headers: Record<string, string> = token
+      ? { Authorization: `Bearer ${token}` }
+      : {};
+    const res = await fetch(`/api/form-pipeline/${formId}`, { headers });
+    if (!res.ok) return null;
+    return res.json() as Promise<PipelineStatus>;
   } catch {
-    return null
+    return null;
   }
 }
 
 function pipelineTarget(p: PipelineStatus | null): number {
-  if (!p) return 1
-  const scrape = p.scraping.status
-  const stage = p.inference.stage ?? 'pending'
-  if (stage === 'completed') return 5
-  if (stage === 'cross_referencing') return 4
-  if (stage === 'analyzing') return 3
-  if (scrape === 'completed' || scrape === 'skipped' || scrape === 'failed') return 2
-  if (scrape === 'processing') return 1
-  return 1
+  if (!p) return 1;
+  const scrape = p.scraping.status;
+  const stage = p.inference.stage ?? "pending";
+  if (stage === "completed") return 7;
+  if (stage === "cross_referencing") return 6;
+  if (stage === "analyzing") return 5;
+  if (scrape === "completed" || scrape === "skipped" || scrape === "failed")
+    return 4;
+  if (scrape === "processing") return 3;
+  return 1;
 }
 
 type GeneratingStepProps = {
-  onComplete: () => void
-  submitStatus: 'idle' | 'submitting' | 'success' | 'error'
-  formId: string | null
-  formState: FounderFormState
-  region?: string
-  industry?: string
-}
+  onComplete: () => void;
+  submitStatus: "idle" | "submitting" | "success" | "error";
+  formId: string | null;
+  formState: FounderFormState;
+  region?: string;
+  industry?: string;
+};
 
 export function GeneratingStep({
   onComplete,
@@ -59,153 +64,154 @@ export function GeneratingStep({
   region,
   industry,
 }: GeneratingStepProps) {
-  const [pipeline, setPipeline] = useState<PipelineStatus | null>(null)
-  const [revealed, setRevealed] = useState(0)
-  const personaStarted = useRef(false)
+  const [pipeline, setPipeline] = useState<PipelineStatus | null>(null);
+  const [revealed, setRevealed] = useState(0);
+  const personaStarted = useRef(false);
 
-  const signalsStored = pipeline?.scraping.signalsStored ?? 0
+  const signalsStored = pipeline?.scraping.signalsStored ?? 0;
 
   const lines = useMemo(() => {
-    const scopeLabel = industry?.toLowerCase() ?? 'category'
+    const scopeLabel = industry?.toLowerCase() ?? "category";
     const firstLine =
       region && industry
         ? `Scanning ${region} marketplaces for ${scopeLabel} listings…`
-        : 'Scanning marketplace listings…'
+        : "Scanning marketplace listings…";
     const signalsLine =
       signalsStored > 0
-        ? `Collected ${signalsStored.toLocaleString()} market signals`
-        : 'Market signals collected'
+        ? `${signalsStored.toLocaleString()} market signals collected`
+        : "Gathering market signals…";
     return [
+      "Processing founder form inputs…",
+      "Structuring product and audience context…",
       firstLine,
       signalsLine,
-      'Reading reviews and identifying customer patterns…',
-      'Cross-referencing demand signals with GPT…',
-      'Building your dashboard',
-    ]
-  }, [region, industry, signalsStored])
+      "Reading verified-purchase reviews and demand cues…",
+      "Generating launch insight hypotheses…",
+      "Preparing your dashboard insights…",
+    ];
+  }, [region, industry, signalsStored]);
 
   useEffect(() => {
-    if (!formId || submitStatus !== 'success') return
-    let cancelled = false
+    if (!formId || submitStatus !== "success") return;
+    let cancelled = false;
     const poll = async () => {
       while (!cancelled) {
-        const status = await fetchPipelineStatus(formId)
-        if (!cancelled) setPipeline(status)
-        if (status && pipelineTarget(status) >= lines.length) break
-        await new Promise<void>((r) => setTimeout(r, 3000))
+        const status = await fetchPipelineStatus(formId);
+        if (!cancelled) setPipeline(status);
+        if (status && pipelineTarget(status) >= lines.length) break;
+        await new Promise<void>((r) => setTimeout(r, 3000));
       }
-    }
-    poll()
+    };
+    poll();
     return () => {
-      cancelled = true
-    }
-  }, [formId, submitStatus, lines.length])
+      cancelled = true;
+    };
+  }, [formId, submitStatus, lines.length]);
 
-  const target = pipelineTarget(pipeline)
-
-  useEffect(() => {
-    if (submitStatus !== 'success') return
-    if (revealed >= target) return
-    const id = window.setTimeout(() => setRevealed((r) => Math.min(r + 1, target)), 600)
-    return () => window.clearTimeout(id)
-  }, [revealed, target, submitStatus])
+  const isMockRun =
+    import.meta.env.DEV && submitStatus === "success" && !formId;
+  const target = isMockRun ? lines.length : pipelineTarget(pipeline);
 
   useEffect(() => {
-    if (submitStatus !== 'success' || personaStarted.current) return
-    personaStarted.current = true
-    try { localStorage.removeItem('ciq_persona_data') } catch {}
+    if (submitStatus !== "success") return;
+    if (revealed >= target) return;
+    const revealDelay = isMockRun
+      ? revealed === 0
+        ? 900
+        : 1300
+      : revealed === 0
+        ? 600
+        : 900;
+    const id = window.setTimeout(() => setRevealed((r) => r + 1), revealDelay);
+    return () => window.clearTimeout(id);
+  }, [isMockRun, revealed, target, submitStatus]);
+
+  useEffect(() => {
+    if (submitStatus !== "success" || personaStarted.current) return;
+    personaStarted.current = true;
+    try {
+      localStorage.removeItem("ciq_persona_data");
+    } catch {}
     startPersonaDecode(formState)
       .then(({ taskId }) => {
         try {
-          localStorage.setItem(PERSONA_TASK_KEY, taskId)
+          localStorage.setItem(PERSONA_TASK_KEY, taskId);
         } catch {}
       })
-      .catch(() => {})
-  }, [submitStatus, formState])
+      .catch(() => {});
+  }, [submitStatus, formState]);
 
-  const allDone = revealed >= lines.length
-  const inferenceFailed = pipeline?.inference.stage === 'failed' || pipeline?.inference.status === 'failed'
-  const inferenceCompleted = pipeline?.inference.stage === 'completed'
-  const canOpen = inferenceCompleted
+  const inferenceFailed =
+    pipeline?.inference.stage === "failed" ||
+    pipeline?.inference.status === "failed";
+  const inferenceCompleted = pipeline?.inference.stage === "completed";
+  const mockComplete = isMockRun && revealed >= lines.length;
+  const isComplete = inferenceCompleted || mockComplete;
+  const canContinue = isComplete;
+
+  const currentStatus = lines[Math.max(0, revealed - 1)] ?? lines[0];
+  const statusText =
+    submitStatus === "submitting"
+      ? "Submitting your founder form…"
+      : submitStatus === "error"
+        ? "Submission failed. Please refresh and try again."
+        : inferenceFailed
+          ? "Pipeline failed before dashboard data was ready. Please refresh and resubmit."
+        : isComplete
+          ? "Dashboard insights are ready. Click the spiral to continue."
+          : currentStatus;
+
+  const handleSpiralActivate = () => {
+    if (!canContinue) return;
+    onComplete();
+  };
 
   return (
-    <div className="mx-auto w-full max-w-xl">
-      <div
-        aria-hidden
-        className="relative mx-auto mb-12 grid size-24 place-items-center"
+    <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center">
+      <button
+        type="button"
+        aria-label={canContinue ? "Open dashboard" : "Loading"}
+        aria-disabled={!canContinue}
+        disabled={!canContinue}
+        onClick={handleSpiralActivate}
+        className={cn(
+          "group grid size-80 place-items-center rounded-full outline-none transition-transform duration-500 ease-out",
+          "focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-4 focus-visible:ring-offset-background-default",
+          canContinue
+            ? "cursor-pointer hover:scale-[1.03] active:scale-[0.99]"
+            : "cursor-default",
+        )}
       >
-        <span
-          className="absolute inset-0 rounded-full bg-foreground-default/[0.04]"
-          style={{ animation: 'pulse 2.4s ease-in-out infinite' }}
-        />
-        <span
-          className="absolute inset-[14px] rounded-full bg-foreground-default/[0.08]"
-          style={{
-            animation: 'pulse 2.4s ease-in-out infinite',
-            animationDelay: '0.4s',
-          }}
-        />
-        <span className="size-3 rounded-full bg-foreground-default/80" />
-      </div>
-
-      <div className="text-center">
-        <h1 className="text-2xl font-medium tracking-tight text-foreground-default">
-          Assembling your notebook
-        </h1>
-        <p className="mt-3 font-mono text-xs uppercase tracking-[0.16em] text-foreground-muted">
-          Usually takes 60–90 seconds
-        </p>
-      </div>
-
-      <div className="mx-auto mt-12 max-w-md space-y-3">
-        {lines.map((line, index) => {
-          if (index >= revealed) return null
-          const state =
-            index < revealed - 1 || allDone
-              ? 'done'
-              : index === revealed - 1
-                ? 'running'
-                : 'queued'
-          return (
-            <StatusLine key={line} state={state}>
-              {line}
-            </StatusLine>
-          )
-        })}
-      </div>
-
-      <div className="mt-14 flex flex-col items-center gap-4">
-        {submitStatus === 'success' && formId ? (
-          <p className="font-mono text-xs text-foreground-muted">
-            <span className="opacity-70">Run id</span>{' '}
-            <span className="text-foreground-default">{formId}</span>
-          </p>
-        ) : null}
-        {submitStatus === 'error' ? (
-          <p className="text-sm text-destructive">
-            Submission failed. Please refresh and try again.
-          </p>
-        ) : null}
-        {inferenceFailed ? (
-          <p className="text-sm text-destructive">
-            Pipeline failed before dashboard data was ready. Please refresh and resubmit.
-          </p>
-        ) : null}
-        <Button
-          onClick={onComplete}
-          disabled={submitStatus === 'submitting' || !canOpen}
+        <SpiralLoader
           className={cn(
-            'h-11 min-w-48 gap-2 px-5 transition-opacity duration-500',
-            canOpen ? 'opacity-100' : 'opacity-60',
+            "size-80 text-foreground-default transition-[filter,opacity] duration-500",
+            canContinue
+              ? "opacity-100 group-hover:[filter:drop-shadow(0_0_24px_rgba(152,151,26,0.45))]"
+              : "opacity-100",
           )}
-        >
-          {submitStatus === 'submitting'
-            ? 'Submitting…'
-            : canOpen
-              ? 'Open dashboard'
-              : 'Preparing your dashboard…'}
-        </Button>
+          innerColor={isComplete ? "#98971a" : "#cc241d"}
+        />
+      </button>
+
+      <div className="mt-8 flex min-h-12 items-center justify-center text-center">
+        {canContinue ? (
+          <p className="animate-pulse text-sm tracking-tight text-foreground-light">
+            {statusText}
+          </p>
+        ) : submitStatus === "success" ? (
+          <Shimmer
+            as="p"
+            className="text-sm tracking-tight text-foreground-light"
+            duration={2.5}
+          >
+            {statusText}
+          </Shimmer>
+        ) : (
+          <p className="text-sm tracking-tight text-foreground-light">
+            {statusText}
+          </p>
+        )}
       </div>
     </div>
-  )
+  );
 }
