@@ -559,7 +559,7 @@ export function LaunchReadinessMap() {
         </div>
       </div>
 
-      <div className="launch-readiness-map relative h-[24rem] min-h-[22rem] overflow-hidden rounded-lg border bg-background-default sm:h-[28rem] xl:h-[32rem]">
+      <div className="launch-readiness-map relative h-[18rem] min-h-[18rem] overflow-hidden rounded-lg border bg-background-default sm:h-[21rem] xl:h-[24rem]">
         {mapLoadState.status === "ready" ? (
           <MapGL
             attributionControl={{ compact: true }}
@@ -567,15 +567,19 @@ export function LaunchReadinessMap() {
             dragRotate={false}
             fadeDuration={0}
             initialViewState={{
-              latitude: 18,
+              latitude: 22,
               longitude: 12,
-              zoom: 1.15,
+              zoom: 1.25,
             }}
             interactiveLayerIds={[COUNTRY_FILL_LAYER_ID]}
             mapStyle={MAP_STYLE}
+            maxBounds={[
+              [-360, -50],
+              [360, 85],
+            ]}
             maxPitch={0}
             maxZoom={3.5}
-            minZoom={1}
+            minZoom={1.15}
             onLoad={handleMapLoad}
             onMouseLeave={handleMouseLeave}
             onMouseMove={handleMouseMove}

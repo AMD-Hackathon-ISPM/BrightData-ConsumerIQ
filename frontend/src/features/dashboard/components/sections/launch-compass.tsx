@@ -28,7 +28,7 @@ export function LaunchCompass() {
       <Panel>
         <Suspense
           fallback={
-            <div className="grid h-[24rem] min-h-[22rem] place-items-center rounded-lg border bg-background-default text-sm text-muted-foreground sm:h-[28rem] xl:h-[32rem]">
+            <div className="grid h-[18rem] min-h-[18rem] place-items-center rounded-lg border bg-background-default text-sm text-muted-foreground sm:h-[21rem] xl:h-[24rem]">
               Loading map
             </div>
           }

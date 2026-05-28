@@ -1,4 +1,4 @@
-import { IconMessageCircle, IconX } from "@tabler/icons-react";
+import { IconRobot, IconX } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type DashboardSection, navItems } from "../constants";
@@ -83,7 +83,7 @@ export function MobileSidebarNav({
             }}
             type="button"
           >
-            <IconMessageCircle className="size-4" stroke={1.8} />
+            <IconRobot className="size-4" stroke={1.8} />
             Founder Chat
           </Button>
         </div>

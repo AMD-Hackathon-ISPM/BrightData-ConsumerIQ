@@ -1,4 +1,4 @@
-import { IconLogout, IconMessageCircle } from "@tabler/icons-react";
+import { IconLogout, IconRobot } from "@tabler/icons-react";
 
 import {
     Sidebar,
@@ -93,7 +93,7 @@ export function DashboardAppSidebar({
                                 onClick={onToggleChat}
                                 tooltip="Founder Chat"
                             >
-                                <IconMessageCircle className="size-4" stroke={1.8} />
+                                <IconRobot className="size-4" stroke={1.8} />
                                 <span>Founder Chat</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

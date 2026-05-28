@@ -1,7 +1,7 @@
+import { IconRobot } from "@tabler/icons-react";
 import {
   ArrowDownRight,
   ArrowUpRight,
-  Sparkles,
   Target,
   TrendingUp,
 } from "lucide-react";
@@ -62,23 +62,10 @@ export function AdvisorIntelligence({
 
       <div className="relative p-4 xl:p-5">
         <div className="flex items-center gap-2">
-          <Sparkles
-            className="size-[18px] shrink-0"
-            color="url(#advisor-ai-icon-gradient)"
-          >
-            <defs>
-              <linearGradient
-                id="advisor-ai-icon-gradient"
-                x1="0"
-                y1="0"
-                x2="1"
-                y2="1"
-              >
-                <stop stopColor="var(--chart-5)" />
-                <stop offset="100%" stopColor="var(--chart-4)" />
-              </linearGradient>
-            </defs>
-          </Sparkles>
+          <IconRobot
+            className="size-[18px] shrink-0 text-chart-5"
+            stroke={1.8}
+          />
           <p className="bg-gradient-to-r from-chart-5 to-chart-4 bg-clip-text text-base font-semibold tracking-tight text-transparent">
             Advisor Intelligence
           </p>
