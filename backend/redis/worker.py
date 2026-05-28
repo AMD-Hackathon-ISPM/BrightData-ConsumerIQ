@@ -68,6 +68,20 @@ _PIPELINE_ALLOW_FALLBACK_SIGNALS = os.getenv('PIPELINE_ALLOW_FALLBACK_SIGNALS', 
 _DAILY_REFRESH_ENABLED = os.getenv('DAILY_REFRESH_ENABLED', 'false').lower() == 'true'
 _COMPLIANCE_SCRAPE_ENABLED = os.getenv('COMPLIANCE_SCRAPE_ENABLED', 'false').lower() == 'true'
 _SIGNAL_RECENCY_WEIGHT = float(os.getenv('SIGNAL_RECENCY_WEIGHT', '0.005'))
+_COGNEE_ENABLED = os.getenv('COGNEE_ENABLED', 'false').lower() == 'true'
+
+
+def _ingest_into_cognee(category: str, country: str, rows: list, tag: str = 'market') -> None:
+    if not _COGNEE_ENABLED or not rows:
+        return
+    try:
+        signal_dicts = [
+            {'signalText': r[0], 'sourceType': r[1], 'sourceUrl': r[2]}
+            for r in rows
+        ]
+        ingestSignalsIntoMemory.delay(category, country, signal_dicts, tag)
+    except Exception as exc:
+        print(f'[cognee] Dispatch failed: {exc}')
 DATABASE_URL = os.getenv(
     'DATABASE_URL',
     'postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.local:5432/consumeriq',
@@ -93,6 +107,8 @@ celeryApp.conf.update(
         'scrapeMarketSignals': {'queue': 'scraping'},
         'refreshUserMarketSignals': {'queue': 'scraping'},
         'scrapeComplianceSignals': {'queue': 'scraping'},
+        'ingestSignalsIntoMemory': {'queue': 'synthesis'},
+        'ingestDashboardIntoMemory': {'queue': 'synthesis'},
         'scrapeMarketplacePage': {'queue': 'scraping'},
         'scrapeMarketplacePageBatch': {'queue': 'scraping'},
         'scrapeMarketplaceDiscovery': {'queue': 'scraping'},
@@ -584,6 +600,8 @@ def scrapeMarketSignals(
     stored = len(rows)
     print(f'[scraping] Done. Stored {stored} signals for category={category}, country={country}')
 
+    _ingest_into_cognee(category, country, rows, tag='market')
+
     inference_task = processLlmInsights.delay(category, country, form_id)
     print(f'[scraping] Dispatched processLlmInsights task_id={inference_task.id}')
 
@@ -829,7 +847,33 @@ def scrapeComplianceSignals(user_id: int) -> dict[str, Any]:
                     embedded_rows,
                 )
 
+    _ingest_into_cognee(category, country, rows, tag='compliance')
+
     return {'status': 'completed', 'user_id': user_id, 'keywords': keywords, 'signals_stored': len(rows)}
+
+
+@celeryApp.task(name='ingestSignalsIntoMemory', queue='synthesis')
+def ingestSignalsIntoMemory(category: str, country: str, signals: list[dict], tag: str = 'market') -> dict:
+    if not _COGNEE_ENABLED:
+        return {'status': 'skipped', 'reason': 'COGNEE_ENABLED=false'}
+    try:
+        from backend.models.cognee_memory import ingest_signals, run_async
+        return run_async(ingest_signals(category, country, signals, tag=tag))
+    except Exception as exc:
+        print(f'[cognee] Ingest failed: {exc}')
+        return {'status': 'failed', 'error': str(exc)}
+
+
+@celeryApp.task(name='ingestDashboardIntoMemory', queue='synthesis')
+def ingestDashboardIntoMemory(category: str, country: str, dashboard: dict) -> dict:
+    if not _COGNEE_ENABLED:
+        return {'status': 'skipped', 'reason': 'COGNEE_ENABLED=false'}
+    try:
+        from backend.models.cognee_memory import ingest_dashboard, run_async
+        return run_async(ingest_dashboard(category, country, dashboard))
+    except Exception as exc:
+        print(f'[cognee] Dashboard ingest failed: {exc}')
+        return {'status': 'failed', 'error': str(exc)}
 
 
 def _updateInferenceStage(form_id: str, stage: str) -> None:
@@ -874,6 +918,11 @@ def processLlmInsights(self, categoryName: str, country: str = '', form_id: str 
     dashboard = extra.get('dashboardData') if isinstance(extra, dict) else None
     if isinstance(dashboard, dict) and any(dashboard.get(k) for k in ('marketOverview', 'demandPulse', 'competitorMirror', 'launchCompass')):
         _updateInferenceStage(form_id, 'completed')
+        if _COGNEE_ENABLED:
+            try:
+                ingestDashboardIntoMemory.delay(categoryName, country, dashboard)
+            except Exception as exc:
+                print(f'[cognee] Dashboard dispatch failed: {exc}')
     else:
         _updateInferenceStage(form_id, 'failed')
 

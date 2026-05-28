@@ -49,6 +49,14 @@ TOOL_SCHEMAS: dict[str, dict] = {
             'keyword': 'str (optional)',
         },
     },
+    'memory_search': {
+        'description': 'Query the persistent Cognee knowledge graph built from every previous scrape, dashboard, and compliance signal. Use this BEFORE running fresh scrapes to leverage prior context — e.g. "what do we know about brand X", "what compliance issues exist in food & beverage US", "which competitors recur across users in skincare".',
+        'input': {
+            'query': 'str — natural language question to ask the memory graph',
+            'category': 'str (optional) — narrow to a category like \'beauty\' or \'food\'',
+            'country': 'str (optional) — narrow to a country code like \'us\'',
+        },
+    },
 }
 
 
@@ -97,12 +105,29 @@ def toolSocialScrape(url: str, keyword: str | None = None) -> dict:
     return _compact(result)
 
 
+def toolMemorySearch(query: str, category: str = '', country: str = '') -> dict:
+    try:
+        from backend.models.cognee_memory import is_enabled, run_async, search_memory
+    except ImportError as exc:
+        return {'error': f'Cognee memory module unavailable: {exc}'}
+
+    if not is_enabled():
+        return {'status': 'skipped', 'reason': 'COGNEE_ENABLED=false or COGNEE_LLM_API_KEY missing'}
+
+    try:
+        results = run_async(search_memory(query=query, category=category, country=country))
+        return _compact({'query': query, 'category': category, 'country': country, 'results': results})
+    except Exception as exc:
+        return {'error': f'memory_search failed: {exc}'}
+
+
 _REGISTRY: dict[str, Any] = {
     'serp_search': toolSerpSearch,
     'marketplace_discovery': toolMarketplaceDiscovery,
     'social_discovery': toolSocialDiscovery,
     'marketplace_scrape': toolMarketplaceScrape,
     'social_scrape': toolSocialScrape,
+    'memory_search': toolMemorySearch,
 }
 
 

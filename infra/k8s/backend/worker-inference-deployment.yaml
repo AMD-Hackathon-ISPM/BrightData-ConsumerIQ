@@ -28,6 +28,32 @@ spec:
               value: "false"
             - name: SIGNAL_RECENCY_WEIGHT
               value: "0.005"
+            - name: COGNEE_ENABLED
+              value: "false"
+            - name: COGNEE_USE_LOCAL_INFERENCE
+              value: "false"
+            - name: COGNEE_LLM_PROVIDER
+              value: "openai"
+            - name: COGNEE_LLM_MODEL
+              value: "gpt-4o-mini"
+            - name: COGNEE_EMBEDDING_MODEL
+              value: "text-embedding-3-small"
+            - name: COGNEE_LOCAL_LLM_URL
+              value: "http://consumeriq-inference.consumeriq.svc.cluster.local:8080/v1"
+            - name: COGNEE_LOCAL_LLM_MODEL
+              value: "llama-3.2-3b"
+            - name: COGNEE_LOCAL_EMBEDDING_URL
+              value: "http://consumeriq-embeddings.consumeriq.svc.cluster.local:8080/v1"
+            - name: COGNEE_LOCAL_EMBEDDING_MODEL
+              value: "paraphrase-multilingual-MiniLM-L12-v2"
+            - name: COGNEE_LOCAL_EMBEDDING_DIMS
+              value: "384"
+            - name: COGNEE_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: OPENAI_API_KEY
+                  optional: true
             - name: REDIS_URL
               value: redis://redis.consumeriq.svc.cluster.local:6379/0
             - name: DATABASE_URL

@@ -25,6 +25,7 @@ _DAILY_REFRESH_ENABLED = os.getenv('DAILY_REFRESH_ENABLED', 'false').lower() == 
 _COMPLIANCE_SCRAPE_ENABLED = os.getenv('COMPLIANCE_SCRAPE_ENABLED', 'false').lower() == 'true'
 _SIGNAL_TTL_ENABLED = os.getenv('SIGNAL_TTL_ENABLED', 'false').lower() == 'true'
 _SIGNAL_TTL_MONTHS = int(os.getenv('SIGNAL_TTL_MONTHS', '4'))
+_COGNEE_ENABLED = os.getenv('COGNEE_ENABLED', 'false').lower() == 'true'
 
 
 def _require_admin(request: Request) -> None:
@@ -350,6 +351,37 @@ async def triggerDailyRefresh(request: Request):
     user_ids = await loop.run_in_executor(None, _fetchAllFormUserIds)
     queued = [{'user_id': uid, 'task_id': refreshUserMarketSignals.delay(uid).id} for uid in user_ids]
     return {'status': 'queued', 'count': len(queued), 'tasks': queued}
+
+
+class CogneeSearchRequest(BaseModel):
+    query: str
+    category: str = ''
+    country: str = ''
+    searchType: str = 'graph_completion'
+
+
+@app.post('/api/admin/cognee-search')
+async def cogneeSearch(payload: CogneeSearchRequest, request: Request):
+    _require_admin(request)
+    if not _COGNEE_ENABLED:
+        return {'status': 'skipped', 'reason': 'COGNEE_ENABLED=false'}
+
+    try:
+        from backend.models.cognee_memory import search_memory
+    except ModuleNotFoundError as error:
+        raise HTTPException(status_code=503, detail=f'Cognee dependency missing: {error.name}') from error
+
+    try:
+        results = await search_memory(
+            query=payload.query,
+            category=payload.category,
+            country=payload.country,
+            search_type=payload.searchType,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f'Cognee search failed: {exc}') from exc
+
+    return {'status': 'completed', 'query': payload.query, 'results': results}
 
 
 @app.post('/api/admin/prune-old-signals')
