@@ -28,7 +28,7 @@ export function LaunchCompass() {
       <Panel>
         <Suspense
           fallback={
-            <div className="grid h-[18rem] min-h-[18rem] place-items-center rounded-lg border bg-background-default text-sm text-muted-foreground sm:h-[21rem] xl:h-[24rem]">
+            <div className="grid h-[22rem] min-h-[22rem] place-items-center rounded-lg border bg-background-default text-sm text-muted-foreground sm:h-[26rem] xl:h-[30rem]">
               Loading map
             </div>
           }
@@ -228,9 +228,6 @@ function LaunchCitySales() {
     <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden">
       <div className="min-w-0">
         <h3 className="break-words font-semibold">City Sales Signals</h3>
-        <p className="mt-1 break-words text-sm text-foreground-light">
-          Amazon and Temu only
-        </p>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">

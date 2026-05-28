@@ -84,7 +84,7 @@ export function MobileSidebarNav({
             type="button"
           >
             <IconRobot className="size-4" stroke={1.8} />
-            Founder Chat
+            Advisor Bot
           </Button>
         </div>
       </aside>

@@ -1,10 +1,13 @@
+import { IconRobot } from "@tabler/icons-react";
 import { lazy, Suspense, useCallback, useState } from "react";
 import { AppShell } from "@/components/layouts/AppShell";
 import { DashboardAppSidebar } from "@/components/layouts/DashboardAppSidebar";
+import { Button } from "@/components/ui/button";
 import { ConsumerIQDashboard } from "@/features/dashboard/dashboard-feature";
 import type { DashboardSection } from "@/features/dashboard/constants";
 import { ConsumerIQOnboarding } from "@/features/onboarding/onboarding-feature";
 import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 const CONSUMER_IQ_ONBOARDED_KEY = "consumeriq:onboarded";
 const FounderChat = lazy(() =>
@@ -26,6 +29,7 @@ export function ConsumerIQExperience() {
     }
   });
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [hasOpenedChat, setHasOpenedChat] = useState(false);
   const [activeSection, setActiveSection] =
     useState<DashboardSection>("dashboard");
 
@@ -43,7 +47,12 @@ export function ConsumerIQExperience() {
   }, [persistOnboarded]);
 
   const handleToggleChat = useCallback(() => {
-    setIsChatOpen((open) => !open);
+    setIsChatOpen((open) => {
+      if (!open) {
+        setHasOpenedChat(true);
+      }
+      return !open;
+    });
   }, []);
 
   if (!isOnboarded) {
@@ -71,9 +80,36 @@ export function ConsumerIQExperience() {
           active={activeSection}
           onActiveChange={setActiveSection}
         />
+        <Button
+          aria-hidden={isChatOpen}
+          aria-label="Open Advisor Bot"
+          className={cn(
+            "absolute right-5 bottom-5 z-20 rounded-lg border-border-strong bg-background-200/70 text-foreground-light shadow-lg backdrop-blur-md transition-[opacity,background-color,border-color,color] duration-200 ease-out hover:border-border-stronger hover:bg-background-200 hover:text-foreground-default md:top-[4.25px] md:right-[4.25px] md:bottom-auto",
+            isChatOpen && "pointer-events-none opacity-0"
+          )}
+          onClick={handleToggleChat}
+          size="icon"
+          tabIndex={isChatOpen ? -1 : 0}
+          type="button"
+          variant="ghost"
+        >
+          <IconRobot stroke={1.8} />
+        </Button>
         {isChatOpen ? (
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex w-full justify-end">
-            <div className="pointer-events-auto h-full w-full min-w-0 sm:w-[420px] lg:w-[460px]">
+          <button
+            aria-label="Close Advisor Bot"
+            className="absolute inset-0 z-20 cursor-default"
+            onClick={handleToggleChat}
+            tabIndex={-1}
+            type="button"
+          />
+        ) : null}
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex w-full justify-end">
+          <div
+            className="chat-slide-panel pointer-events-auto h-full w-full min-w-0 sm:w-[420px] lg:w-[460px]"
+            data-state={isChatOpen ? "open" : "closed"}
+          >
+            {hasOpenedChat ? (
               <Suspense
                 fallback={<div className="h-full bg-background-default" />}
               >
@@ -84,9 +120,9 @@ export function ConsumerIQExperience() {
                   panelClassName="shadow-2xl"
                 />
               </Suspense>
-            </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </div>
     </AppShell>
   );

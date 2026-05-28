@@ -62,52 +62,9 @@ export function CompetitorMirror() {
   return (
     <div className="@container grid min-w-0 gap-3">
       <Panel title="Top Competitor Matrix">
-        {/* Cards (when the panel is too narrow for the matrix table) */}
-        <div className="grid gap-3 @min-[56rem]:hidden">
-          {competitorRows.map((row) => (
-            <article
-              className="min-w-0 rounded-lg border bg-background-default p-3"
-              key={row.sku}
-            >
-              <div className="min-w-0">
-                <p className="font-semibold">{row.brand}</p>
-                <p className="break-words text-xs text-foreground-light">
-                  {row.sku}
-                </p>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
-                <div className="rounded-lg border bg-card p-2.5">
-                  <p className="text-xs text-foreground-light">Avg Price</p>
-                  <p className="font-mono font-semibold tabular-nums">
-                    {row.avgPrice}
-                  </p>
-                  <DeltaPill value={row.priceDelta} />
-                </div>
-                <div className="rounded-lg border bg-card p-2.5">
-                  <p className="text-xs text-foreground-light">Sales</p>
-                  <p className="font-mono font-semibold tabular-nums">
-                    {row.monthlySales}
-                  </p>
-                  <DeltaPill value={row.salesDelta} />
-                </div>
-                <div className="rounded-lg border bg-card p-2.5">
-                  <p className="text-xs text-foreground-light">Rating</p>
-                  <p className="font-mono font-semibold tabular-nums">
-                    {row.rating}
-                  </p>
-                  <p className="font-mono text-xs tabular-nums text-foreground-light">
-                    {row.reviews}
-                  </p>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        {/* Matrix table (when the panel is wide enough) */}
-        <div className="hidden min-w-0 @min-[56rem]:block">
+        <div className="min-w-0">
           <ScrollableTableWrapper>
-            <Table className="min-w-[52rem]">
+            <Table className="min-w-[56rem]">
               <colgroup>
                 <col className="w-[34%]" />
                 <col className="w-[22%]" />

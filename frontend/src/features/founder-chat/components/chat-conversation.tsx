@@ -37,7 +37,7 @@ export function ChatConversation({ messages }: ChatConversationProps) {
 
   return (
     <Conversation>
-      <ConversationContent>
+      <ConversationContent className="pt-16">
         {messages.map(({ versions, ...message }) => (
           <MessageBranch defaultBranch={0} key={message.key}>
             <MessageBranchContent>

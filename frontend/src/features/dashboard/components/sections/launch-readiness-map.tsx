@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import type { FeatureCollection, Geometry, Position } from "geojson";
+import type { LngLat, TransformConstrainFunction } from "maplibre-gl";
 import {
   Layer,
   Map as MapGL,
@@ -65,6 +66,7 @@ type HoveredCountry = EnrichedCountryDatum & {
 };
 
 type MapMode = "demand" | "opportunity";
+type LngLatConstructor = new (lng: number, lat: number) => LngLat;
 
 const LAND_SOURCE_ID = "launch-readiness-land";
 const LAND_FILL_LAYER_ID = "launch-readiness-land-fill";
@@ -74,6 +76,30 @@ const COUNTRY_FILL_LAYER_ID = "launch-readiness-country-fill";
 const COUNTRY_HOVER_LAYER_ID = "launch-readiness-country-hover";
 const MAP_PIXEL_RATIO =
   typeof window === "undefined" ? 1 : Math.min(window.devicePixelRatio, 1.5);
+const MAP_MIN_CENTER_LATITUDE = 2;
+const MAP_MAX_CENTER_LATITUDE = 55;
+const MAP_MIN_ZOOM = 0.75;
+const MAP_MAX_ZOOM = 3.5;
+
+const constrainLaunchMapTransform: TransformConstrainFunction = (
+  lngLat,
+  zoom,
+) => {
+  const LngLatClass = lngLat.constructor as LngLatConstructor;
+  const constrainedLatitude = Math.min(
+    MAP_MAX_CENTER_LATITUDE,
+    Math.max(MAP_MIN_CENTER_LATITUDE, lngLat.lat),
+  );
+  const constrainedZoom = Math.min(MAP_MAX_ZOOM, Math.max(MAP_MIN_ZOOM, zoom));
+
+  return {
+    center:
+      constrainedLatitude === lngLat.lat
+        ? lngLat
+        : new LngLatClass(lngLat.lng, constrainedLatitude),
+    zoom: constrainedZoom,
+  };
+};
 
 const FALLBACK_MAP_STYLE: StyleSpecification = {
   layers: [
@@ -499,11 +525,6 @@ export function LaunchReadinessMap() {
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="break-words font-semibold">Market Readiness Map</h3>
-          <p className="mt-1 max-w-3xl break-words text-sm text-foreground-light">
-            {mode === "demand"
-              ? "Country demand intensity — brighter means stronger sales signal"
-              : "Expansion opportunity — brighter means high demand, good fit, low competition"}
-          </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-3">
           <div
@@ -559,7 +580,7 @@ export function LaunchReadinessMap() {
         </div>
       </div>
 
-      <div className="launch-readiness-map relative h-[18rem] min-h-[18rem] overflow-hidden rounded-lg border bg-background-default sm:h-[21rem] xl:h-[24rem]">
+      <div className="launch-readiness-map relative h-[22rem] min-h-[22rem] overflow-hidden rounded-lg border bg-background-default sm:h-[26rem] xl:h-[30rem]">
         {mapLoadState.status === "ready" ? (
           <MapGL
             attributionControl={{ compact: true }}
@@ -573,13 +594,9 @@ export function LaunchReadinessMap() {
             }}
             interactiveLayerIds={[COUNTRY_FILL_LAYER_ID]}
             mapStyle={MAP_STYLE}
-            maxBounds={[
-              [-360, -50],
-              [360, 85],
-            ]}
             maxPitch={0}
-            maxZoom={3.5}
-            minZoom={1.15}
+            maxZoom={MAP_MAX_ZOOM}
+            minZoom={MAP_MIN_ZOOM}
             onLoad={handleMapLoad}
             onMouseLeave={handleMouseLeave}
             onMouseMove={handleMouseMove}
@@ -588,6 +605,7 @@ export function LaunchReadinessMap() {
             scrollZoom
             style={{ height: "100%", width: "100%" }}
             touchZoomRotate
+            transformConstrain={constrainLaunchMapTransform}
           >
             <Source data={mapLoadState.data.land} id={LAND_SOURCE_ID} type="geojson">
               <Layer {...landFillLayer} />

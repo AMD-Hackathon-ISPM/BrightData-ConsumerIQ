@@ -354,6 +354,35 @@
     font-feature-settings: normal;
     letter-spacing: 0;
   }
+
+  /* ConsumerIQ chat panel: slides in from the right edge */
+  .chat-slide-panel {
+    transition:
+      transform 320ms cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 320ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .chat-slide-panel[data-state="closed"] {
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+    /* exit is snappier than enter */
+    transition:
+      transform 240ms cubic-bezier(0.23, 1, 0.32, 1),
+      opacity 240ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .chat-slide-panel[data-state="open"] {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-slide-panel,
+  .chat-slide-panel[data-state="closed"],
+  .chat-slide-panel[data-state="open"] {
+    transform: none;
+    transition: opacity 200ms ease;
+  }
 }
 
 .launch-readiness-map .maplibregl-ctrl-attrib {

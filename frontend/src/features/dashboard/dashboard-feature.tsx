@@ -1,11 +1,11 @@
 import { IconChevronRight } from "@tabler/icons-react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { SectionFade } from "@/components/animated-page";
 import { type DashboardSection, navItems } from "./constants";
 import { getSectionLabel, getSectionTitle } from "./data/dashboard-copy";
 import {
   CompetitorMirror,
-  DataSettings,
   DemandPulse,
   LaunchCompass,
   MarketOverview,
@@ -20,6 +20,15 @@ export function ConsumerIQDashboard({
   active: DashboardSection;
   onActiveChange: (next: DashboardSection) => void;
 }) {
+  const dashboardAnimatedRef = useRef(false);
+  const animateDashboard = active === "dashboard" && !dashboardAnimatedRef.current;
+
+  useEffect(() => {
+    if (active === "dashboard") {
+      dashboardAnimatedRef.current = true;
+    }
+  }, [active]);
+
   return (
     <section
       className={cn(
@@ -50,12 +59,13 @@ export function ConsumerIQDashboard({
             </SectionFade>
 
             <SectionFade key={active} transitionKey={active} delay={70}>
-              {active === "dashboard" && <MarketOverview />}
+              {active === "dashboard" && (
+                <MarketOverview animate={animateDashboard} />
+              )}
               {active === "pulse" && <DemandPulse />}
               {active === "persona" && <PersonaDecode />}
               {active === "competitor" && <CompetitorMirror />}
               {active === "compass" && <LaunchCompass />}
-              {active === "settings" && <DataSettings />}
             </SectionFade>
           </div>
         </main>
