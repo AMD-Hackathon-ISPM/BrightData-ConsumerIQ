@@ -126,26 +126,46 @@ async function fetchInsights(): Promise<InsightsResponse | null> {
   }
 }
 
+function hasDashboardContent(r: InsightsResponse | null): boolean {
+  const d = r?.extraAnalysis?.dashboardData;
+  if (!d || typeof d !== "object") return false;
+  return Boolean(
+    (d as DashboardData).marketOverview ||
+    (d as DashboardData).demandPulse ||
+    (d as DashboardData).competitorMirror ||
+    (d as DashboardData).launchCompass,
+  );
+}
+
 export function useInsights() {
   const [data, setData] = useState<InsightsResponse | null>(() => readCache());
-  const [loading, setLoading] = useState(!readCache());
+  const [loading, setLoading] = useState(!hasDashboardContent(readCache()));
 
   useEffect(() => {
-    if (readCache()) return;
-    let cancelled = false;
-    fetchInsights().then((result) => {
-      if (cancelled || !result) return;
-      if (result.status === "completed" && result.extraAnalysis?.dashboardData) {
-        writeCache(result);
-      }
-      setData(result);
+    if (hasDashboardContent(readCache())) {
       setLoading(false);
-    });
+      return;
+    }
+    let cancelled = false;
+    const poll = async () => {
+      while (!cancelled) {
+        const result = await fetchInsights();
+        if (cancelled) return;
+        if (result) setData(result);
+        if (result && result.status === "completed" && hasDashboardContent(result)) {
+          writeCache(result);
+          setLoading(false);
+          return;
+        }
+        await new Promise<void>((r) => setTimeout(r, 3000));
+      }
+    };
+    poll();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const dashboardData = data?.extraAnalysis?.dashboardData ?? null;
+  const dashboardData = hasDashboardContent(data) ? data!.extraAnalysis!.dashboardData! : null;
   return { insights: data, dashboardData, loading };
 }

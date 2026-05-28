@@ -26,6 +26,8 @@ spec:
               value: "2"
             - name: BACKPRESSURE_ENABLED
               value: "false"
+            - name: SIGNAL_RECENCY_WEIGHT
+              value: "0.005"
             - name: REDIS_URL
               value: redis://redis.consumeriq.svc.cluster.local:6379/0
             - name: DATABASE_URL

@@ -28,6 +28,22 @@ spec:
               value: "false"
             - name: INFERENCE_QUEUE_LIMIT
               value: "20"
+            - name: DAILY_REFRESH_ENABLED
+              value: "false"
+            - name: COMPLIANCE_SCRAPE_ENABLED
+              value: "false"
+            - name: SIGNAL_TTL_ENABLED
+              value: "false"
+            - name: SIGNAL_TTL_MONTHS
+              value: "4"
+            - name: SIGNAL_RECENCY_WEIGHT
+              value: "0.005"
+            - name: ADMIN_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-admin
+                  key: ADMIN_API_TOKEN
+                  optional: true
             - name: SCRAPINGBEE_API_KEY
               valueFrom:
                 secretKeyRef:

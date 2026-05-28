@@ -4,51 +4,6 @@ import { Panel } from "../dashboard-primitives";
 import { AdvisorIntelligence } from "./shared";
 import { useInsights, type CompetitorMirrorData } from "../../api";
 
-const FALLBACK_COMPETITORS: CompetitorMirrorData["competitors"] = [
-  {
-    brand: "CeraVe",
-    sku: "AM Facial Moisturizing Lotion SPF 30",
-    avgPrice: "$16.99",
-    priceDelta: "-2.1%",
-    promoIntensity: "High",
-    promoLevel: "high",
-    monthlySales: "45.2K",
-    salesDelta: "+5.4%",
-    rating: "4.7",
-    reviews: "94K",
-  },
-  {
-    brand: "COSRX",
-    sku: "Snail Mucin Essence 100ml",
-    avgPrice: "$13.80",
-    priceDelta: "-0.8%",
-    promoIntensity: "Low",
-    promoLevel: "low",
-    monthlySales: "18.5K",
-    salesDelta: "-1.2%",
-    rating: "4.6",
-    reviews: "72K",
-  },
-  {
-    brand: "The Ordinary",
-    sku: "Hyaluronic Acid 2% + B5",
-    avgPrice: "$18.50",
-    priceDelta: "+5.8%",
-    promoIntensity: "Very High",
-    promoLevel: "very-high",
-    monthlySales: "82.1K",
-    salesDelta: "+12.4%",
-    rating: "4.5",
-    reviews: "118K",
-  },
-];
-
-const FALLBACK_PRICING_TIERS: CompetitorMirrorData["pricingTiers"] = [
-  { label: "50-80K", note: "saturated", demand: "28% demand", percentage: 28, type: "saturated" },
-  { label: "100-130K", note: "sweet spot", demand: "23% demand", percentage: 23, type: "sweet-spot" },
-  { label: "150-200K", note: "premium opp", demand: "15% demand", percentage: 15, type: "premium" },
-];
-
 const promoBarClasses: Record<string, string> = {
   low: "w-1/4 bg-muted-foreground/50",
   medium: "w-1/2 bg-muted-foreground/70",
@@ -66,22 +21,21 @@ export function CompetitorMirror() {
   const { dashboardData } = useInsights();
   const cm = dashboardData?.competitorMirror;
 
-  const competitors = cm?.competitors?.length ? cm.competitors : FALLBACK_COMPETITORS;
-  const pricingTiers = cm?.pricingTiers?.length ? cm.pricingTiers : FALLBACK_PRICING_TIERS;
+  const competitors = cm?.competitors ?? [];
+  const pricingTiers = cm?.pricingTiers ?? [];
   const advisorRecommendation =
-    cm?.advisorRecommendation ??
-    "Competitors are either credible but expensive on Amazon, or cheap but low-trust on Temu. Position the product as a clinically clear, affordable barrier-repair routine with enough proof for Amazon and enough bundle value for Temu.";
-  const advisorSignals = cm?.advisorSignals?.length
-    ? cm.advisorSignals
-    : [
-        { label: "Key Advantage", value: "Proof-led barrier repair positioning" },
-        { label: "Pricing Advice", value: "$18–$22 Amazon core SKU" },
-        { label: "Positioning", value: "Premium efficacy without premium friction" },
-      ];
+    cm?.advisorRecommendation ?? "Generating competitor analysis…";
+  const advisorSignals = cm?.advisorSignals ?? [];
 
   return (
     <div className="grid min-w-0 gap-3">
       <Panel title="Top Competitor Matrix">
+        {competitors.length === 0 ? (
+          <div className="grid min-h-[8rem] place-items-center text-sm text-muted-foreground">
+            Generating competitor data…
+          </div>
+        ) : (
+        <>
         {/* Mobile */}
         <div className="grid gap-3 md:hidden">
           {competitors.map((row) => (
@@ -164,6 +118,8 @@ export function CompetitorMirror() {
             ))}
           </div>
         </div>
+        </>
+        )}
       </Panel>
 
       <div className="grid min-w-0 gap-3 lg:grid-cols-2">
@@ -193,6 +149,15 @@ function DeltaPill({ value }: { value: string }) {
 }
 
 function PricingSweetSpotPanel({ tiers }: { tiers: CompetitorMirrorData["pricingTiers"] }) {
+  if (tiers.length === 0) {
+    return (
+      <Panel title="Pricing Sweet Spot">
+        <div className="grid min-h-[8rem] place-items-center text-sm text-muted-foreground">
+          Generating pricing tiers…
+        </div>
+      </Panel>
+    );
+  }
   return (
     <Panel title="Pricing Sweet Spot">
       <div className="grid gap-3">

@@ -65,6 +65,9 @@ _PIPELINE_SKIP_MARKETPLACES = {
     if item.strip()
 }
 _PIPELINE_ALLOW_FALLBACK_SIGNALS = os.getenv('PIPELINE_ALLOW_FALLBACK_SIGNALS', 'true').lower() == 'true'
+_DAILY_REFRESH_ENABLED = os.getenv('DAILY_REFRESH_ENABLED', 'false').lower() == 'true'
+_COMPLIANCE_SCRAPE_ENABLED = os.getenv('COMPLIANCE_SCRAPE_ENABLED', 'false').lower() == 'true'
+_SIGNAL_RECENCY_WEIGHT = float(os.getenv('SIGNAL_RECENCY_WEIGHT', '0.005'))
 DATABASE_URL = os.getenv(
     'DATABASE_URL',
     'postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.local:5432/consumeriq',
@@ -88,6 +91,8 @@ celeryApp.conf.update(
         'runPersonaDecodeTask': {'queue': 'inference'},
         'processLlmInsights': {'queue': 'synthesis'},
         'scrapeMarketSignals': {'queue': 'scraping'},
+        'refreshUserMarketSignals': {'queue': 'scraping'},
+        'scrapeComplianceSignals': {'queue': 'scraping'},
         'scrapeMarketplacePage': {'queue': 'scraping'},
         'scrapeMarketplacePageBatch': {'queue': 'scraping'},
         'scrapeMarketplaceDiscovery': {'queue': 'scraping'},
@@ -140,22 +145,22 @@ def _fetchRelevantSignals(categoryName: str, country: str = '', *, limit: int = 
         with connection.cursor() as cursor:
             if country:
                 cursor.execute(
-                    '''
+                    f'''
                     SELECT signalText, sourceType, sourceUrl, sentimentScore
                     FROM marketSignals
                     WHERE embedding IS NOT NULL AND (country = %s OR country IS NULL)
-                    ORDER BY embedding <-> %s::vector
+                    ORDER BY (embedding <-> %s::vector) + COALESCE(CURRENT_DATE - signalDate, 0) * {_SIGNAL_RECENCY_WEIGHT}
                     LIMIT %s
                     ''',
                     (country, vectorLiteral, limit),
                 )
             else:
                 cursor.execute(
-                    '''
+                    f'''
                     SELECT signalText, sourceType, sourceUrl, sentimentScore
                     FROM marketSignals
                     WHERE embedding IS NOT NULL
-                    ORDER BY embedding <-> %s::vector
+                    ORDER BY (embedding <-> %s::vector) + COALESCE(CURRENT_DATE - signalDate, 0) * {_SIGNAL_RECENCY_WEIGHT}
                     LIMIT %s
                     ''',
                     (vectorLiteral, limit),
@@ -579,7 +584,7 @@ def scrapeMarketSignals(
     stored = len(rows)
     print(f'[scraping] Done. Stored {stored} signals for category={category}, country={country}')
 
-    inference_task = processLlmInsights.delay(category, country)
+    inference_task = processLlmInsights.delay(category, country, form_id)
     print(f'[scraping] Dispatched processLlmInsights task_id={inference_task.id}')
 
     if form_id:
@@ -672,25 +677,205 @@ def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | Non
     return result
 
 
+def _generateComplianceKeywords(category: str, country: str, product_name: str) -> list[str]:
+    import re
+
+    llm = createLlm()
+    prompt = (
+        f'You are a compliance and risk research assistant. For a business in the "{category}" '
+        f'category operating in {country}, generate exactly 5 search keywords to monitor news, '
+        f'regulatory updates, safety recalls, or hazard alerts relevant to this business.\n\n'
+        'Examples:\n'
+        '- food/beverage in US: ["FDA recall food", "food safety alert", "FDA warning letter", "USDA recall", "food contamination news"]\n'
+        '- electronics: ["FCC recall", "consumer product safety commission", "lithium battery recall", "electronics safety alert", "CPSC warning"]\n'
+        '- cosmetics: ["FDA cosmetic warning", "MOCRA compliance", "cosmetic recall", "skincare allergen alert", "FDA enforcement report"]\n'
+        '- apparel: ["CPSC clothing recall", "flammable fabric warning", "lead in clothing", "textile safety", "garment recall"]\n\n'
+        f'Product: {product_name}\n\n'
+        'Return ONLY a JSON array of exactly 5 short keyword strings. No explanation, no markdown.\n'
+        'JSON:'
+    )
+    try:
+        response = llm.create_completion(prompt=prompt, max_tokens=200, temperature=0.3, stop=['\n\n'])
+        text = response['choices'][0]['text'].strip()
+        match = re.search(r'\[.*?\]', text, re.DOTALL)
+        if match:
+            parsed = json.loads(match.group())
+            if isinstance(parsed, list):
+                seen = set()
+                keywords: list[str] = []
+                for item in parsed:
+                    normalized = str(item).strip()
+                    if normalized and normalized.lower() not in seen:
+                        seen.add(normalized.lower())
+                        keywords.append(normalized)
+                    if len(keywords) == 5:
+                        return keywords
+                if keywords:
+                    return keywords
+    except Exception as exc:
+        print(f'[compliance] Keyword generation failed: {exc}')
+    finally:
+        del llm
+        gc.collect()
+    base = product_name or category or 'product'
+    return [
+        f'{base} recall',
+        f'{base} safety alert',
+        f'{base} FDA warning',
+        f'{category} regulation news',
+        f'{category} hazard',
+    ]
+
+
+def _loadFormPayload(user_id: int) -> dict | None:
+    try:
+        with psycopg2.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'SELECT payload FROM founderForms WHERE user_id = %s ORDER BY createdAt DESC LIMIT 1',
+                    (user_id,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                return json.loads(row[0]) if isinstance(row[0], str) else row[0]
+    except Exception as exc:
+        print(f'[cron] Failed to load form for user={user_id}: {exc}')
+        return None
+
+
+@celeryApp.task(name='refreshUserMarketSignals', queue='scraping')
+def refreshUserMarketSignals(user_id: int) -> dict[str, Any]:
+    if not _DAILY_REFRESH_ENABLED:
+        return {'status': 'skipped', 'reason': 'DAILY_REFRESH_ENABLED=false', 'user_id': user_id}
+
+    form = _loadFormPayload(user_id)
+    if not form:
+        return {'status': 'no_form', 'user_id': user_id}
+
+    task = scrapeMarketSignals.delay(
+        form.get('industry', ''),
+        form.get('searchIntentKeywords', []) or [],
+        form.get('countryCode', 'us') or 'us',
+        form.get('marketplace', 'amazon') or 'amazon',
+        form.get('productName', '') or '',
+        form.get('productDescription', '') or '',
+        form.get('uniqueSellingPoint', '') or '',
+        form.get('mainFeatures', '') or '',
+        form.get('competitiveAdvantage', '') or '',
+        form.get('painPoint', '') or '',
+        form.get('customerSegment', '') or '',
+        int(form.get('priceRangeMin', 0) or 0),
+        int(form.get('priceRangeMax', 0) or 0),
+        '',
+    )
+    return {'status': 'queued', 'user_id': user_id, 'task_id': task.id}
+
+
+@celeryApp.task(name='scrapeComplianceSignals', queue='scraping')
+def scrapeComplianceSignals(user_id: int) -> dict[str, Any]:
+    if not _COMPLIANCE_SCRAPE_ENABLED:
+        return {'status': 'skipped', 'reason': 'COMPLIANCE_SCRAPE_ENABLED=false', 'user_id': user_id}
+
+    form = _loadFormPayload(user_id)
+    if not form:
+        return {'status': 'no_form', 'user_id': user_id}
+
+    category = form.get('industry', '') or ''
+    country = form.get('countryCode', 'us') or 'us'
+    product_name = form.get('productName', '') or ''
+
+    keywords = _generateComplianceKeywords(category, country, product_name)
+    print(f'[compliance] user={user_id} keywords={keywords}', flush=True)
+
+    from backend.api.socialScrape import runSocialDiscovery
+
+    rows: list[tuple[str, str, str, str, str]] = []
+    for keyword in keywords:
+        data = runSocialDiscovery(
+            keyword=keyword,
+            country_code=country,
+            limit=3,
+            include_scrape=False,
+            wait_for_snapshot=True,
+            timeout_seconds=_PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS,
+            snapshot_wait_seconds=_PIPELINE_SNAPSHOT_WAIT_SECONDS,
+        )
+        if data.get('status') != 'success':
+            continue
+        for result in data.get('serpResults', [])[:3]:
+            text = f"{result.get('title', '')} — {result.get('description', '')}"
+            if not text.strip(' —'):
+                continue
+            rows.append((text[:1000], 'compliance', result.get('url', ''), country, category))
+
+    if rows:
+        embedder = createEmbedder()
+        try:
+            vectors = embedTexts(embedder, [r[0] for r in rows])
+        finally:
+            del embedder
+            gc.collect()
+
+        embedded_rows = [
+            (text, src, url, ctry, cat, _formatVector(vec))
+            for (text, src, url, ctry, cat), vec in zip(rows, vectors)
+        ]
+        with psycopg2.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.executemany(
+                    'INSERT INTO marketSignals (signalText, sourceType, sourceUrl, signalDate, country, category, embedding) '
+                    'VALUES (%s, %s, %s, CURRENT_DATE, %s, %s, %s::vector)',
+                    embedded_rows,
+                )
+
+    return {'status': 'completed', 'user_id': user_id, 'keywords': keywords, 'signals_stored': len(rows)}
+
+
+def _updateInferenceStage(form_id: str, stage: str) -> None:
+    if not form_id:
+        return
+    try:
+        from backend.agent.session import getRedisClient
+        rdb = getRedisClient()
+        raw = rdb.get(f'form_pipeline:{form_id}')
+        current = json.loads(raw) if raw else {}
+        current['inference_stage'] = stage
+        rdb.set(f'form_pipeline:{form_id}', json.dumps(current), ex=3600)
+    except Exception as exc:
+        print(f'[pipeline] Failed to update inference_stage={stage}: {exc}')
+
+
 @celeryApp.task(name='processLlmInsights', queue='synthesis', bind=True, max_retries=3)
-def processLlmInsights(self, categoryName: str, country: str = ''):
-    print(f'Worker picked up job for category: {categoryName}, country: {country}')
+def processLlmInsights(self, categoryName: str, country: str = '', form_id: str = ''):
+    print(f'Worker picked up job for category: {categoryName}, country: {country}, form_id: {form_id}')
 
     signals = _fetchRelevantSignals(categoryName, country)
     if not signals:
         try:
             raise self.retry(countdown=90)
         except self.MaxRetriesExceededError:
+            _updateInferenceStage(form_id, 'failed')
             return {
                 'category': categoryName,
                 'status': 'failed',
                 'error': 'No signals found after retries.',
             }
 
+    _updateInferenceStage(form_id, 'analyzing')
     translatedSignals = _translateSignalsIfNeeded(signals)
     insights = _runLlmInsights(categoryName, translatedSignals)
+
+    _updateInferenceStage(form_id, 'cross_referencing')
     insights['extraAnalysis'] = _runOpenAiExtraAnalysis(categoryName, country, insights, translatedSignals)
     _saveCategoryInsights(categoryName, country, insights)
+
+    extra = insights.get('extraAnalysis') or {}
+    dashboard = extra.get('dashboardData') if isinstance(extra, dict) else None
+    if isinstance(dashboard, dict) and any(dashboard.get(k) for k in ('marketOverview', 'demandPulse', 'competitorMirror', 'launchCompass')):
+        _updateInferenceStage(form_id, 'completed')
+    else:
+        _updateInferenceStage(form_id, 'failed')
 
     print(f'Job complete for {categoryName}! Saved to Postgres.')
     return {

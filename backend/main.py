@@ -20,6 +20,25 @@ from backend.api.brightdataScrape import router as brightdataScrapeRouter
 _REDIS_URL = os.getenv('REDIS_URL', 'redis://redis.consumeriq.svc.cluster.local:6379/0')
 _INFERENCE_QUEUE_LIMIT = int(os.getenv('INFERENCE_QUEUE_LIMIT', '5'))
 _BACKPRESSURE_ENABLED = os.getenv('BACKPRESSURE_ENABLED', 'false').lower() == 'true'
+_ADMIN_API_TOKEN = os.getenv('ADMIN_API_TOKEN', '')
+_DAILY_REFRESH_ENABLED = os.getenv('DAILY_REFRESH_ENABLED', 'false').lower() == 'true'
+_COMPLIANCE_SCRAPE_ENABLED = os.getenv('COMPLIANCE_SCRAPE_ENABLED', 'false').lower() == 'true'
+_SIGNAL_TTL_ENABLED = os.getenv('SIGNAL_TTL_ENABLED', 'false').lower() == 'true'
+_SIGNAL_TTL_MONTHS = int(os.getenv('SIGNAL_TTL_MONTHS', '4'))
+
+
+def _require_admin(request: Request) -> None:
+    token = request.headers.get('X-Admin-Token', '')
+    if not _ADMIN_API_TOKEN or token != _ADMIN_API_TOKEN:
+        raise HTTPException(status_code=401, detail='Admin token required')
+
+
+def _fetchAllFormUserIds() -> list[int]:
+    import psycopg2
+    with psycopg2.connect(_DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute('SELECT DISTINCT user_id FROM founderForms')
+            return [int(row[0]) for row in cur.fetchall()]
 
 
 def _inferenceQueueDepth() -> int:
@@ -295,6 +314,7 @@ async def getFormPipeline(formId: str = Path(..., alias='form_id')):
     else:
         result['scraping'] = {'status': 'pending', 'signalsStored': 0}
 
+    inference_stage = pipeline.get('inference_stage', 'pending')
     inference_task_id = pipeline.get('inference_task_id', '')
     if inference_task_id:
         try:
@@ -302,17 +322,73 @@ async def getFormPipeline(formId: str = Path(..., alias='form_id')):
             from backend.redis.worker import celeryApp
             ir = AsyncResult(inference_task_id, app=celeryApp)
             if ir.successful():
-                result['inference'] = {'status': 'completed'}
+                result['inference'] = {'status': 'completed', 'stage': inference_stage or 'completed'}
             elif ir.failed():
-                result['inference'] = {'status': 'failed'}
+                result['inference'] = {'status': 'failed', 'stage': 'failed'}
             else:
-                result['inference'] = {'status': 'processing'}
+                result['inference'] = {'status': 'processing', 'stage': inference_stage or 'pending'}
         except Exception:
-            result['inference'] = {'status': 'unknown'}
+            result['inference'] = {'status': 'unknown', 'stage': inference_stage or 'pending'}
     else:
-        result['inference'] = {'status': 'pending'}
+        result['inference'] = {'status': 'pending', 'stage': 'pending'}
 
     return result
+
+
+@app.post('/api/admin/trigger-daily-refresh')
+async def triggerDailyRefresh(request: Request):
+    _require_admin(request)
+    if not _DAILY_REFRESH_ENABLED:
+        return {'status': 'skipped', 'reason': 'DAILY_REFRESH_ENABLED=false'}
+
+    try:
+        from backend.redis.worker import refreshUserMarketSignals
+    except ModuleNotFoundError as error:
+        raise HTTPException(status_code=503, detail=f'Worker dependency missing: {error.name}') from error
+
+    loop = asyncio.get_event_loop()
+    user_ids = await loop.run_in_executor(None, _fetchAllFormUserIds)
+    queued = [{'user_id': uid, 'task_id': refreshUserMarketSignals.delay(uid).id} for uid in user_ids]
+    return {'status': 'queued', 'count': len(queued), 'tasks': queued}
+
+
+@app.post('/api/admin/prune-old-signals')
+async def pruneOldSignals(request: Request):
+    _require_admin(request)
+    if not _SIGNAL_TTL_ENABLED:
+        return {'status': 'skipped', 'reason': 'SIGNAL_TTL_ENABLED=false'}
+
+    import psycopg2
+    months = max(1, _SIGNAL_TTL_MONTHS)
+
+    def _prune() -> int:
+        with psycopg2.connect(_DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"DELETE FROM marketSignals WHERE signalDate < CURRENT_DATE - INTERVAL '{months} months'"
+                )
+                return cur.rowcount
+
+    loop = asyncio.get_event_loop()
+    deleted = await loop.run_in_executor(None, _prune)
+    return {'status': 'completed', 'deletedRows': deleted, 'cutoffMonths': months}
+
+
+@app.post('/api/admin/trigger-compliance-scrape')
+async def triggerComplianceScrape(request: Request):
+    _require_admin(request)
+    if not _COMPLIANCE_SCRAPE_ENABLED:
+        return {'status': 'skipped', 'reason': 'COMPLIANCE_SCRAPE_ENABLED=false'}
+
+    try:
+        from backend.redis.worker import scrapeComplianceSignals
+    except ModuleNotFoundError as error:
+        raise HTTPException(status_code=503, detail=f'Worker dependency missing: {error.name}') from error
+
+    loop = asyncio.get_event_loop()
+    user_ids = await loop.run_in_executor(None, _fetchAllFormUserIds)
+    queued = [{'user_id': uid, 'task_id': scrapeComplianceSignals.delay(uid).id} for uid in user_ids]
+    return {'status': 'queued', 'count': len(queued), 'tasks': queued}
 
 
 @app.get('/api/task-status/{task_id}')

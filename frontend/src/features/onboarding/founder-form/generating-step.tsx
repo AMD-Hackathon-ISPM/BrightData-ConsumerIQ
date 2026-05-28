@@ -6,9 +6,16 @@ import { startPersonaDecode, PERSONA_TASK_KEY } from './api'
 import { getAuthToken } from '@/lib/auth'
 import type { FounderFormState } from './types'
 
+type InferenceStage =
+  | 'pending'
+  | 'analyzing'
+  | 'cross_referencing'
+  | 'completed'
+  | 'failed'
+
 type PipelineStatus = {
   scraping: { status: string; signalsStored: number }
-  inference: { status: string }
+  inference: { status: string; stage?: InferenceStage }
 }
 
 async function fetchPipelineStatus(formId: string): Promise<PipelineStatus | null> {
@@ -26,11 +33,12 @@ async function fetchPipelineStatus(formId: string): Promise<PipelineStatus | nul
 function pipelineTarget(p: PipelineStatus | null): number {
   if (!p) return 1
   const scrape = p.scraping.status
-  const infer = p.inference.status
-  if (infer === 'completed' || infer === 'skipped' || infer === 'failed') return 7
-  if (infer === 'processing') return 5
-  if (scrape === 'completed' || scrape === 'skipped' || scrape === 'failed') return 4
-  if (scrape === 'processing') return 3
+  const stage = p.inference.stage ?? 'pending'
+  if (stage === 'completed') return 5
+  if (stage === 'cross_referencing') return 4
+  if (stage === 'analyzing') return 3
+  if (scrape === 'completed' || scrape === 'skipped' || scrape === 'failed') return 2
+  if (scrape === 'processing') return 1
   return 1
 }
 
@@ -53,7 +61,6 @@ export function GeneratingStep({
 }: GeneratingStepProps) {
   const [pipeline, setPipeline] = useState<PipelineStatus | null>(null)
   const [revealed, setRevealed] = useState(0)
-  const [timedOut, setTimedOut] = useState(false)
   const personaStarted = useRef(false)
 
   const signalsStored = pipeline?.scraping.signalsStored ?? 0
@@ -66,24 +73,16 @@ export function GeneratingStep({
         : 'Scanning marketplace listings…'
     const signalsLine =
       signalsStored > 0
-        ? `${signalsStored.toLocaleString()} market signals collected`
-        : 'Gathering market signals…'
+        ? `Collected ${signalsStored.toLocaleString()} market signals`
+        : 'Market signals collected'
     return [
       firstLine,
       signalsLine,
-      'Reading verified-purchase reviews…',
-      'Identifying customer patterns',
-      'Cross-referencing social demand signals',
-      'Detecting market gaps',
+      'Reading reviews and identifying customer patterns…',
+      'Cross-referencing demand signals with GPT…',
       'Building your dashboard',
     ]
   }, [region, industry, signalsStored])
-
-  useEffect(() => {
-    if (submitStatus !== 'success') return
-    const id = window.setTimeout(() => setTimedOut(true), 3 * 60 * 1000)
-    return () => window.clearTimeout(id)
-  }, [submitStatus])
 
   useEffect(() => {
     if (!formId || submitStatus !== 'success') return
@@ -107,7 +106,7 @@ export function GeneratingStep({
   useEffect(() => {
     if (submitStatus !== 'success') return
     if (revealed >= target) return
-    const id = window.setTimeout(() => setRevealed((r) => r + 1), revealed === 0 ? 600 : 900)
+    const id = window.setTimeout(() => setRevealed((r) => Math.min(r + 1, target)), 600)
     return () => window.clearTimeout(id)
   }, [revealed, target, submitStatus])
 
@@ -125,7 +124,9 @@ export function GeneratingStep({
   }, [submitStatus, formState])
 
   const allDone = revealed >= lines.length
-  const canOpen = target >= 7 || submitStatus === 'error' || timedOut
+  const inferenceFailed = pipeline?.inference.stage === 'failed' || pipeline?.inference.status === 'failed'
+  const inferenceCompleted = pipeline?.inference.stage === 'completed'
+  const canOpen = inferenceCompleted
 
   return (
     <div className="mx-auto w-full max-w-xl">
@@ -182,7 +183,12 @@ export function GeneratingStep({
         ) : null}
         {submitStatus === 'error' ? (
           <p className="text-sm text-destructive">
-            Submission failed. You can still open the dashboard.
+            Submission failed. Please refresh and try again.
+          </p>
+        ) : null}
+        {inferenceFailed ? (
+          <p className="text-sm text-destructive">
+            Pipeline failed before dashboard data was ready. Please refresh and resubmit.
           </p>
         ) : null}
         <Button
@@ -193,7 +199,11 @@ export function GeneratingStep({
             canOpen ? 'opacity-100' : 'opacity-60',
           )}
         >
-          {submitStatus === 'submitting' ? 'Submitting…' : 'Open dashboard'}
+          {submitStatus === 'submitting'
+            ? 'Submitting…'
+            : canOpen
+              ? 'Open dashboard'
+              : 'Preparing your dashboard…'}
         </Button>
       </div>
     </div>

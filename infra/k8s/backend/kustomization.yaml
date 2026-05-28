@@ -8,3 +8,6 @@ resources:
   - go-deployment.yaml
   - go-service.yaml
   - go-worker-deployment.yaml
+  - cron-daily-refresh.yaml
+  - cron-compliance-scrape.yaml
+  - cron-prune-signals.yaml

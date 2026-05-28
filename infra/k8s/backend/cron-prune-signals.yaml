@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: consumeriq-prune-signals
+  namespace: consumeriq
+spec:
+  schedule: "0 1 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: trigger
+              image: curlimages/curl:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  curl -sS -X POST \
+                    -H "X-Admin-Token: $ADMIN_API_TOKEN" \
+                    http://consumeriq-api.consumeriq.svc.cluster.local:8000/api/admin/prune-old-signals
+              env:
+                - name: ADMIN_API_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: consumeriq-admin
+                      key: ADMIN_API_TOKEN
