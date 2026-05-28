@@ -226,7 +226,7 @@ function WhitespaceMap() {
 export function MarketOverview({ animate = true }: { animate?: boolean }) {
   return (
     <div className="grid gap-3">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Entrance animate={animate} delay={200} transitionKey="metric-0">
           <MetricCard
             label="Est. Demand"

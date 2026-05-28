@@ -159,7 +159,7 @@ export function StepFooter({
   primaryLabel?: string
 }) {
   return (
-    <div className="mt-2 flex items-center justify-between gap-3 pt-2">
+    <div className="mt-2 flex items-center justify-end gap-3 pt-2">
       {onBack ? (
         <Button
           variant="outline"
@@ -170,9 +170,7 @@ export function StepFooter({
         >
           Back
         </Button>
-      ) : (
-        <span />
-      )}
+      ) : null}
       <Button
         size="sm"
         type="submit"

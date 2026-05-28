@@ -1,5 +1,5 @@
 import { IconChevronRight } from "@tabler/icons-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { SectionFade } from "@/components/animated-page";
 import { type DashboardSection, navItems } from "./constants";
@@ -21,7 +21,14 @@ export function ConsumerIQDashboard({
   onActiveChange: (next: DashboardSection) => void;
 }) {
   const dashboardAnimatedRef = useRef(false);
+  const mainRef = useRef<HTMLElement>(null);
   const animateDashboard = active === "dashboard" && !dashboardAnimatedRef.current;
+
+  useLayoutEffect(() => {
+    if (active === "persona") {
+      mainRef.current?.scrollTo({ left: 0, top: 0 });
+    }
+  }, [active]);
 
   useEffect(() => {
     if (active === "dashboard") {
@@ -37,7 +44,10 @@ export function ConsumerIQDashboard({
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <main
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
+          ref={mainRef}
+        >
           <div className="min-w-0 w-full px-6 py-5 sm:px-8 sm:py-7 lg:px-10 lg:py-9 xl:px-12 xl:py-9">
             <SectionFade transitionKey={`header-${active}`}>
               <div className="mb-10 flex min-w-0 flex-wrap items-start justify-between gap-3">
