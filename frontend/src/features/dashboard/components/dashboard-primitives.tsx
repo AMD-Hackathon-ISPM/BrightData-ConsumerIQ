@@ -12,17 +12,18 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Line,
   LineChart,
   Pie,
   PieChart,
   Scatter,
   ScatterChart,
+  Sector,
   XAxis,
   YAxis,
   ZAxis,
 } from "recharts";
+import type { PieSectorShapeProps } from "recharts";
 import type {
   DemandSupplyPoint,
   MarketplaceShareItem,
@@ -232,6 +233,24 @@ export function PlatformShareChart({
   const chartConfig = {
     value: { label: "Share", color: "var(--chart-1)" },
   };
+
+  // The highest-share sector bulges outward with a larger outer radius.
+  const renderSector = (props: PieSectorShapeProps) => (
+    <Sector
+      cornerRadius={props.cornerRadius}
+      cx={props.cx}
+      cy={props.cy}
+      endAngle={props.endAngle}
+      fill={chartData[props.index]?.fill}
+      innerRadius={props.innerRadius}
+      outerRadius={
+        props.index === activeIndex ? props.outerRadius + 10 : props.outerRadius
+      }
+      startAngle={props.startAngle}
+      stroke="var(--background-default)"
+      strokeWidth={1}
+    />
+  );
   const columns = chartData.length <= 3 ? 1 : 2;
   const rows: (typeof chartData)[] = [];
   for (let i = 0; i < chartData.length; i += columns) {
@@ -277,20 +296,8 @@ export function PlatformShareChart({
               nameKey="name"
               outerRadius="82%"
               paddingAngle={2}
-            >
-              {chartData.map((entry, index) => (
-                <Cell
-                  fill={entry.fill}
-                  key={entry.name}
-                  stroke={
-                    index === activeIndex
-                      ? "var(--foreground)"
-                      : "var(--background-default)"
-                  }
-                  strokeWidth={index === activeIndex ? 2 : 1}
-                />
-              ))}
-            </Pie>
+              shape={renderSector}
+            />
           </PieChart>
         </ChartContainer>
       </div>

@@ -1,7 +1,20 @@
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Target } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceDot,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { cn } from "@/lib/utils";
 import { Panel } from "../dashboard-primitives";
 import { AdvisorIntelligence } from "./shared";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import {
   Table,
   TableBody,
@@ -19,8 +32,6 @@ export function CompetitorMirror() {
       sku: "AM Facial Moisturizing Lotion SPF 30",
       avgPrice: "$16.99",
       priceDelta: "-2.1%",
-      promoIntensity: "High",
-      promoLevel: "high",
       monthlySales: "45.2K",
       salesDelta: "+5.4%",
       rating: "4.7",
@@ -31,8 +42,6 @@ export function CompetitorMirror() {
       sku: "Snail Mucin Essence 100ml",
       avgPrice: "$13.80",
       priceDelta: "-0.8%",
-      promoIntensity: "Low",
-      promoLevel: "low",
       monthlySales: "18.5K",
       salesDelta: "-1.2%",
       rating: "4.6",
@@ -43,8 +52,6 @@ export function CompetitorMirror() {
       sku: "Hyaluronic Acid 2% + B5",
       avgPrice: "$18.50",
       priceDelta: "+5.8%",
-      promoIntensity: "Very High",
-      promoLevel: "very-high",
       monthlySales: "82.1K",
       salesDelta: "+12.4%",
       rating: "4.5",
@@ -52,18 +59,11 @@ export function CompetitorMirror() {
     },
   ];
 
-  const promoBarClasses: Record<string, string> = {
-    low: "w-1/4 bg-muted-foreground/50",
-    medium: "w-1/2 bg-muted-foreground/70",
-    high: "w-3/4 bg-foreground",
-    "very-high": "w-5/6 bg-foreground",
-  };
-
   return (
-    <div className="grid min-w-0 gap-3">
+    <div className="@container grid min-w-0 gap-3">
       <Panel title="Top Competitor Matrix">
-        {/* Mobile */}
-        <div className="grid gap-3 md:hidden">
+        {/* Cards (when the panel is too narrow for the matrix table) */}
+        <div className="grid gap-3 @min-[56rem]:hidden">
           {competitorRows.map((row) => (
             <article
               className="min-w-0 rounded-lg border bg-background-default p-3"
@@ -71,44 +71,31 @@ export function CompetitorMirror() {
             >
               <div className="min-w-0">
                 <p className="font-semibold">{row.brand}</p>
-                <p className="break-words text-xs text-muted-foreground">
+                <p className="break-words text-xs text-foreground-light">
                   {row.sku}
                 </p>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
                 <div className="rounded-lg border bg-card p-2.5">
-                  <p className="text-xs text-muted-foreground">Avg Price</p>
+                  <p className="text-xs text-foreground-light">Avg Price</p>
                   <p className="font-mono font-semibold tabular-nums">
                     {row.avgPrice}
                   </p>
                   <DeltaPill value={row.priceDelta} />
                 </div>
                 <div className="rounded-lg border bg-card p-2.5">
-                  <p className="text-xs text-muted-foreground">Sales</p>
+                  <p className="text-xs text-foreground-light">Sales</p>
                   <p className="font-mono font-semibold tabular-nums">
                     {row.monthlySales}
                   </p>
                   <DeltaPill value={row.salesDelta} />
                 </div>
                 <div className="rounded-lg border bg-card p-2.5">
-                  <p className="text-xs text-muted-foreground">Promo</p>
-                  <div className="mt-2 h-2 rounded-full bg-muted">
-                    <span
-                      className={cn(
-                        "block h-full rounded-full",
-                        promoBarClasses[row.promoLevel] ??
-                          "w-1/2 bg-foreground"
-                      )}
-                    />
-                  </div>
-                  <p className="mt-1 text-xs">{row.promoIntensity}</p>
-                </div>
-                <div className="rounded-lg border bg-card p-2.5">
-                  <p className="text-xs text-muted-foreground">Rating</p>
+                  <p className="text-xs text-foreground-light">Rating</p>
                   <p className="font-mono font-semibold tabular-nums">
                     {row.rating}
                   </p>
-                  <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                  <p className="font-mono text-xs tabular-nums text-foreground-light">
                     {row.reviews}
                   </p>
                 </div>
@@ -117,32 +104,28 @@ export function CompetitorMirror() {
           ))}
         </div>
 
-        {/* Desktop */}
-        <div className="hidden md:block">
+        {/* Matrix table (when the panel is wide enough) */}
+        <div className="hidden min-w-0 @min-[56rem]:block">
           <ScrollableTableWrapper>
             <Table className="min-w-[52rem]">
               <colgroup>
-                <col className="w-[30%]" />
-                <col className="w-[18%]" />
-                <col className="w-[18%]" />
-                <col className="w-[19%]" />
-                <col className="w-[15%]" />
+                <col className="w-[34%]" />
+                <col className="w-[22%]" />
+                <col className="w-[24%]" />
+                <col className="w-[20%]" />
               </colgroup>
               <TableHeader>
                 <TableRow className="bg-background-default hover:bg-background-default">
-                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-lighter">
+                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-light">
                     Brand / Hero SKU
                   </TableHead>
-                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-lighter">
+                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-light">
                     Avg Price (USD)
                   </TableHead>
-                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-lighter">
-                    Promo Intensity
-                  </TableHead>
-                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-lighter">
+                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-light">
                     Est. Monthly Sales
                   </TableHead>
-                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-lighter">
+                  <TableHead className="h-10 px-4 font-mono text-[11px] font-medium uppercase tracking-[1px] text-foreground-light">
                     Rating / Reviews
                   </TableHead>
                 </TableRow>
@@ -156,7 +139,7 @@ export function CompetitorMirror() {
                     <TableCell className="px-4 py-4 text-sm align-top">
                       <div className="min-w-0">
                         <p className="font-semibold">{row.brand}</p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="truncate text-xs text-foreground-light">
                           {row.sku}
                         </p>
                       </div>
@@ -168,20 +151,6 @@ export function CompetitorMirror() {
                       <DeltaPill value={row.priceDelta} />
                     </TableCell>
                     <TableCell className="px-4 py-4 text-sm align-top">
-                      <div className="h-2 rounded-full bg-muted">
-                        <span
-                          className={cn(
-                            "block h-full rounded-full",
-                            promoBarClasses[row.promoLevel] ??
-                              "w-1/2 bg-foreground"
-                          )}
-                        />
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {row.promoIntensity}
-                      </p>
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-sm align-top">
                       <p className="font-mono font-semibold tabular-nums">
                         {row.monthlySales}
                       </p>
@@ -190,7 +159,7 @@ export function CompetitorMirror() {
                     <TableCell className="px-4 py-4 text-sm align-top">
                       <p className="font-semibold">
                         {row.rating}
-                        <span className="ml-1 font-mono text-xs tabular-nums text-muted-foreground">
+                        <span className="ml-1 font-mono text-xs tabular-nums text-foreground-light">
                           ({row.reviews})
                         </span>
                       </p>
@@ -203,7 +172,7 @@ export function CompetitorMirror() {
         </div>
       </Panel>
 
-      <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-3 @min-[44rem]:grid-cols-2">
         <PricingSweetSpotPanel />
         <AvgSalesMovementPanel />
       </div>
@@ -247,96 +216,224 @@ function DeltaPill({ value }: { value: string }) {
   );
 }
 
+const sweetSpotTones: Record<string, { bar: string; dot: string }> = {
+  saturated: { bar: "bg-destructive", dot: "bg-destructive" },
+  sweet: { bar: "bg-chart-4", dot: "bg-chart-4" },
+  premium: { bar: "bg-chart-3", dot: "bg-chart-3" },
+};
+
 function PricingSweetSpotPanel() {
-  const rows = [
+  const bands = [
     {
-      label: "50-80K",
-      note: "saturated",
-      demand: "28% demand",
-      width: "28%",
-      tone: "bg-destructive",
+      range: "50–80K",
+      status: "Saturated",
+      demand: 28,
+      sellers: 47,
+      trend: 1.2,
+      tone: "saturated",
     },
     {
-      label: "100-130K",
-      note: "sweet spot",
-      demand: "23% demand",
-      width: "23%",
-      tone: "bg-[#98971a] dark:bg-[#b8bb26]",
+      range: "100–130K",
+      status: "Sweet spot",
+      demand: 23,
+      sellers: 19,
+      trend: 8.6,
+      tone: "sweet",
+      recommended: true,
     },
     {
-      label: "150-200K",
-      note: "premium opp",
-      demand: "15% demand",
-      width: "15%",
-      tone: "bg-chart-3",
+      range: "150–200K",
+      status: "Premium opp",
+      demand: 15,
+      sellers: 8,
+      trend: 4.1,
+      tone: "premium",
     },
   ];
+  const maxDemand = Math.max(...bands.map((band) => band.demand));
 
   return (
     <Panel title="Pricing Sweet Spot">
-      <div className="grid gap-3">
-        {rows.map((row) => (
-          <div className="grid gap-2" key={row.label}>
-            <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
-              <p className="min-w-0 break-words font-semibold">
-                {row.label} - {row.note}
-              </p>
-              <p className="shrink-0 font-mono text-sm font-semibold tabular-nums text-muted-foreground">
-                {row.demand}
-              </p>
+      <div className="flex min-h-0 flex-1 flex-col justify-between gap-2.5">
+        {bands.map((band) => {
+          const tone = sweetSpotTones[band.tone];
+          const fill = `${Math.round((band.demand / maxDemand) * 100)}%`;
+          const up = band.trend >= 0;
+          const TrendIcon = up ? ArrowUp : ArrowDown;
+          return (
+            <div
+              className={cn(
+                "rounded-lg border p-3 transition-colors",
+                band.recommended
+                  ? "border-chart-4/40 bg-chart-4/[0.07] ring-1 ring-inset ring-chart-4/15"
+                  : "border-transparent bg-background-default"
+              )}
+              key={band.range}
+            >
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    aria-hidden
+                    className={cn("size-2 shrink-0 rounded-full", tone.dot)}
+                  />
+                  <p className="min-w-0 truncate font-mono text-sm font-semibold tabular-nums">
+                    {band.range}
+                  </p>
+                  {band.recommended ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-chart-4/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-chart-4">
+                      <Target aria-hidden className="size-3" />
+                      {band.status}
+                    </span>
+                  ) : (
+                    <span className="shrink-0 rounded-full bg-muted/70 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-foreground-light">
+                      {band.status}
+                    </span>
+                  )}
+                </div>
+                <p className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                  {band.demand}
+                  <span className="ml-0.5 text-xs text-foreground-light">%</span>
+                </p>
+              </div>
+              <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-muted/60">
+                <span
+                  className={cn(
+                    "block h-full rounded-full transition-[width] duration-500 ease-out",
+                    tone.bar
+                  )}
+                  style={{ width: fill }}
+                />
+              </div>
+              <div className="mt-2.5 flex items-center justify-between text-xs">
+                <span className="text-foreground-light">
+                  {band.sellers} active sellers
+                </span>
+                <span className="flex items-center gap-1 text-foreground-light">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-0.5 font-mono font-medium tabular-nums",
+                      up ? "text-chart-4" : "text-destructive"
+                    )}
+                  >
+                    <TrendIcon aria-hidden className="size-3" />
+                    {up ? "+" : ""}
+                    {band.trend.toFixed(1)}%
+                  </span>
+                  30d
+                </span>
+              </div>
             </div>
-            <div className="h-2.5 rounded-full bg-muted/70">
-              <span
-                className={cn("block h-full rounded-full", row.tone)}
-                style={{ width: row.width }}
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-
     </Panel>
   );
 }
 
 function AvgSalesMovementPanel() {
+  const data = [
+    { week: "W1", value: 42 },
+    { week: "W2", value: 45 },
+    { week: "W3", value: 44 },
+    { week: "W4", value: 49 },
+    { week: "W5", value: 48 },
+    { week: "W6", value: 55 },
+    { week: "W7", value: 58 },
+    { week: "W8", value: 63 },
+    { week: "W9", value: 69 },
+    { week: "W10", value: 74 },
+  ];
+  const last = data[data.length - 1];
+  const prev = data[data.length - 2];
+  const delta = ((last.value - prev.value) / prev.value) * 100;
+  const chartConfig = {
+    value: { label: "Avg units", color: "var(--chart-5)" },
+  };
+
   return (
     <Panel title="Avg Sales Movement">
-      <div className="h-44 w-full overflow-hidden rounded-lg bg-background-default">
-        <svg
-          aria-label="Average sales movement chart"
-          className="h-full w-full"
-          preserveAspectRatio="none"
-          viewBox="0 0 640 180"
-        >
-          <defs>
-            <linearGradient id="salesMovementFill" x1="0" x2="0" y1="0" y2="1">
-              <stop
-                offset="0%"
-                stopColor="var(--chart-blue)"
-                stopOpacity="0.35"
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="mb-3 flex shrink-0 items-end justify-between gap-3">
+          <div>
+            <p className="font-mono text-2xl font-semibold leading-none tracking-tight tabular-nums">
+              {last.value.toFixed(1)}K
+            </p>
+            <p className="mt-1.5 text-xs text-foreground-light">
+              avg weekly units sold
+            </p>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-chart-4/15 px-2 py-1 font-mono text-xs font-semibold tabular-nums text-chart-4">
+            <ArrowUp aria-hidden className="size-3" />+{delta.toFixed(1)}%
+          </span>
+        </div>
+        <div className="min-h-0 flex-1">
+          <ChartContainer
+            className="h-full min-h-44 w-full"
+            config={chartConfig}
+          >
+            <AreaChart
+              data={data}
+              margin={{ bottom: 0, left: 4, right: 4, top: 8 }}
+            >
+              <defs>
+                <linearGradient
+                  id="sales-movement-fill"
+                  x1="0"
+                  x2="0"
+                  y1="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="0%"
+                    stopColor="var(--color-value)"
+                    stopOpacity={0.3}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="var(--color-value)"
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                stroke="var(--border)"
+                strokeOpacity={0.5}
+                vertical={false}
               />
-              <stop
-                offset="100%"
-                stopColor="var(--chart-blue)"
-                stopOpacity="0.04"
+              <XAxis
+                axisLine={false}
+                dataKey="week"
+                interval="preserveStartEnd"
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                tickLine={false}
+                tickMargin={8}
               />
-            </linearGradient>
-          </defs>
-          <path
-            d="M0 145 C48 128 78 118 112 112 C148 106 166 130 204 118 C244 105 250 91 296 86 C344 80 360 66 414 61 C456 57 480 10 506 27 C536 47 524 87 566 101 C596 111 618 115 640 123 L640 180 L0 180 Z"
-            fill="url(#salesMovementFill)"
-          />
-          <path
-            d="M0 145 C48 128 78 118 112 112 C148 106 166 130 204 118 C244 105 250 91 296 86 C344 80 360 66 414 61 C456 57 480 10 506 27 C536 47 524 87 566 101 C596 111 618 115 640 123"
-            fill="none"
-            stroke="var(--chart-blue)"
-            strokeLinecap="round"
-            strokeWidth="4"
-          />
-        </svg>
+              <YAxis domain={["dataMin - 6", "dataMax + 6"]} hide />
+              <ChartTooltip
+                content={<ChartTooltipContent />}
+                cursor={{ stroke: "var(--border)" }}
+              />
+              <Area
+                activeDot={{ fill: "var(--color-value)", r: 4, strokeWidth: 0 }}
+                dataKey="value"
+                dot={false}
+                fill="url(#sales-movement-fill)"
+                stroke="var(--color-value)"
+                strokeWidth={2.5}
+                type="monotone"
+              />
+              <ReferenceDot
+                fill="var(--color-value)"
+                r={4}
+                stroke="var(--card)"
+                strokeWidth={2}
+                x={last.week}
+                y={last.value}
+              />
+            </AreaChart>
+          </ChartContainer>
+        </div>
       </div>
-
     </Panel>
   );
 }

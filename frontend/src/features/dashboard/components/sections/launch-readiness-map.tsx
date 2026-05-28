@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "motion/react";
 import type { FeatureCollection, Geometry, Position } from "geojson";
 import {
   Layer,
@@ -506,7 +507,7 @@ export function LaunchReadinessMap() {
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-3">
           <div
-            className="inline-flex items-center rounded-full border bg-muted/30 p-0.5 text-[11px] font-medium"
+            className="inline-flex items-center rounded-full border bg-background-default p-0.5 text-[11px] font-medium"
             role="tablist"
           >
             {(Object.keys(MODE_CONFIG) as MapMode[]).map((key) => {
@@ -515,9 +516,9 @@ export function LaunchReadinessMap() {
                 <button
                   aria-pressed={isActive}
                   className={cn(
-                    "rounded-full px-3 py-1 transition-colors",
+                    "relative rounded-full px-3 py-1 transition-colors",
                     isActive
-                      ? "bg-foreground text-background"
+                      ? "text-foreground"
                       : "text-foreground-light hover:text-foreground",
                   )}
                   key={key}
@@ -525,7 +526,17 @@ export function LaunchReadinessMap() {
                   role="tab"
                   type="button"
                 >
-                  {MODE_CONFIG[key].label}
+                  {isActive ? (
+                    <motion.span
+                      aria-hidden
+                      className="absolute inset-0 rounded-full bg-background-200 shadow-sm ring-1 ring-inset ring-white/10"
+                      layoutId="map-mode-active"
+                      transition={{ bounce: 0.2, duration: 0.35, type: "spring" }}
+                    />
+                  ) : null}
+                  <span className="relative z-10">
+                    {MODE_CONFIG[key].label}
+                  </span>
                 </button>
               );
             })}
@@ -546,39 +557,6 @@ export function LaunchReadinessMap() {
             </span>
           </div>
         </div>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-3">
-        {topCountries.map((country) => (
-          <div
-            className="min-w-0 rounded-lg border bg-background-default p-3"
-            key={country.countryId}
-          >
-            <div className="flex min-w-0 items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="break-words text-sm font-semibold">
-                  {country.country}
-                </p>
-                <p
-                  className={cn(
-                    "mt-1 text-xs font-medium",
-                    statToneClass[country.signal] ?? "text-foreground-light",
-                  )}
-                >
-                  {country.signal}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-mono text-lg font-semibold tabular-nums">
-                  {formatMetricValue(mode, country)}
-                </p>
-                <p className="text-[10px] uppercase tracking-wide text-foreground-light">
-                  {config.label}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
 
       <div className="launch-readiness-map relative h-[24rem] min-h-[22rem] overflow-hidden rounded-lg border bg-background-default sm:h-[28rem] xl:h-[32rem]">
@@ -680,6 +658,39 @@ export function LaunchReadinessMap() {
               : "Loading map"}
           </div>
         )}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        {topCountries.map((country) => (
+          <div
+            className="min-w-0 rounded-lg border bg-background-default p-3"
+            key={country.countryId}
+          >
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="break-words text-sm font-semibold">
+                  {country.country}
+                </p>
+                <p
+                  className={cn(
+                    "mt-1 text-xs font-medium",
+                    statToneClass[country.signal] ?? "text-foreground-light",
+                  )}
+                >
+                  {country.signal}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-mono text-lg font-semibold tabular-nums">
+                  {formatMetricValue(mode, country)}
+                </p>
+                <p className="text-[10px] uppercase tracking-wide text-foreground-light">
+                  {config.label}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

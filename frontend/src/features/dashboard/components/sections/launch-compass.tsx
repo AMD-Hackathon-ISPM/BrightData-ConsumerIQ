@@ -37,15 +37,13 @@ export function LaunchCompass() {
         </Suspense>
       </Panel>
 
-      <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden xl:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)]">
-        <Panel>
-          <LaunchSeasonalityCalendar />
-        </Panel>
+      <Panel>
+        <LaunchSeasonalityCalendar />
+      </Panel>
 
-        <Panel>
-          <LaunchCitySales />
-        </Panel>
-      </div>
+      <Panel>
+        <LaunchCitySales />
+      </Panel>
 
       <AdvisorIntelligence
         recommendation="Los Angeles has the strongest Amazon sales density and enough competitor distance to validate premium positioning. Use Amazon Sponsored Products and creator review seeding first. Once review confidence is visible, use Temu coupon bundles in Dallas and Phoenix to capture value-sensitive expansion demand."
@@ -67,28 +65,37 @@ export function LaunchCompass() {
 
 function LaunchSeasonalityCalendar() {
   const chartData = [
-    { id: "jan", month: "J", index: 72, status: "normal" },
-    { id: "feb", month: "F", index: 134, status: "peak" },
-    { id: "mar", month: "M", index: 96, status: "peak" },
-    { id: "apr", month: "A", index: 66, status: "normal" },
-    { id: "may", month: "M", index: 54, status: "normal" },
-    { id: "jun", month: "J", index: 76, status: "normal" },
-    { id: "jul", month: "J", index: 146, status: "peak" },
-    { id: "aug", month: "A", index: 98, status: "peak" },
-    { id: "sep", month: "S", index: 74, status: "normal" },
-    { id: "oct", month: "O", index: 138, status: "peak" },
-    { id: "nov", month: "N", index: -46, status: "avoid" },
-    { id: "dec", month: "D", index: -38, status: "avoid" },
+    { id: "jan", month: "JAN", index: 72, status: "normal" },
+    { id: "feb", month: "FEB", index: 134, status: "peak" },
+    { id: "mar", month: "MAR", index: 96, status: "peak" },
+    { id: "apr", month: "APR", index: 66, status: "normal" },
+    { id: "may", month: "MAY", index: 54, status: "normal" },
+    { id: "jun", month: "JUN", index: 76, status: "normal" },
+    { id: "jul", month: "JUL", index: 146, status: "peak" },
+    { id: "aug", month: "AUG", index: 98, status: "peak" },
+    { id: "sep", month: "SEP", index: 74, status: "normal" },
+    { id: "oct", month: "OCT", index: 138, status: "peak" },
+    { id: "nov", month: "NOV", index: -46, status: "avoid" },
+    { id: "dec", month: "DEC", index: -38, status: "avoid" },
   ];
 
   const chartConfig = {
-    index: { label: "Demand index", color: "var(--chart-blue)" },
+    index: { label: "Demand index", color: "var(--chart-4)" },
   };
 
-  const fillByStatus: Record<string, string> = {
-    avoid: "var(--destructive)",
-    normal: "color-mix(in srgb, var(--chart-blue) 45%, white)",
-    peak: "var(--chart-blue)",
+  // Launch months are green with intensity scaled to demand; avoid months stay red.
+  const launchIndexes = chartData
+    .filter((entry) => entry.status !== "avoid")
+    .map((entry) => entry.index);
+  const minIndex = Math.min(...launchIndexes);
+  const maxIndex = Math.max(...launchIndexes);
+  const fillOpacityFor = (entry: (typeof chartData)[number]) => {
+    if (entry.status === "avoid") return 1;
+    const t =
+      maxIndex === minIndex
+        ? 1
+        : (entry.index - minIndex) / (maxIndex - minIndex);
+    return 0.4 + t * 0.6;
   };
 
   return (
@@ -99,7 +106,7 @@ function LaunchSeasonalityCalendar() {
         </h3>
         <div className="flex shrink-0 flex-wrap gap-3 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-chart-blue" />
+            <span className="size-2.5 rounded-full bg-chart-4" />
             Peak launch window
           </span>
           <span className="inline-flex items-center gap-1.5">
@@ -145,7 +152,15 @@ function LaunchSeasonalityCalendar() {
           />
           <Bar dataKey="index" radius={[4, 4, 4, 4]}>
             {chartData.map((entry) => (
-              <Cell fill={fillByStatus[entry.status]} key={entry.id} />
+              <Cell
+                fill={
+                  entry.status === "avoid"
+                    ? "var(--destructive)"
+                    : "var(--chart-4)"
+                }
+                fillOpacity={fillOpacityFor(entry)}
+                key={entry.id}
+              />
             ))}
           </Bar>
         </BarChart>
@@ -211,58 +226,52 @@ function LaunchCitySales() {
 
   return (
     <div className="grid w-full min-w-0 max-w-full gap-3 overflow-x-hidden">
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="break-words font-semibold">City Sales Signals</h3>
-          <p className="mt-1 break-words text-sm text-muted-foreground">
-            Amazon and Temu only
-          </p>
-        </div>
-        <span className="shrink-0 rounded-full border bg-muted/40 px-2.5 py-1 text-[10px] font-semibold">
-          the past month
-        </span>
+      <div className="min-w-0">
+        <h3 className="break-words font-semibold">City Sales Signals</h3>
+        <p className="mt-1 break-words text-sm text-foreground-light">
+          Amazon and Temu only
+        </p>
       </div>
 
-      <div className="max-h-[40.5rem] space-y-3 overflow-y-auto pr-1 [scrollbar-width:thin]">
-        {rows.map((row) => {
+      <div className="grid gap-3 lg:grid-cols-3">
+        {rows.slice(0, 3).map((row) => {
           const positive = row.growth.startsWith("+");
           const DeltaIcon = positive ? ArrowUp : ArrowDown;
           return (
             <div
-              className="w-full min-w-0 max-w-full overflow-hidden rounded-lg border bg-background-default p-3 transition-colors hover:bg-background-default/80"
+              className="flex h-full min-w-0 flex-col gap-3 rounded-lg border bg-background-default p-3.5 transition-colors hover:bg-background-default/80"
               key={row.city}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="break-words font-semibold">{row.city}</p>
-                  <p
-                    className={cn(
-                      "text-xs font-medium",
-                      citySignalToneClass[row.signal] ?? "text-muted-foreground"
-                    )}
-                  >
-                    {row.signal}
-                  </p>
-                </div>
+              <div className="min-w-0">
+                <p className="break-words font-semibold">{row.city}</p>
+                <p
+                  className={cn(
+                    "mt-0.5 text-xs font-medium",
+                    citySignalToneClass[row.signal] ?? "text-foreground-light"
+                  )}
+                >
+                  {row.signal}
+                </p>
               </div>
-              <div className="mt-4 grid gap-2 text-sm">
-                <div className="grid min-w-0 grid-cols-[7.5rem_minmax(0,1fr)] gap-2">
-                  <p className="font-medium text-muted-foreground">Sales</p>
-                  <p className="min-w-0 break-words font-semibold">
-                    <span>{row.sales}</span>
-                    <span
-                      className={cn(
-                        "ml-2 inline-flex items-center gap-0.5 font-mono text-xs font-semibold tabular-nums",
-                        positive
-                          ? "text-[#98971a] dark:text-[#b8bb26]"
-                          : "text-destructive"
-                      )}
-                    >
-                      <DeltaIcon aria-hidden className="size-3" />
-                      {row.growth}
-                    </span>
-                  </p>
-                </div>
+
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="break-words font-mono text-lg font-semibold tabular-nums">
+                  {row.sales}
+                </span>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums",
+                    positive
+                      ? "bg-[#98971a]/15 text-[#98971a] dark:text-[#b8bb26]"
+                      : "bg-destructive/15 text-destructive"
+                  )}
+                >
+                  <DeltaIcon aria-hidden className="size-3" />
+                  {row.growth}
+                </span>
+              </div>
+
+              <dl className="grid gap-2.5 border-t pt-3 text-sm">
                 {[
                   ["Channels", row.channels],
                   ["Rating", row.rating],
@@ -270,15 +279,12 @@ function LaunchCitySales() {
                   ["Persona Fit", row.personaFit],
                   ["GDP Per Capita", row.gdpPerCapita],
                 ].map(([label, value]) => (
-                  <div
-                    className="grid min-w-0 grid-cols-[7.5rem_minmax(0,1fr)] gap-2"
-                    key={label}
-                  >
-                    <p className="font-medium text-muted-foreground">{label}</p>
-                    <p className="min-w-0 break-words font-semibold">{value}</p>
+                  <div className="min-w-0" key={label}>
+                    <dt className="text-xs text-foreground-light">{label}</dt>
+                    <dd className="mt-0.5 break-words font-medium">{value}</dd>
                   </div>
                 ))}
-              </div>
+              </dl>
             </div>
           );
         })}
