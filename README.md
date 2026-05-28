@@ -1,4 +1,4 @@
-# ConsumerIQ
+﻿# ConsumerIQ
 
 AI-powered consumer intelligence platform for founders launching e-commerce products. Live BrightData scraping → local Llama 3.2 3B synthesis → GPT dashboard generation → persistent knowledge graph memory via Cognee.
 

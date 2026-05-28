@@ -10,7 +10,9 @@ _COGNEE_USE_LOCAL = os.getenv('COGNEE_USE_LOCAL_INFERENCE', 'false').lower() == 
 _COGNEE_LLM_PROVIDER = os.getenv('COGNEE_LLM_PROVIDER', 'openai')
 _COGNEE_LLM_MODEL = os.getenv('COGNEE_LLM_MODEL', 'gpt-4o-mini')
 _COGNEE_LLM_API_KEY = os.getenv('COGNEE_LLM_API_KEY') or os.getenv('OPENAI_API_KEY', '')
+_COGNEE_LLM_ENDPOINT = os.getenv('COGNEE_LLM_ENDPOINT') or os.getenv('OPENAI_BASE_URL', '')
 _COGNEE_EMBEDDING_MODEL = os.getenv('COGNEE_EMBEDDING_MODEL', 'text-embedding-3-small')
+_COGNEE_EMBEDDING_ENDPOINT = os.getenv('COGNEE_EMBEDDING_ENDPOINT') or _COGNEE_LLM_ENDPOINT
 
 _COGNEE_LOCAL_LLM_URL = os.getenv(
     'COGNEE_LOCAL_LLM_URL',
@@ -63,8 +65,18 @@ async def _configure() -> Any:
     cognee.config.set_llm_provider(_COGNEE_LLM_PROVIDER)
     cognee.config.set_llm_model(_COGNEE_LLM_MODEL)
     cognee.config.set_llm_api_key(_COGNEE_LLM_API_KEY)
+    if _COGNEE_LLM_ENDPOINT:
+        try:
+            cognee.config.set_llm_endpoint(_COGNEE_LLM_ENDPOINT)
+        except AttributeError:
+            pass
     cognee.config.set_embedding_model(_COGNEE_EMBEDDING_MODEL)
     cognee.config.set_embedding_api_key(_COGNEE_LLM_API_KEY)
+    if _COGNEE_EMBEDDING_ENDPOINT:
+        try:
+            cognee.config.set_embedding_endpoint(_COGNEE_EMBEDDING_ENDPOINT)
+        except AttributeError:
+            pass
     return cognee
 
 
