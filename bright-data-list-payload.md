@@ -1154,3 +1154,1016 @@ Catatan parser:
 - Treat fields exactly as raw payload first, then map to normalized data later.
 - CDN/media URL fields can be stored for audit/media preview, but do not need to be shown by default.
 - User identity fields from comments should be hidden from dashboard display unless needed for debugging.
+
+---
+
+# Reddit Raw Payload Types
+
+Bagian ini adalah versi raw Bright Data payload untuk Reddit. Ini bukan normalized dashboard schema. Tujuannya supaya backend dan AI engineer tahu bentuk data mentah yang harus diparse sebelum masuk ke ConsumerIQ dashboard.
+
+Endpoint yang tercakup dari contoh payload:
+
+```txt
+Reddit Posts - Collect by URL
+```
+
+## Reddit Posts - Collect by URL
+
+### Source Label
+
+Contoh data ini harus dilabeli sebagai:
+
+```txt
+Reddit Posts - Collect by URL
+```
+
+Alasannya:
+- Input utama adalah URL Reddit post.
+- Output berisi satu post, metadata subreddit, related posts, dan komentar di dalam post tersebut.
+- Unit analisis utamanya adalah satu Reddit post, dengan comments sebagai consumer discussion evidence.
+- Data ini cocok untuk Demand Pulse, Persona Decode, dan qualitative market validation.
+
+## Reddit Posts - Discover by keyword
+
+### Source Label
+
+Contoh data discovery seperti payload yang diberikan harus dilabeli sebagai:
+
+```txt
+Reddit Posts - Discover by keyword
+```
+
+Alasannya:
+- Input utama berasal dari keyword/query, bukan URL post spesifik.
+- Output berupa daftar post Reddit yang ditemukan dari keyword tersebut.
+- Unit analisisnya tetap satu Reddit post, tapi konteks pengambilan datanya adalah discovery/search.
+- Data ini paling cocok untuk Demand Pulse karena bisa menunjukkan topik, kebutuhan, dan pertanyaan yang muncul dari keyword tertentu.
+
+Catatan penting:
+- Raw record hasil `Discover by keyword` bisa punya shape yang sama dengan `Collect by URL`, terutama jika Bright Data ikut mengembalikan comments, related posts, dan community metadata.
+- Perbedaan utama ada di `endpoint_label`, `query context`, dan dashboard placement.
+- Jika payload tidak membawa field `input.keyword`, backend harus menyimpan keyword dari request/job metadata.
+
+### Type
+
+Gunakan struktur post yang sama seperti `RedditPostByUrlRecord`, dengan tambahan query metadata dari request pipeline.
+
+```ts
+type RedditPostsDiscoverByKeywordPayload = RedditPostDiscoverByKeywordRecord[];
+
+type RedditPostDiscoverByKeywordRecord = RedditPostByUrlRecord & {
+  input?: {
+    keyword?: string;
+    country?: string;
+  };
+  discovery_input?: {
+    keyword?: string;
+    country?: string;
+  };
+};
+```
+
+### Payload Pattern
+
+```json
+[
+  {
+    "post_id": "string",
+    "url": "string",
+    "user_posted": "string",
+    "title": "string",
+    "description": "string | null",
+    "num_comments": "number",
+    "date_posted": "ISO datetime",
+    "community_name": "string",
+    "num_upvotes": "number",
+    "photos": ["string"] | null,
+    "videos": ["string"] | null,
+    "tag": "string | null",
+    "related_posts": ["object"],
+    "comments": ["object"],
+    "community_url": "string",
+    "community_description": "string | null",
+    "community_members_num": "number | null",
+    "community_rank": {
+      "community_rank_type": "string | null",
+      "community_rank_value": "string | number | null"
+    },
+    "post_karma": "number | null",
+    "bio_description": "string | null",
+    "embedded_links": ["string"] | null,
+    "description_markdown": "string | null",
+    "subreddit_icon_image": "string | null",
+    "author_icon": "string | null",
+    "user_id": "string",
+    "archived": "string | boolean",
+    "input": {
+      "keyword": "string",
+      "country": "string"
+    }
+  }
+]
+```
+
+Jika Bright Data tidak mengembalikan `input`, backend harus attach metadata sendiri:
+
+```json
+{
+  "endpoint_label": "reddit_posts_discover_by_keyword",
+  "requested_keyword": "skincare anti aging oily skin",
+  "requested_country": "us"
+}
+```
+
+### Example Input Summary
+
+Contoh payload yang diberikan:
+
+```txt
+Endpoint label:
+Reddit Posts - Discover by keyword
+
+Discovered post:
+Tascam Model 12 DAW questions
+
+Community:
+r/TascamModel_12_16_24
+
+Post engagement:
+8 upvotes
+6 comments
+
+Community size:
+2,121 members
+```
+
+### Field Labeling - Keyword Discovery
+
+| Raw Field | Label Internal | Fungsi |
+|---|---|---|
+| `input.keyword` / backend metadata | requested_keyword | Keyword/query discovery yang diminta |
+| `input.country` / backend metadata | requested_country | Negara/region request discovery |
+| `post_id` | source_post_id | ID post untuk dedup |
+| `url` | source_post_url | URL post hasil discovery |
+| `title` | discovered_post_title | Judul post hasil discovery |
+| `description` | discovered_post_body | Body post hasil discovery |
+| `description_markdown` | discovered_post_body_markdown | Body markdown jika tersedia |
+| `community_name` | discovered_subreddit | Subreddit asal hasil discovery |
+| `community_url` | discovered_subreddit_url | URL subreddit |
+| `community_members_num` | subreddit_member_count | Ukuran komunitas sebagai reach proxy |
+| `num_upvotes` | post_upvote_count | Engagement post |
+| `num_comments` | post_comment_count | Kedalaman diskusi |
+| `comments` | discovered_post_comments | Komentar yang ikut terbawa dalam payload |
+| `related_posts` | discovery_expansion_candidates | Kandidat post/subreddit tambahan |
+| `date_posted` | post_created_at | Tanggal post dibuat |
+
+### AI Normalized Labels - Keyword Discovery
+
+Untuk discovery result, AI/backend sebaiknya fokus ke topic clustering, search intent, dan demand signal.
+
+Contoh normalized record:
+
+```json
+{
+  "source_type": "reddit_post",
+  "endpoint_label": "reddit_posts_discover_by_keyword",
+  "requested_keyword": "tascam model 12 daw",
+  "source_post_id": "t3_1svqi94",
+  "source_post_url": "https://www.reddit.com/r/TascamModel_12_16_24/comments/1svqi94/tascam_model_12_daw_questions/",
+  "subreddit": "TascamModel_12_16_24",
+  "post_title": "Tascam Model 12 DAW questions",
+  "consumer_question_text": "Can the Model 12 individually output all audio signals through USB C in to Logic?",
+  "language": "en",
+  "search_intent": "product_capability_validation",
+  "intent_stage": "consideration",
+  "sentiment": "neutral_help_seeking",
+  "topic_cluster": "DAW compatibility",
+  "demand_signals": [
+    "product_capability_clarity",
+    "usb_multichannel_output",
+    "workflow_compatibility"
+  ],
+  "persona_signals": [
+    "detail_oriented_user",
+    "peer_validation_seeker"
+  ],
+  "engagement": {
+    "upvotes": 8,
+    "comments": 6,
+    "score": 14
+  },
+  "dashboard_placement": [
+    "demand_pulse_topic_demand",
+    "persona_decode_pain_signals",
+    "launch_compass_messaging_recommendation"
+  ]
+}
+```
+
+### Dashboard Placement - Keyword Discovery
+
+#### Primary: Demand Pulse - Topic Demand
+
+Ini placement paling utama.
+
+Data yang dipakai:
+- requested keyword
+- `title`
+- `description`
+- `community_name`
+- `num_upvotes`
+- `num_comments`
+- `comments[].comment`
+
+Contoh UI setelah aggregation:
+
+```txt
+"DAW compatibility questions"
+YY Reddit posts
+High discussion depth
+```
+
+Kenapa cocok:
+- Discovery by keyword menunjukkan apa yang muncul saat market mencari topik tertentu.
+- Bagus untuk topic clustering dan demand validation.
+- Bisa dibandingkan antar keyword.
+
+#### Primary: Demand Pulse - Search Intent Analysis
+
+Masukkan untuk mengklasifikasikan intent dari keyword.
+
+Contoh mapping:
+
+```txt
+tascam model 12 daw -> product capability validation
+tascam model 12 review -> consideration / review seeking
+tascam model 12 vs zoom -> comparison / competitor evaluation
+```
+
+#### Secondary: Persona Decode - Need/Pain Signal
+
+Gunakan post dan comments untuk memahami alasan user bertanya.
+
+Contoh UI:
+
+```txt
+Persona Need:
+Users need reassurance that product specs work in real workflows.
+```
+
+#### Secondary: Launch Compass - Messaging Recommendation
+
+Gunakan discovery result untuk rekomendasi FAQ, product page, dan creator brief.
+
+Contoh UI:
+
+```txt
+Messaging Opportunity:
+Make workflow compatibility explicit in launch messaging.
+```
+
+### Backend Processing Rules - Keyword Discovery
+
+1. Store requested keyword from job/request metadata even if payload does not contain it.
+2. Deduplicate by `post_id`.
+3. Group by `requested_keyword`, `community_name`, and date bucket.
+4. Use `title`, `description`, `description_markdown`, and comments for topic extraction.
+5. Use `num_upvotes + num_comments` as lightweight engagement score.
+6. Treat `related_posts` as expansion candidates, not confirmed evidence.
+7. Hide user identity fields by default.
+8. Use this endpoint as aggregated Demand Pulse evidence, not as verified buyer review data.
+
+### Type
+
+```ts
+type RedditPostsByUrlPayload = RedditPostByUrlRecord[];
+
+type RedditPostByUrlRecord = {
+  post_id: string;
+  url: string;
+  user_posted: string;
+  title: string;
+  description: string | null;
+  num_comments: number;
+  date_posted: string;
+  community_name: string;
+  num_upvotes: number;
+  photos: string[] | null;
+  videos: string[] | null;
+  tag: string | null;
+  related_posts: RedditRelatedPost[];
+  comments: RedditComment[];
+  community_url: string;
+  community_description: string | null;
+  community_members_num: number | null;
+  community_rank: RedditCommunityRank;
+  post_karma: number | null;
+  bio_description: string | null;
+  embedded_links: string[] | null;
+  description_markdown: string | null;
+  subreddit_icon_image: string | null;
+  author_icon: string | null;
+  user_id: string;
+  archived: string | boolean;
+};
+
+type RedditRelatedPost = {
+  community: string | null;
+  community_url: string | null;
+  num_comments: number | null;
+  num_upvotes: string | number | null;
+  thumbnail: string | null;
+  title: string | null;
+  url: string | null;
+};
+
+type RedditComment = {
+  comment: string;
+  date_of_comment: string;
+  num_replies: number;
+  num_upvotes: number;
+  replies: RedditCommentReply[];
+  url: string;
+  user_commenting: string;
+  user_url: string;
+};
+
+type RedditCommentReply = Record<string, unknown>;
+
+type RedditCommunityRank = {
+  community_rank_type: string | null;
+  community_rank_value: string | number | null;
+};
+```
+
+### Payload Pattern
+
+```json
+[
+  {
+    "post_id": "string",
+    "url": "string",
+    "user_posted": "string",
+    "title": "string",
+    "description": "string | null",
+    "num_comments": "number",
+    "date_posted": "ISO datetime",
+    "community_name": "string",
+    "num_upvotes": "number",
+    "photos": ["string"] | null,
+    "videos": ["string"] | null,
+    "tag": "string | null",
+    "related_posts": [
+      {
+        "community": "string | null",
+        "community_url": "string | null",
+        "num_comments": "number | null",
+        "num_upvotes": "string | number | null",
+        "thumbnail": "string | null",
+        "title": "string | null",
+        "url": "string | null"
+      }
+    ],
+    "comments": [
+      {
+        "comment": "string",
+        "date_of_comment": "ISO datetime",
+        "num_replies": "number",
+        "num_upvotes": "number",
+        "replies": ["object"],
+        "url": "string",
+        "user_commenting": "string",
+        "user_url": "string"
+      }
+    ],
+    "community_url": "string",
+    "community_description": "string | null",
+    "community_members_num": "number | null",
+    "community_rank": {
+      "community_rank_type": "string | null",
+      "community_rank_value": "string | number | null"
+    },
+    "post_karma": "number | null",
+    "bio_description": "string | null",
+    "embedded_links": ["string"] | null,
+    "description_markdown": "string | null",
+    "subreddit_icon_image": "string | null",
+    "author_icon": "string | null",
+    "user_id": "string",
+    "archived": "string | boolean"
+  }
+]
+```
+
+### Example Input Summary
+
+Contoh payload yang diberikan:
+
+```txt
+Endpoint label:
+Reddit Posts - Collect by URL
+
+Post:
+Tascam Model 12 DAW questions
+
+Community:
+r/TascamModel_12_16_24
+
+Post engagement:
+8 upvotes
+6 comments
+
+Community size:
+2,121 members
+```
+
+Catatan privacy:
+- Jangan tampilkan `user_posted`, `user_id`, `author_icon`, `user_commenting`, atau `user_url` di dashboard default.
+- Simpan identity fields sebagai source metadata untuk deduplication, audit, dan traceability.
+- Untuk UI, cukup tampilkan source sebagai `Reddit post/comment`, subreddit, engagement, tanggal, dan evidence link.
+
+## Field Labeling - Reddit Post
+
+| Raw Field | Label Internal | Fungsi |
+|---|---|---|
+| `post_id` | source_post_id | ID post untuk dedup dan grouping |
+| `url` | source_post_url | URL post Reddit |
+| `user_posted` | author_display_name | PII-lite, jangan tampilkan default |
+| `title` | post_title | Judul utama untuk intent/topic detection |
+| `description` | post_body_text | Teks utama post untuk AI analysis |
+| `description_markdown` | post_body_markdown | Body versi markdown jika tersedia |
+| `num_comments` | post_comment_count | Ukuran diskusi |
+| `date_posted` | post_created_at | Tanggal post dibuat |
+| `community_name` | subreddit_name | Nama subreddit |
+| `community_url` | subreddit_url | URL subreddit |
+| `community_description` | subreddit_description | Konteks komunitas |
+| `community_members_num` | subreddit_member_count | Ukuran komunitas sebagai reach proxy |
+| `num_upvotes` | post_upvote_count | Engagement post |
+| `photos` | post_photos | Media gambar jika tersedia |
+| `videos` | post_videos | Media video jika tersedia |
+| `tag` | post_flair_or_tag | Flair/tag post |
+| `related_posts` | related_post_candidates | Kandidat discovery tambahan |
+| `comments` | post_comments | Komentar sebagai consumer discussion evidence |
+| `community_rank.community_rank_type` | subreddit_rank_type | Metadata rank komunitas |
+| `community_rank.community_rank_value` | subreddit_rank_value | Nilai rank komunitas |
+| `post_karma` | author_post_karma | PII-lite/author metadata, jangan tampil default |
+| `bio_description` | author_bio | PII-lite/author metadata |
+| `embedded_links` | embedded_links | Link eksternal dalam post |
+| `subreddit_icon_image` | subreddit_icon | Media komunitas, optional |
+| `author_icon` | author_avatar | PII-lite, jangan tampil default |
+| `user_id` | author_source_id | PII-lite untuk dedup/source trace |
+| `archived` | post_archived | Status archive post |
+
+## Field Labeling - Reddit Comment
+
+| Raw Field | Label Internal | Fungsi |
+|---|---|---|
+| `comments[].comment` | consumer_voice_text | Teks komentar untuk AI tagging |
+| `comments[].date_of_comment` | comment_created_at | Tanggal komentar dibuat |
+| `comments[].num_replies` | comment_reply_count | Kedalaman diskusi |
+| `comments[].num_upvotes` | comment_upvote_count | Engagement komentar |
+| `comments[].replies` | comment_replies | Nested replies jika tersedia |
+| `comments[].url` | source_comment_url | Link evidence ke komentar |
+| `comments[].user_commenting` | commenter_display_name | PII-lite, jangan tampilkan default |
+| `comments[].user_url` | commenter_source_url | PII-lite untuk source trace |
+
+## AI Normalized Labels - Reddit Post
+
+Untuk contoh post:
+
+```txt
+Tascam Model 12 DAW questions
+```
+
+Rekomendasi label AI:
+
+| Label | Value | Alasan |
+|---|---|---|
+| `source_type` | `reddit_post` | Data berasal dari Reddit post |
+| `endpoint_label` | `reddit_posts_collect_by_url` | Sesuai endpoint Bright Data |
+| `language` | `en` | Bahasa Inggris |
+| `intent_stage` | `consideration` | User sedang validasi kemampuan produk sebelum/selama penggunaan |
+| `sentiment` | `neutral_help_seeking` | Post berupa pertanyaan teknis |
+| `behavior_signal` | `peer_validation_before_decision` | User mencari jawaban dari komunitas |
+| `demand_signal` | `product_capability_clarity` | Ada kebutuhan memahami fitur produk |
+| `persona_signal` | `detail_oriented_user` | User membutuhkan detail teknis sebelum yakin |
+| `product_signal` | `usb_multichannel_output` | Fitur produk yang dibahas |
+| `confidence` | `medium` | Sinyal jelas, tapi domain spesifik audio gear |
+
+Contoh normalized record:
+
+```json
+{
+  "source_type": "reddit_post",
+  "endpoint_label": "reddit_posts_collect_by_url",
+  "source_post_id": "t3_1svqi94",
+  "source_post_url": "https://www.reddit.com/r/TascamModel_12_16_24/comments/1svqi94/tascam_model_12_daw_questions/",
+  "subreddit": "TascamModel_12_16_24",
+  "post_title": "Tascam Model 12 DAW questions",
+  "consumer_question_text": "Can the Model 12 individually output all audio signals through USB C in to Logic?",
+  "language": "en",
+  "sentiment": "neutral_help_seeking",
+  "intent_stage": "consideration",
+  "behavior_signals": [
+    "peer_validation_before_decision",
+    "technical_due_diligence"
+  ],
+  "demand_signals": [
+    "product_capability_clarity",
+    "usb_multichannel_output"
+  ],
+  "product_signals": [
+    "individual_channel_routing",
+    "daw_compatibility",
+    "logic_workflow"
+  ],
+  "engagement": {
+    "upvotes": 8,
+    "comments": 6,
+    "score": 14
+  },
+  "community": {
+    "name": "TascamModel_12_16_24",
+    "members": 2121,
+    "url": "https://www.reddit.com/r/TascamModel_12_16_24/"
+  },
+  "source_links": {
+    "post_url": "https://www.reddit.com/r/TascamModel_12_16_24/comments/1svqi94/tascam_model_12_daw_questions/"
+  }
+}
+```
+
+## AI Normalized Labels - Reddit Comments
+
+Komentar dalam contoh ini berisi jawaban teknis yang mengonfirmasi fitur produk. AI/backend sebaiknya menandai komentar sebagai evidence, bukan sebagai profile user.
+
+Contoh normalized comment:
+
+```json
+{
+  "source_type": "reddit_comment",
+  "endpoint_label": "reddit_posts_collect_by_url",
+  "source_post_id": "t3_1svqi94",
+  "source_comment_url": "https://www.reddit.com/r/TascamModel_12_16_24/comments/1svqi94/comment/oidf50f/",
+  "consumer_voice_text": "Yes! Usually in the specs this is described as USB input/output or recording/playback channels. The Model 12 exposes 12 input channels (+2 for the stereo mix) and 10 output channels over USB.",
+  "language": "en",
+  "sentiment": "positive_confirming",
+  "intent_stage": "consideration_support",
+  "behavior_signals": [
+    "peer_answer",
+    "spec_clarification"
+  ],
+  "demand_signals": [
+    "multichannel_usb_io",
+    "feature_validation"
+  ],
+  "engagement": {
+    "upvotes": 4,
+    "replies": 0,
+    "score": 4
+  }
+}
+```
+
+## Dashboard Placement - Reddit Posts
+
+### Primary: Demand Pulse - Topic Demand
+
+Taruh sebagai evidence untuk topic demand setelah aggregation.
+
+Data yang dipakai:
+- `title`
+- `description`
+- `description_markdown`
+- `community_name`
+- `num_upvotes`
+- `num_comments`
+- `comments[].comment`
+
+Contoh UI setelah aggregation:
+
+```txt
+"Product capability clarity"
+YY discussions
+High comment depth
+```
+
+Kenapa cocok:
+- Reddit post memberi sinyal pertanyaan pasar yang organik.
+- Title/body menunjukkan apa yang user bingungkan atau cari.
+- Jumlah comments dan upvotes memberi bobot demand.
+
+### Primary: Persona Decode - Pain/Need Signals
+
+Taruh sebagai evidence untuk user need dan persona reasoning.
+
+Rekomendasi UI:
+
+```txt
+Need:
+Users want peer confirmation before trusting product specs.
+
+Evidence:
+"Can the Model 12 individually output all audio signals through USB C in to Logic?"
+Reddit post - 8 upvotes - 6 comments
+```
+
+Kenapa cocok:
+- Reddit bagus untuk intent, concern, dan user reasoning.
+- Komentar memberi konteks kenapa pertanyaan itu penting.
+- Jangan tampilkan username sebagai persona identity.
+
+### Secondary: Competitor Mirror - Product Mention Context
+
+Masukkan kalau post atau related posts menyebut brand/produk kompetitor.
+
+Contoh UI:
+
+```txt
+Product Mention Signal:
+Tascam Model 12 appears in technical workflow discussions.
+```
+
+Kenapa secondary:
+- Reddit bukan price/marketplace source utama.
+- Cocok untuk mention dan perception, bukan pricing benchmark.
+
+### Secondary: Launch Compass - Messaging Recommendation
+
+Masukkan sebagai bahan rekomendasi messaging.
+
+Contoh UI:
+
+```txt
+Messaging Opportunity:
+Clarify product capability in simple, practical workflow language.
+
+Supporting Signal:
+Reddit users ask whether the device can route individual channels into DAW software.
+```
+
+Kenapa cocok:
+- Pertanyaan Reddit bisa menjadi copywriting angle.
+- Bagus untuk FAQ, product page messaging, creator script, dan sales enablement.
+
+### Aggregated Only: Demand Pulse - Trend Charts
+
+Jangan ubah satu post menjadi angka tren besar.
+
+Gunakan setelah banyak Reddit posts/comments dikumpulkan:
+
+```txt
+"DAW compatibility"
++X%
+YY mentions
+Medium confidence
+```
+
+Kenapa aggregated:
+- Satu post hanya qualitative evidence.
+- Trend chart butuh banyak post/comment dari keyword/subreddit berbeda.
+
+## Backend Processing Rules - Reddit
+
+1. Deduplicate by `post_id`.
+2. Deduplicate comments by `comments[].url` jika comment id eksplisit tidak tersedia.
+3. Store raw post separately from normalized AI labels.
+4. Redact or hide `user_posted`, `user_id`, `user_commenting`, dan `user_url` in dashboard output.
+5. Use `title`, `description`, `description_markdown`, dan `comments[].comment` as NLP/LLM input.
+6. Use `num_upvotes + num_comments` as lightweight post engagement score.
+7. Use `comments[].num_upvotes + comments[].num_replies` as lightweight comment engagement score.
+8. Treat `related_posts` as discovery candidates, not direct evidence unless separately collected.
+9. Group by `community_name`, keyword, product/topic, and date bucket.
+10. Do not convert one Reddit post into a hard market metric; aggregate before showing in Demand Pulse.
+11. Reddit comments can support Persona Decode, but should not be treated as verified buyer reviews.
+12. Keep source links for audit and evidence drill-down.
+
+## Recommended Data Contract - Reddit Post
+
+```ts
+type RedditPostSignal = {
+  sourceType: "reddit_post";
+  endpointLabel: "reddit_posts_collect_by_url";
+  post: {
+    id: string;
+    url: string;
+    title: string;
+    body: string | null;
+    createdAt: string;
+    archived: boolean;
+  };
+  community: {
+    name: string;
+    url: string;
+    description?: string | null;
+    members?: number | null;
+  };
+  engagement: {
+    upvotes: number;
+    comments: number;
+    score: number;
+    tier: "high" | "medium" | "low";
+  };
+  contentSignals: {
+    topics: string[];
+    productMentions: string[];
+    competitorMentions: string[];
+    painSignals: string[];
+    intentStage:
+      | "awareness"
+      | "consideration"
+      | "purchase_intent"
+      | "post_purchase"
+      | "support";
+  };
+  comments: RedditCommentSignal[];
+  dashboardPlacement: Array<
+    | "demand_pulse_topic_demand"
+    | "persona_decode_pain_signals"
+    | "competitor_mirror_product_mentions"
+    | "launch_compass_messaging_recommendation"
+  >;
+};
+
+type RedditCommentSignal = {
+  sourceType: "reddit_comment";
+  text: string;
+  createdAt: string;
+  engagement: {
+    upvotes: number;
+    replies: number;
+    score: number;
+  };
+  source: {
+    url: string;
+  };
+  labels: {
+    sentiment: "positive" | "neutral" | "negative" | "mixed";
+    behaviorSignals: string[];
+    demandSignals: string[];
+  };
+};
+```
+
+## Reddit Comments - Collect by URL
+
+### Source Label
+
+Contoh data ini harus dilabeli sebagai:
+
+```txt
+Reddit Comments - Collect by URL
+```
+
+Alasannya:
+- Input utama adalah URL Reddit post/comment.
+- Output berisi satu komentar Reddit sebagai unit analisis utama.
+- Payload tetap membawa konteks post, subreddit/community, reply thread, dan moderation/status metadata.
+- Data ini paling cocok untuk Persona Decode karena berisi bahasa langsung dari user.
+
+### Type
+
+```ts
+type RedditCommentsByUrlPayload = RedditCommentByUrlRecord[];
+
+type RedditCommentByUrlRecord = {
+  url: string;
+  comment_id: string;
+  user_posted: string;
+  comment: string;
+  date_posted: string;
+  post_url: string;
+  post_id: string;
+  community_name: string;
+  community_url: string;
+  community_description: string | null;
+  community_members_num: string | number | null;
+  community_rank: RedditCommunityRank;
+  replies: RedditCommentByUrlReply[];
+  num_upvotes: number;
+  num_replies: number;
+  days_back: number;
+  is_moderator: boolean;
+  is_pinned: boolean;
+  has_bot_in_username: boolean;
+  is_locked: boolean;
+  is_admin_post: boolean;
+  is_archived_post: boolean;
+  is_moderator_post: boolean;
+  is_quarantined_post: boolean;
+  is_not_safe_for_work_post: boolean;
+  is_eligible_for_content_blocking_post: boolean;
+  is_promoted_post: boolean;
+  post_language: string | null;
+  post_state: string | null;
+  post_type: string | null;
+  images: string[] | null;
+  parent_comment_id: string;
+  root_comment_id: string;
+  videos: string[] | null;
+};
+
+type RedditCommentByUrlReply = {
+  date_of_reply: string;
+  num_replies: number | null;
+  num_upvotes: number;
+  reply: string;
+  reply_id: string;
+  reply_images: string[] | null;
+  user_replying: string;
+  user_url: string;
+};
+```
+
+### Payload Pattern
+
+```json
+[
+  {
+    "url": "string",
+    "comment_id": "string",
+    "user_posted": "string",
+    "comment": "string",
+    "date_posted": "ISO datetime",
+    "post_url": "string",
+    "post_id": "string",
+    "community_name": "string",
+    "community_url": "string",
+    "community_description": "string | null",
+    "community_members_num": "string | number | null",
+    "community_rank": {
+      "community_rank_type": "string | null",
+      "community_rank_value": "string | number | null"
+    },
+    "replies": [
+      {
+        "date_of_reply": "ISO datetime",
+        "num_replies": "number | null",
+        "num_upvotes": "number",
+        "reply": "string",
+        "reply_id": "string",
+        "reply_images": ["string"] | null,
+        "user_replying": "string",
+        "user_url": "string"
+      }
+    ],
+    "num_upvotes": "number",
+    "num_replies": "number",
+    "days_back": "number",
+    "is_moderator": "boolean",
+    "is_pinned": "boolean",
+    "has_bot_in_username": "boolean",
+    "is_locked": "boolean",
+    "is_admin_post": "boolean",
+    "is_archived_post": "boolean",
+    "is_moderator_post": "boolean",
+    "is_quarantined_post": "boolean",
+    "is_not_safe_for_work_post": "boolean",
+    "is_eligible_for_content_blocking_post": "boolean",
+    "is_promoted_post": "boolean",
+    "post_language": "string | null",
+    "post_state": "string | null",
+    "post_type": "string | null",
+    "images": ["string"] | null,
+    "parent_comment_id": "string",
+    "root_comment_id": "string",
+    "videos": ["string"] | null
+  }
+]
+```
+
+### Field Labeling - Reddit Comments Collect by URL
+
+| Raw Field | Label Internal | Fungsi |
+|---|---|---|
+| `url` | source_comment_url | URL komentar Reddit |
+| `comment_id` | source_comment_id | ID komentar untuk dedup |
+| `user_posted` | commenter_display_name | PII-lite, jangan tampilkan default |
+| `comment` | consumer_voice_text | Teks komentar utama untuk AI tagging |
+| `date_posted` | comment_created_at | Tanggal komentar dibuat |
+| `post_url` | source_post_url | URL post asal komentar |
+| `post_id` | source_post_id | ID post asal untuk grouping |
+| `community_name` | subreddit_name | Nama subreddit |
+| `community_url` | subreddit_url | URL komunitas/subreddit |
+| `community_description` | subreddit_description | Konteks komunitas |
+| `community_members_num` | subreddit_member_count | Ukuran komunitas sebagai reach proxy |
+| `community_rank` | subreddit_rank | Metadata rank komunitas |
+| `replies` | comment_replies | Reply thread dari komentar |
+| `num_upvotes` | comment_upvote_count | Engagement komentar |
+| `num_replies` | comment_reply_count | Kedalaman diskusi |
+| `days_back` | requested_lookback_days | Rentang waktu request |
+| `post_language` | post_language | Bahasa post/konteks |
+| `post_type` | post_type | Jenis post asal |
+| `images` | comment_or_post_images | Media gambar jika tersedia |
+| `videos` | comment_or_post_videos | Media video jika tersedia |
+| `parent_comment_id` | parent_comment_id | Parent thread ID |
+| `root_comment_id` | root_comment_id | Root thread ID |
+| `is_moderator` / `is_pinned` / `is_locked` | moderation_flags | Status moderation/comment visibility |
+| `is_admin_post` / `is_archived_post` / `is_promoted_post` | post_status_flags | Status post asal |
+
+### AI Normalized Labels - Reddit Comments Collect by URL
+
+Contoh normalized comment:
+
+```json
+{
+  "source_type": "reddit_comment",
+  "endpoint_label": "reddit_comments_collect_by_url",
+  "source_comment_id": "onedrd6",
+  "source_comment_url": "https://www.reddit.com/r/JEEAdv26dailyupdates/comments/1tlaimn/i_fucking_hate_scstobc_reservation/onedrd6/",
+  "source_post_id": "1tlaimn",
+  "source_post_url": "https://www.reddit.com/r/JEEAdv26dailyupdates/comments/1tlaimn/i_fucking_hate_scstobc_reservation/",
+  "subreddit": "JEEAdv26dailyupdates",
+  "consumer_voice_text": "bhai ek baat batau reservation me bhi jiske jyada marks hote hn usey hi seat milti hn...",
+  "language": "en_or_mixed",
+  "sentiment": "mixed",
+  "intent_stage": "discussion_or_opinion",
+  "behavior_signals": [
+    "peer_argumentation",
+    "community_debate"
+  ],
+  "demand_signals": [
+    "topic_polarization",
+    "high_context_discussion"
+  ],
+  "engagement": {
+    "upvotes": 2,
+    "replies": 1,
+    "score": 3
+  },
+  "moderation": {
+    "is_moderator": false,
+    "is_pinned": false,
+    "is_locked": false
+  }
+}
+```
+
+### Dashboard Placement - Reddit Comments Collect by URL
+
+#### Primary: Persona Decode - Consumer Language
+
+Gunakan komentar sebagai evidence bahasa asli user.
+
+Contoh UI:
+
+```txt
+User language signal:
+Users explain opinions through peer debate and personal reasoning.
+
+Evidence:
+Reddit comment - 2 upvotes - 1 reply
+```
+
+#### Primary: Persona Decode - Advisor Intelligence
+
+Gunakan untuk membaca objection, reasoning, fear, trust issue, dan vocabulary user.
+
+Contoh UI:
+
+```txt
+Advisor note:
+Messaging should address the underlying belief or objection directly, not only repeat product claims.
+```
+
+#### Secondary: Demand Pulse - Aggregated Discussion Themes
+
+Masukkan hanya setelah banyak komentar dikumpulkan dan di-cluster.
+
+Contoh aggregate:
+
+```txt
+"Fairness / access debate"
+YY comments
+High reply intensity
+```
+
+### Backend Processing Rules - Reddit Comments Collect by URL
+
+1. Deduplicate by `comment_id`.
+2. Group by `post_id`, `community_name`, and topic/keyword.
+3. Store raw comment separately from normalized AI labels.
+4. Redact or hide `user_posted`, `replies[].user_replying`, and `replies[].user_url` in dashboard output.
+5. Use `comment` and `replies[].reply` as primary NLP/LLM input.
+6. Use `num_upvotes + num_replies` as lightweight comment engagement score.
+7. Use moderation/status flags to filter risky or low-confidence content.
+8. Treat comment text as qualitative consumer evidence, not verified buyer review.
+9. Do not convert one comment into a hard market metric; aggregate before showing Demand Pulse.
+10. Preserve `url` and `post_url` as source evidence links.
+
+## Reddit Dashboard Relevance
+
+| Endpoint | Primary Dashboard Use | Secondary Use |
+|---|---|---|
+| `Reddit Posts - Discover by keyword` | Demand Pulse | Persona Decode |
+| `Reddit Posts - Collect by URL` | Persona Decode | Demand Pulse |
+| `Reddit Comments - Collect by URL` | Persona Decode | Advisor Intelligence |
+| `Reddit Posts - Discover by subreddit url` | Demand Pulse | Competitor Mirror |
+| `Reddit Profiles - Collect by URL` | Not priority | Source audit only |
+
+Catatan parser:
+- Treat Reddit post/comment text as qualitative market evidence.
+- Use comments for consumer language, objections, and reasoning.
+- Use subreddit metadata as community context, not demographic truth.
+- Hide user identity fields by default.
+- Related posts are discovery hints, not confirmed evidence unless collected separately.
