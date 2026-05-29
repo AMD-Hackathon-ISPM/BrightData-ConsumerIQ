@@ -13,36 +13,36 @@ from backend.models.translator import translateTextsIfNeeded
 REDIS_URL = os.getenv('REDIS_URL', 'redis://redis.consumeriq.svc.cluster.local:6379/0')
 
 CATEGORY_MARKETPLACES: dict[str, list[str]] = {
-    'fashion': ['amazon', 'etsy', 'lazada', 'tokopedia'],
-    'apparel': ['amazon', 'etsy', 'lazada', 'tokopedia'],
-    'clothing': ['amazon', 'etsy', 'lazada', 'tokopedia'],
-    'beauty': ['amazon', 'walmart', 'lazada'],
-    'skincare': ['amazon', 'walmart', 'lazada'],
-    'cosmetics': ['amazon', 'walmart', 'lazada'],
-    'makeup': ['amazon', 'walmart', 'lazada'],
-    'electronics': ['amazon', 'walmart', 'lazada', 'tokopedia'],
-    'tech': ['amazon', 'walmart', 'lazada', 'tokopedia'],
-    'gadgets': ['amazon', 'walmart', 'lazada', 'tokopedia'],
-    'phone': ['amazon', 'walmart', 'lazada', 'tokopedia'],
-    'laptop': ['amazon', 'walmart', 'lazada'],
-    'home': ['amazon', 'walmart', 'etsy'],
-    'furniture': ['amazon', 'walmart', 'lazada'],
-    'kitchen': ['amazon', 'walmart', 'lazada'],
-    'decor': ['amazon', 'etsy', 'walmart'],
-    'handmade': ['etsy', 'amazon'],
-    'craft': ['etsy', 'amazon'],
-    'art': ['etsy', 'amazon'],
-    'jewelry': ['etsy', 'amazon', 'walmart'],
-    'accessories': ['amazon', 'etsy', 'lazada'],
-    'bags': ['amazon', 'etsy', 'lazada', 'tokopedia'],
-    'shoes': ['amazon', 'lazada', 'tokopedia'],
+    'fashion': ['amazon', 'tokopedia'],
+    'apparel': ['amazon', 'tokopedia'],
+    'clothing': ['amazon', 'tokopedia'],
+    'beauty': ['amazon', 'walmart'],
+    'skincare': ['amazon', 'walmart'],
+    'cosmetics': ['amazon', 'walmart'],
+    'makeup': ['amazon', 'walmart'],
+    'electronics': ['amazon', 'walmart', 'tokopedia'],
+    'tech': ['amazon', 'walmart', 'tokopedia'],
+    'gadgets': ['amazon', 'walmart', 'tokopedia'],
+    'phone': ['amazon', 'walmart', 'tokopedia'],
+    'laptop': ['amazon', 'walmart'],
+    'home': ['amazon', 'walmart'],
+    'furniture': ['amazon', 'walmart'],
+    'kitchen': ['amazon', 'walmart'],
+    'decor': ['amazon', 'walmart'],
+    'handmade': ['amazon'],
+    'craft': ['amazon'],
+    'art': ['amazon'],
+    'jewelry': ['amazon', 'walmart'],
+    'accessories': ['amazon', 'tokopedia'],
+    'bags': ['amazon', 'tokopedia'],
+    'shoes': ['amazon', 'tokopedia'],
     'sports': ['amazon', 'walmart'],
     'fitness': ['amazon', 'walmart'],
     'outdoor': ['amazon', 'walmart'],
     'camping': ['amazon', 'walmart'],
-    'toys': ['amazon', 'walmart', 'lazada'],
+    'toys': ['amazon', 'walmart'],
     'games': ['amazon', 'walmart'],
-    'baby': ['amazon', 'walmart', 'lazada'],
+    'baby': ['amazon', 'walmart'],
     'grocery': ['amazon', 'walmart'],
     'food': ['amazon', 'walmart'],
     'health': ['amazon', 'walmart'],
@@ -51,28 +51,33 @@ CATEGORY_MARKETPLACES: dict[str, list[str]] = {
     'automotive': ['amazon', 'walmart'],
     'tools': ['amazon', 'walmart'],
     'books': ['amazon'],
-    'stationery': ['amazon', 'etsy'],
+    'stationery': ['amazon'],
 }
 
-_DEFAULT_MARKETPLACES = ['walmart', 'tokopedia', 'amazon']
-_PIPELINE_KEYWORD_LIMIT = int(os.getenv('PIPELINE_KEYWORD_LIMIT', '2'))
-_PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS = int(os.getenv('PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS', '45'))
-_PIPELINE_SNAPSHOT_WAIT_SECONDS = int(os.getenv('PIPELINE_SNAPSHOT_WAIT_SECONDS', '35'))
-_PIPELINE_MAX_SIGNALS = int(os.getenv('PIPELINE_MAX_SIGNALS', '3'))
+_DEFAULT_MARKETPLACES = ['amazon', 'walmart']
+_PIPELINE_KEYWORD_LIMIT = int(os.getenv('PIPELINE_KEYWORD_LIMIT', '6'))
+_PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS = int(os.getenv('PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS', '180'))
+_PIPELINE_SNAPSHOT_WAIT_SECONDS = int(os.getenv('PIPELINE_SNAPSHOT_WAIT_SECONDS', '600'))
+_PIPELINE_MAX_SIGNALS = int(os.getenv('PIPELINE_MAX_SIGNALS', '50'))
 _PIPELINE_MARKETPLACE_RECORD_LIMIT = int(os.getenv('PIPELINE_MARKETPLACE_RECORD_LIMIT', '100'))
-_PIPELINE_TOTAL_BUDGET_SECONDS = int(os.getenv('PIPELINE_TOTAL_BUDGET_SECONDS', '150'))
-_PIPELINE_MAX_MARKETPLACES_PER_KEYWORD = int(os.getenv('PIPELINE_MAX_MARKETPLACES_PER_KEYWORD', '1'))
-_PIPELINE_SOCIAL_DISCOVERY_ENABLED = os.getenv('PIPELINE_SOCIAL_DISCOVERY_ENABLED', 'false').lower() == 'true'
 _PIPELINE_ENABLED_MARKETPLACES = {
     item.strip().lower()
-    for item in os.getenv('PIPELINE_ENABLED_MARKETPLACES', 'walmart,tokopedia,amazon').split(',')
+    for item in os.getenv(
+        'PIPELINE_ENABLED_MARKETPLACES', 'amazon,tokopedia,walmart'
+    ).split(',')
     if item.strip()
 }
 _PIPELINE_SKIP_MARKETPLACES = {
     item.strip().lower()
-    for item in os.getenv('PIPELINE_SKIP_MARKETPLACES', 'lazada,google,google.shopping,tiktok,tiktok_shop').split(',')
+    for item in os.getenv(
+        'PIPELINE_SKIP_MARKETPLACES',
+        'google,google.shopping,lazada,tiktok,tiktok_shop,etsy',
+    ).split(',')
     if item.strip()
 }
+_PIPELINE_SOCIAL_ENABLED = (
+    os.getenv('PIPELINE_SOCIAL_ENABLED', 'false').lower() == 'true'
+)
 _PIPELINE_ALLOW_FALLBACK_SIGNALS = os.getenv('PIPELINE_ALLOW_FALLBACK_SIGNALS', 'true').lower() == 'true'
 _DAILY_REFRESH_ENABLED = os.getenv('DAILY_REFRESH_ENABLED', 'false').lower() == 'true'
 _COMPLIANCE_SCRAPE_ENABLED = os.getenv('COMPLIANCE_SCRAPE_ENABLED', 'false').lower() == 'true'
@@ -533,16 +538,22 @@ def scrapeMarketSignals(
 
     started_at = time.monotonic()
     _MAX_SIGNALS = max(1, _PIPELINE_MAX_SIGNALS)
-    marketplaces = _selectPipelineMarketplaces(category, country)
-    print(
-        '[scraping] Pipeline guard '
-        f'total_budget={_PIPELINE_TOTAL_BUDGET_SECONDS}s '
-        f'keyword_limit={_PIPELINE_KEYWORD_LIMIT} '
-        f'max_signals={_MAX_SIGNALS} '
-        f'marketplaces={marketplaces} '
-        f'social_enabled={_PIPELINE_SOCIAL_DISCOVERY_ENABLED}',
-        flush=True,
-    )
+    marketplaces = CATEGORY_MARKETPLACES.get(category.lower(), _DEFAULT_MARKETPLACES)
+    if _PIPELINE_ENABLED_MARKETPLACES:
+        marketplaces = [
+            mp for mp in marketplaces if mp.lower() in _PIPELINE_ENABLED_MARKETPLACES
+        ]
+    if _PIPELINE_SKIP_MARKETPLACES:
+        marketplaces = [
+            mp for mp in marketplaces if mp.lower() not in _PIPELINE_SKIP_MARKETPLACES
+        ]
+    if not marketplaces:
+        marketplaces = [
+            mp for mp in _DEFAULT_MARKETPLACES
+            if (not _PIPELINE_ENABLED_MARKETPLACES or mp.lower() in _PIPELINE_ENABLED_MARKETPLACES)
+            and mp.lower() not in _PIPELINE_SKIP_MARKETPLACES
+        ]
+    print(f'[scraping] Active marketplaces for category={category}: {marketplaces}', flush=True)
     rows: list[tuple[str, str, str, str, str]] = []
 
     if has_context:
@@ -567,8 +578,7 @@ def scrapeMarketSignals(
             print(f'[scraping] Pipeline budget exhausted before keyword={keyword} elapsed={_pipelineElapsed(started_at)}', flush=True)
             break
 
-        if _PIPELINE_SOCIAL_DISCOVERY_ENABLED:
-            social_started = time.monotonic()
+        if _PIPELINE_SOCIAL_ENABLED:
             print(f'[scraping] Social discovery keyword={keyword}', flush=True)
             socialData = runSocialDiscovery(
                 keyword=keyword,
@@ -579,23 +589,16 @@ def scrapeMarketSignals(
                 timeout_seconds=_PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS,
                 snapshot_wait_seconds=_PIPELINE_SNAPSHOT_WAIT_SECONDS,
             )
-            print(
-                f'[scraping] Social discovery status={socialData.get("status")} '
-                f'keyword={keyword} duration={time.monotonic() - social_started:.1f}s '
-                f'elapsed={_pipelineElapsed(started_at)}',
-                flush=True,
-            )
+            print(f'[scraping] Social discovery status={socialData.get("status")} keyword={keyword}', flush=True)
             if socialData.get('status') == 'success':
                 for result in socialData.get('serpResults', [])[:3]:
-                    if len(rows) >= _MAX_SIGNALS:
-                        break
                     text = f"{result.get('title', '')} — {result.get('description', '')}"
                     if not text.strip(' —'):
                         text = _recordFallbackText(result.get('record') or {})
                     if text.strip():
                         rows.append((text[:1000], result.get('source', 'social'), result.get('url', ''), country, category))
         else:
-            print(f'[scraping] Social discovery skipped keyword={keyword} reason=PIPELINE_SOCIAL_DISCOVERY_ENABLED=false', flush=True)
+            print(f'[scraping] Social discovery skipped (PIPELINE_SOCIAL_ENABLED=false) keyword={keyword}', flush=True)
 
         for mp in marketplaces:
             if len(rows) >= _MAX_SIGNALS:
