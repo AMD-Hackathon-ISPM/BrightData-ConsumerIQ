@@ -937,12 +937,15 @@ def processLlmInsights(self, categoryName: str, country: str = '', form_id: str 
     _updateInferenceStage(form_id, 'synthesizing')
     if not _dashboardIsComplete(dashboard):
         try:
-            print('[openai] Dashboard data incomplete; retrying extra analysis.')
-            insights['extraAnalysis'] = _runOpenAiExtraAnalysis(
+            print('[openai] Dashboard data incomplete; running dashboard-only retry.')
+            from backend.models.openai_cross_reference import generate_dashboard_data
+            dashboard = generate_dashboard_data(
                 categoryName, country, insights, translatedSignals
             )
-            extra = insights.get('extraAnalysis') or {}
-            dashboard = extra.get('dashboardData') if isinstance(extra, dict) else None
+            if not isinstance(extra, dict):
+                extra = {}
+            extra['dashboardData'] = dashboard
+            insights['extraAnalysis'] = extra
         except Exception as exc:
             print(f'[openai] Dashboard retry failed: {exc}')
 

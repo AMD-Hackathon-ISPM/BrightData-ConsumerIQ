@@ -13,7 +13,7 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 # OPENAI_BASE_URL can point to an OpenAI-compatible gateway (e.g. Bright Data AI Gateway).
 OPENAI_API_URL = os.getenv("OPENAI_API_URL", f"{OPENAI_BASE_URL}/responses")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "deepseek/deepseek-chat-v3.1")
 OPENAI_EXTRA_ANALYSIS_ENABLED = (
     os.getenv("OPENAI_EXTRA_ANALYSIS_ENABLED", "true").lower() == "true"
 )
@@ -241,7 +241,7 @@ def _synthesize_extra_analysis_from_text(
     }
 
 
-def _generate_dashboard_data(
+def generate_dashboard_data(
     category: str,
     country: str,
     insights: dict[str, Any],
@@ -382,7 +382,12 @@ def create_extra_analysis(
     signals: list[dict[str, Any]],
 ) -> dict[str, Any]:
     if not OPENAI_EXTRA_ANALYSIS_ENABLED:
-        return {"status": "skipped", "reason": "OPENAI_EXTRA_ANALYSIS_ENABLED=false"}
+        dashboard = generate_dashboard_data(category, country, insights, signals)
+        return {
+            "status": "skipped",
+            "reason": "OPENAI_EXTRA_ANALYSIS_ENABLED=false",
+            "dashboardData": dashboard,
+        }
 
     api_key = _openai_api_key()
     if not api_key:
@@ -405,48 +410,50 @@ def create_extra_analysis(
             }
         ][: max(BRIGHTDATA_CHATGPT_MAX_INPUTS, 1)]
 
-        result = scrape_brightdata(
-            dataset_id=BRIGHTDATA_CHATGPT_DATASET_ID,
-            dataset_key=None,
-            input_records=inputs,
-            notify=False,
-            include_errors=True,
-            timeout_seconds=int(OPENAI_TIMEOUT_SECONDS),
-        )
-        result = resolve_snapshot_if_needed(
-            result,
-            max_wait_seconds=BRIGHTDATA_CHATGPT_SNAPSHOT_WAIT_SECONDS,
-            timeout_seconds=max(int(OPENAI_TIMEOUT_SECONDS), 120),
-        )
+        bright_result: dict[str, Any] = {}
+        try:
+            bright_result = scrape_brightdata(
+                dataset_id=BRIGHTDATA_CHATGPT_DATASET_ID,
+                dataset_key=None,
+                input_records=inputs,
+                notify=False,
+                include_errors=True,
+                timeout_seconds=int(OPENAI_TIMEOUT_SECONDS),
+            )
+            bright_result = resolve_snapshot_if_needed(
+                bright_result,
+                max_wait_seconds=BRIGHTDATA_CHATGPT_SNAPSHOT_WAIT_SECONDS,
+                timeout_seconds=max(int(OPENAI_TIMEOUT_SECONDS), 120),
+            )
+        except Exception as exc:
+            print(f"[openai] BrightData ChatGPT call errored: {exc}")
+            bright_result = {"status": "failed", "error": str(exc)}
 
-        if result.get("status") != "success":
-            return {
-                "status": "failed",
-                "source": "gd_m7aof0k82r803d5bjm",
-                "reason": result.get("error") or result.get("status"),
-                "snapshotId": result.get("snapshotId"),
-            }
+        answer_text = ""
+        if bright_result.get("status") == "success":
+            record = _extract_dataset_record(bright_result.get("records"))
+            answer_text = _dataset_answer_text(record)
 
-        record = _extract_dataset_record(result.get("records"))
-        answer_text = _dataset_answer_text(record)
+        dashboard = generate_dashboard_data(category, country, insights, signals)
+
         if not answer_text:
             return {
-                "status": "failed",
+                "status": "partial",
                 "source": "gd_m7aof0k82r803d5bjm",
-                "reason": "dataset response missing answer_text",
+                "reason": bright_result.get("error") or bright_result.get("status") or "missing answer_text",
+                "snapshotId": bright_result.get("snapshotId"),
+                "dashboardData": dashboard,
             }
 
-        result = _synthesize_extra_analysis_from_text(
+        synthesized = _synthesize_extra_analysis_from_text(
             category=category,
             country=country,
             insights=insights,
             signals=signals,
             answer_text=answer_text,
         )
-        result["dashboardData"] = _generate_dashboard_data(
-            category, country, insights, signals
-        )
-        return result
+        synthesized["dashboardData"] = dashboard
+        return synthesized
 
     review_payload = {
         "category": category,
@@ -504,5 +511,5 @@ def create_extra_analysis(
         "source": "openai",
         "model": payload.get("model", OPENAI_MODEL),
         **parsed,
-        "dashboardData": _generate_dashboard_data(category, country, insights, signals),
+        "dashboardData": generate_dashboard_data(category, country, insights, signals),
     }
