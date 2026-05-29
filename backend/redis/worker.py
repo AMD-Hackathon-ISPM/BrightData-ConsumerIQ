@@ -77,7 +77,35 @@ _PIPELINE_SKIP_MARKETPLACES = {
 _PIPELINE_SOCIAL_ENABLED = (
     os.getenv('PIPELINE_SOCIAL_ENABLED', 'false').lower() == 'true'
 )
+_PIPELINE_TWITTER_ENABLED = (
+    os.getenv('PIPELINE_TWITTER_ENABLED', 'true').lower() == 'true'
+)
+_PIPELINE_TWITTER_RESULTS_PER_KEYWORD = int(
+    os.getenv('PIPELINE_TWITTER_RESULTS_PER_KEYWORD', '2')
+)
 _PIPELINE_ALLOW_FALLBACK_SIGNALS = os.getenv('PIPELINE_ALLOW_FALLBACK_SIGNALS', 'true').lower() == 'true'
+
+
+def _runTwitterSerpDiscovery(keyword: str, country: str, limit: int) -> dict[str, Any]:
+    if not os.getenv('SCRAPINGBEE_API_KEY'):
+        return {'status': 'skipped', 'reason': 'SCRAPINGBEE_API_KEY not set'}
+    try:
+        from backend.api.scrapingbeeClient import normalizeSerpResults, searchGoogle
+        data, error = searchGoogle(
+            query=f'site:x.com OR site:twitter.com {keyword}',
+            country_code=country or 'us',
+            language='en',
+            nb_results=max(limit, 3),
+        )
+        if error:
+            return {'status': 'failed', 'error': error}
+        results = normalizeSerpResults(data or {})
+        twitter_only = [
+            r for r in results if r.get('source') == 'twitter'
+        ][:limit]
+        return {'status': 'success', 'serpResults': twitter_only}
+    except Exception as exc:
+        return {'status': 'failed', 'error': str(exc)}
 _DAILY_REFRESH_ENABLED = os.getenv('DAILY_REFRESH_ENABLED', 'false').lower() == 'true'
 _COMPLIANCE_SCRAPE_ENABLED = os.getenv('COMPLIANCE_SCRAPE_ENABLED', 'false').lower() == 'true'
 _SIGNAL_RECENCY_WEIGHT = float(os.getenv('SIGNAL_RECENCY_WEIGHT', '0.005'))
@@ -557,6 +585,20 @@ def scrapeMarketSignals(
                         rows.append((text[:1000], result.get('source', 'social'), result.get('url', ''), country, category))
         else:
             print(f'[scraping] Social discovery skipped (PIPELINE_SOCIAL_ENABLED=false) keyword={keyword}', flush=True)
+
+        if _PIPELINE_TWITTER_ENABLED and len(rows) < _MAX_SIGNALS:
+            print(f'[scraping] Twitter SERP discovery keyword={keyword}', flush=True)
+            twitterData = _runTwitterSerpDiscovery(
+                keyword, country, _PIPELINE_TWITTER_RESULTS_PER_KEYWORD
+            )
+            print(f'[scraping] Twitter SERP status={twitterData.get("status")} keyword={keyword}', flush=True)
+            if twitterData.get('status') == 'success':
+                for result in twitterData.get('serpResults', []):
+                    if len(rows) >= _MAX_SIGNALS:
+                        break
+                    text = f"{result.get('title', '')} — {result.get('description', '')}"
+                    if text.strip(' —'):
+                        rows.append((text[:1000], 'twitter', result.get('url', ''), country, category))
 
         for mp in marketplaces:
             if len(rows) >= _MAX_SIGNALS:
