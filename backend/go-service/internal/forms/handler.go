@@ -58,6 +58,7 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
+	p.WorkEmail = strings.ToLower(strings.TrimSpace(p.WorkEmail))
 	if p.WorkEmail == "" {
 		writeErr(w, http.StatusBadRequest, "workEmail is required")
 		return

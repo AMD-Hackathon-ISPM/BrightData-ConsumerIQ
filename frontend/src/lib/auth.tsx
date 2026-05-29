@@ -113,14 +113,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [setAuthenticatedUser]);
 
     const login = useCallback(async ({ email, password }: LoginInput) => {
-        if (!email.trim() || !password) {
+        const normalizedEmail = email.trim().toLowerCase();
+        if (!normalizedEmail || !password) {
             return { ok: false, error: "Email and password are required" };
         }
         try {
             const res = await fetch("/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email: normalizedEmail, password }),
             });
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
@@ -133,8 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             const { token } = (await res.json()) as { token: string };
             const next: AuthUser = {
-                fullName: email.split("@")[0] || "User",
-                email,
+                fullName: normalizedEmail.split("@")[0] || "User",
+                email: normalizedEmail,
             };
             setAuthenticatedUser(next, token);
             return { ok: true };
@@ -145,7 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const register = useCallback(
         async ({ fullName, email, password, confirmPassword }: RegisterInput) => {
-            if (!fullName.trim() || !email.trim() || !password) {
+            const normalizedEmail = email.trim().toLowerCase();
+            if (!fullName.trim() || !normalizedEmail || !password) {
                 return { ok: false, error: "All fields are required" };
             }
             if (password !== confirmPassword) {
@@ -155,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const res = await fetch("/auth/register", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, password }),
+                    body: JSON.stringify({ email: normalizedEmail, password }),
                 });
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
@@ -167,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     };
                 }
                 const { token } = (await res.json()) as { token: string };
-                const next: AuthUser = { fullName, email };
+                const next: AuthUser = { fullName: fullName.trim(), email: normalizedEmail };
                 setAuthenticatedUser(next, token);
                 return { ok: true };
             } catch {

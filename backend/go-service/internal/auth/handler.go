@@ -2,11 +2,13 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
@@ -30,6 +32,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "email and password required")
 		return
 	}
+	email := strings.ToLower(strings.TrimSpace(body.Email))
+	if email == "" {
+		writeErr(w, http.StatusBadRequest, "email and password required")
+		return
+	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -41,14 +48,20 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var userID int64
 	err = h.pool.QueryRow(r.Context(),
 		`INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id`,
-		body.Email, string(hash),
+		email, string(hash),
 	).Scan(&userID)
 	if err != nil {
-		writeErr(w, http.StatusConflict, "email already registered")
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			writeErr(w, http.StatusConflict, "email already registered")
+			return
+		}
+		log.Printf("insert user: %v", err)
+		writeErr(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
-	token, err := CreateSession(r.Context(), h.rdb, SessionData{UserID: userID, Email: body.Email})
+	token, err := CreateSession(r.Context(), h.rdb, SessionData{UserID: userID, Email: email})
 	if err != nil {
 		log.Printf("create session: %v", err)
 		writeErr(w, http.StatusInternalServerError, "internal error")
@@ -67,12 +80,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid body")
 		return
 	}
+	email := strings.ToLower(strings.TrimSpace(body.Email))
 
 	var userID int64
 	var hash string
 	err := h.pool.QueryRow(r.Context(),
 		`SELECT id, password_hash FROM users WHERE email = $1`,
-		body.Email,
+		email,
 	).Scan(&userID, &hash)
 	if err != nil {
 		writeErr(w, http.StatusUnauthorized, "invalid credentials")
@@ -84,7 +98,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := CreateSession(r.Context(), h.rdb, SessionData{UserID: userID, Email: body.Email})
+	token, err := CreateSession(r.Context(), h.rdb, SessionData{UserID: userID, Email: email})
 	if err != nil {
 		log.Printf("create session: %v", err)
 		writeErr(w, http.StatusInternalServerError, "internal error")
