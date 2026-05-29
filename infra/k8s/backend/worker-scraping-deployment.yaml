@@ -56,6 +56,18 @@ spec:
                   name: consumeriq-api-keys
                   key: PIPELINE_SOCIAL_ENABLED
                   optional: true
+            - name: PIPELINE_TWITTER_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: PIPELINE_TWITTER_ENABLED
+                  optional: true
+            - name: PIPELINE_TWITTER_RESULTS_PER_KEYWORD
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: PIPELINE_TWITTER_RESULTS_PER_KEYWORD
+                  optional: true
             - name: OPENAI_BASE_URL
               valueFrom:
                 secretKeyRef:
