@@ -72,6 +72,37 @@ async def _fetchUserContext(user_id: str) -> dict | None:
     return await loop.run_in_executor(None, partial(_fetchUserContextSync, user_id))
 
 
+def _extractBearerToken(request: Request) -> str:
+    authorization = request.headers.get('Authorization', '')
+    if authorization.startswith('Bearer '):
+        return authorization.removeprefix('Bearer ').strip()
+    cookie_token = request.cookies.get('session')
+    return cookie_token.strip() if cookie_token else ''
+
+
+def _resolveUserIdFromRequest(request: Request) -> str | None:
+    user_id = request.headers.get('X-User-Id')
+    if user_id:
+        return user_id
+
+    token = _extractBearerToken(request)
+    if not token:
+        return None
+
+    try:
+        import redis as redis_lib
+
+        rdb = redis_lib.from_url(_REDIS_URL)
+        raw = rdb.get(f'session:{token}')
+        if not raw:
+            return None
+        session = json.loads(raw.decode('utf-8') if isinstance(raw, bytes) else raw)
+        resolved_id = session.get('user_id') or session.get('UserID')
+        return str(resolved_id) if resolved_id else None
+    except Exception:
+        return None
+
+
 app = FastAPI(title='ConsumerIQ API')
 app.include_router(marketplaceRouter)
 app.include_router(serpRouter)
@@ -232,7 +263,7 @@ async def createInsightExtraAnalysis(payload: ExtraAnalysisRequest):
 async def getInsightsForCurrentUser(request: Request):
     import psycopg2
 
-    user_id = request.headers.get('X-User-Id')
+    user_id = _resolveUserIdFromRequest(request)
     if not user_id:
         raise HTTPException(status_code=401, detail='Unauthorized')
 

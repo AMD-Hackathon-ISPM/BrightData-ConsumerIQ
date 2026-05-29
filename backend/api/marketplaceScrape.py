@@ -1,3 +1,4 @@
+import os
 import re
 from typing import Any
 
@@ -8,6 +9,8 @@ from pydantic import BaseModel
 from backend.brightdata.client import resolve_snapshot_if_needed, scrape_brightdata
 
 router = APIRouter(tags=['marketplace'])
+
+_MARKETPLACE_RECORD_LIMIT = int(os.getenv('PIPELINE_MARKETPLACE_RECORD_LIMIT', '100'))
 
 
 def normalizeText(text: str):
@@ -20,10 +23,6 @@ def detectSourceFromUrl(url: str):
         return 'amazon'
     if 'tokopedia.com' in lowered:
         return 'tokopedia'
-    if 'alibaba.com' in lowered:
-        return 'alibaba'
-    if 'sephora.com' in lowered:
-        return 'sephora'
     if 'lazada.' in lowered:
         return 'lazada'
     if 'walmart.com' in lowered:
@@ -214,10 +213,6 @@ def _endpointForMarketplaceUrl(url: str, include_reviews: bool = True) -> str | 
     lowered = url.lower()
     if 'tokopedia.com' in lowered:
         return 'tokopedia.products.collect_url'
-    if 'alibaba.com' in lowered:
-        return 'alibaba.products.collect_url'
-    if 'sephora.com' in lowered:
-        return 'sephora.products.collect_url'
     if 'walmart.com/search' in lowered:
         return 'walmart.products.search.collect_url'
     if 'walmart.com' in lowered:
@@ -265,6 +260,8 @@ def _recordsFromResult(result: dict[str, Any]) -> list[dict[str, Any]]:
     if isinstance(records, list):
         return records
     if isinstance(records, dict):
+        if records.get('snapshot_id') and records.get('message'):
+            return []
         return [records]
     return []
 
@@ -369,7 +366,7 @@ def runMarketplaceScrape(
         }
 
     result = scrape_brightdata(endpoint_key=endpoint, input_records=[{'url': url}])
-    records = _recordsFromResult(result)
+    records = _recordsFromResult(result)[:_MARKETPLACE_RECORD_LIMIT]
 
     return {
         **result,
@@ -377,6 +374,7 @@ def runMarketplaceScrape(
         'pageType': classifyMarketplaceUrl(url),
         'keyword': keyword,
         'countryCode': country_code,
+        'recordLimit': _MARKETPLACE_RECORD_LIMIT,
         'signals': _buildMarketplaceSignals(records, marketplace),
     }
 
@@ -410,7 +408,9 @@ def runMarketplaceDiscovery(
     )
     if wait_for_snapshot:
         result = resolve_snapshot_if_needed(result, max_wait_seconds=snapshot_wait_seconds)
-    records = _recordsFromResult(result)[:limit]
+
+    effective_limit = record_limit if record_limit and record_limit > 0 else limit
+    records = _recordsFromResult(result)[:effective_limit]
     results = [
         {
             'title': _firstText(record, 'title', 'product_name', 'name'),
@@ -428,6 +428,7 @@ def runMarketplaceDiscovery(
         'marketplace': marketplace,
         'countryCode': country_code,
         'language': language,
+        'recordLimit': effective_limit,
         'results': results,
         'scrapeResults': [],
         'signals': _buildMarketplaceSignals(records, marketplace.lower()),

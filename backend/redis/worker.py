@@ -1,6 +1,7 @@
 import gc
 import json
 import os
+import time
 from typing import Any
 import psycopg2
 from celery import Celery
@@ -53,15 +54,23 @@ CATEGORY_MARKETPLACES: dict[str, list[str]] = {
     'stationery': ['amazon', 'etsy'],
 }
 
-_DEFAULT_MARKETPLACES = ['amazon', 'google.shopping']
-_PIPELINE_KEYWORD_LIMIT = int(os.getenv('PIPELINE_KEYWORD_LIMIT', '6'))
-_PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS = int(os.getenv('PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS', '180'))
-_PIPELINE_SNAPSHOT_WAIT_SECONDS = int(os.getenv('PIPELINE_SNAPSHOT_WAIT_SECONDS', '600'))
-_PIPELINE_MAX_SIGNALS = int(os.getenv('PIPELINE_MAX_SIGNALS', '50'))
+_DEFAULT_MARKETPLACES = ['walmart', 'tokopedia', 'amazon']
+_PIPELINE_KEYWORD_LIMIT = int(os.getenv('PIPELINE_KEYWORD_LIMIT', '2'))
+_PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS = int(os.getenv('PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS', '45'))
+_PIPELINE_SNAPSHOT_WAIT_SECONDS = int(os.getenv('PIPELINE_SNAPSHOT_WAIT_SECONDS', '35'))
+_PIPELINE_MAX_SIGNALS = int(os.getenv('PIPELINE_MAX_SIGNALS', '3'))
 _PIPELINE_MARKETPLACE_RECORD_LIMIT = int(os.getenv('PIPELINE_MARKETPLACE_RECORD_LIMIT', '100'))
+_PIPELINE_TOTAL_BUDGET_SECONDS = int(os.getenv('PIPELINE_TOTAL_BUDGET_SECONDS', '150'))
+_PIPELINE_MAX_MARKETPLACES_PER_KEYWORD = int(os.getenv('PIPELINE_MAX_MARKETPLACES_PER_KEYWORD', '1'))
+_PIPELINE_SOCIAL_DISCOVERY_ENABLED = os.getenv('PIPELINE_SOCIAL_DISCOVERY_ENABLED', 'false').lower() == 'true'
+_PIPELINE_ENABLED_MARKETPLACES = {
+    item.strip().lower()
+    for item in os.getenv('PIPELINE_ENABLED_MARKETPLACES', 'walmart,tokopedia,amazon').split(',')
+    if item.strip()
+}
 _PIPELINE_SKIP_MARKETPLACES = {
     item.strip().lower()
-    for item in os.getenv('PIPELINE_SKIP_MARKETPLACES', 'lazada').split(',')
+    for item in os.getenv('PIPELINE_SKIP_MARKETPLACES', 'lazada,google,google.shopping,tiktok,tiktok_shop').split(',')
     if item.strip()
 }
 _PIPELINE_ALLOW_FALLBACK_SIGNALS = os.getenv('PIPELINE_ALLOW_FALLBACK_SIGNALS', 'true').lower() == 'true'
@@ -69,6 +78,43 @@ _DAILY_REFRESH_ENABLED = os.getenv('DAILY_REFRESH_ENABLED', 'false').lower() == 
 _COMPLIANCE_SCRAPE_ENABLED = os.getenv('COMPLIANCE_SCRAPE_ENABLED', 'false').lower() == 'true'
 _SIGNAL_RECENCY_WEIGHT = float(os.getenv('SIGNAL_RECENCY_WEIGHT', '0.005'))
 _COGNEE_ENABLED = os.getenv('COGNEE_ENABLED', 'false').lower() == 'true'
+
+
+def _pipelineTimeExceeded(started_at: float) -> bool:
+    return _PIPELINE_TOTAL_BUDGET_SECONDS > 0 and (time.monotonic() - started_at) >= _PIPELINE_TOTAL_BUDGET_SECONDS
+
+
+def _pipelineElapsed(started_at: float) -> str:
+    return f'{time.monotonic() - started_at:.1f}s'
+
+
+def _selectPipelineMarketplaces(category: str, country: str) -> list[str]:
+    category_lower = category.lower()
+    candidates = CATEGORY_MARKETPLACES.get(category_lower)
+    if candidates is None:
+        for key, values in CATEGORY_MARKETPLACES.items():
+            if key in category_lower:
+                candidates = values
+                break
+    if candidates is None:
+        candidates = _DEFAULT_MARKETPLACES
+
+    selected = []
+    for marketplace in candidates:
+        normalized = marketplace.lower()
+        if normalized in _PIPELINE_SKIP_MARKETPLACES:
+            continue
+        if _PIPELINE_ENABLED_MARKETPLACES and normalized not in _PIPELINE_ENABLED_MARKETPLACES:
+            continue
+        selected.append(marketplace)
+
+    country_lower = (country or '').lower()
+    if country_lower == 'id' and 'tokopedia' in [item.lower() for item in selected]:
+        selected.sort(key=lambda item: 0 if item.lower() == 'tokopedia' else 1)
+    elif country_lower in {'us', 'usa', 'united states'} and 'walmart' in [item.lower() for item in selected]:
+        selected.sort(key=lambda item: 0 if item.lower() == 'walmart' else 1)
+
+    return selected[: max(1, _PIPELINE_MAX_MARKETPLACES_PER_KEYWORD)]
 
 
 def _ingest_into_cognee(category: str, country: str, rows: list, tag: str = 'market') -> None:
@@ -485,12 +531,18 @@ def scrapeMarketSignals(
 
     print(f'[scraping] Starting signal scrape for category={category}, country={country}, keywords={keywords}', flush=True)
 
+    started_at = time.monotonic()
     _MAX_SIGNALS = max(1, _PIPELINE_MAX_SIGNALS)
-    marketplaces = CATEGORY_MARKETPLACES.get(category.lower(), _DEFAULT_MARKETPLACES)
-    if _PIPELINE_SKIP_MARKETPLACES:
-        marketplaces = [
-            mp for mp in marketplaces if mp.lower() not in _PIPELINE_SKIP_MARKETPLACES
-        ]
+    marketplaces = _selectPipelineMarketplaces(category, country)
+    print(
+        '[scraping] Pipeline guard '
+        f'total_budget={_PIPELINE_TOTAL_BUDGET_SECONDS}s '
+        f'keyword_limit={_PIPELINE_KEYWORD_LIMIT} '
+        f'max_signals={_MAX_SIGNALS} '
+        f'marketplaces={marketplaces} '
+        f'social_enabled={_PIPELINE_SOCIAL_DISCOVERY_ENABLED}',
+        flush=True,
+    )
     rows: list[tuple[str, str, str, str, str]] = []
 
     if has_context:
@@ -511,30 +563,52 @@ def scrapeMarketSignals(
     for keyword in keywords[:_PIPELINE_KEYWORD_LIMIT]:
         if len(rows) >= _MAX_SIGNALS:
             break
+        if _pipelineTimeExceeded(started_at):
+            print(f'[scraping] Pipeline budget exhausted before keyword={keyword} elapsed={_pipelineElapsed(started_at)}', flush=True)
+            break
 
-        print(f'[scraping] Social discovery keyword={keyword}', flush=True)
-        socialData = runSocialDiscovery(
-            keyword=keyword,
-            country_code=country,
-            limit=3,
-            include_scrape=False,
-            wait_for_snapshot=True,
-            timeout_seconds=_PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS,
-            snapshot_wait_seconds=_PIPELINE_SNAPSHOT_WAIT_SECONDS,
-        )
-        print(f'[scraping] Social discovery status={socialData.get("status")} keyword={keyword}', flush=True)
-        if socialData.get('status') == 'success':
-            for result in socialData.get('serpResults', [])[:3]:
-                text = f"{result.get('title', '')} — {result.get('description', '')}"
-                if not text.strip(' —'):
-                    text = _recordFallbackText(result.get('record') or {})
-                if text.strip():
-                    rows.append((text[:1000], result.get('source', 'social'), result.get('url', ''), country, category))
+        if _PIPELINE_SOCIAL_DISCOVERY_ENABLED:
+            social_started = time.monotonic()
+            print(f'[scraping] Social discovery keyword={keyword}', flush=True)
+            socialData = runSocialDiscovery(
+                keyword=keyword,
+                country_code=country,
+                limit=3,
+                include_scrape=False,
+                wait_for_snapshot=True,
+                timeout_seconds=_PIPELINE_BRIGHTDATA_TIMEOUT_SECONDS,
+                snapshot_wait_seconds=_PIPELINE_SNAPSHOT_WAIT_SECONDS,
+            )
+            print(
+                f'[scraping] Social discovery status={socialData.get("status")} '
+                f'keyword={keyword} duration={time.monotonic() - social_started:.1f}s '
+                f'elapsed={_pipelineElapsed(started_at)}',
+                flush=True,
+            )
+            if socialData.get('status') == 'success':
+                for result in socialData.get('serpResults', [])[:3]:
+                    if len(rows) >= _MAX_SIGNALS:
+                        break
+                    text = f"{result.get('title', '')} — {result.get('description', '')}"
+                    if not text.strip(' —'):
+                        text = _recordFallbackText(result.get('record') or {})
+                    if text.strip():
+                        rows.append((text[:1000], result.get('source', 'social'), result.get('url', ''), country, category))
+        else:
+            print(f'[scraping] Social discovery skipped keyword={keyword} reason=PIPELINE_SOCIAL_DISCOVERY_ENABLED=false', flush=True)
 
         for mp in marketplaces:
             if len(rows) >= _MAX_SIGNALS:
                 break
+            if _pipelineTimeExceeded(started_at):
+                print(
+                    f'[scraping] Pipeline budget exhausted before marketplace={mp} '
+                    f'keyword={keyword} elapsed={_pipelineElapsed(started_at)}',
+                    flush=True,
+                )
+                break
 
+            market_started = time.monotonic()
             print(f'[scraping] Marketplace discovery marketplace={mp} keyword={keyword}', flush=True)
             marketData = runMarketplaceDiscovery(
                 keyword=keyword,
@@ -547,9 +621,17 @@ def scrapeMarketSignals(
                 snapshot_wait_seconds=_PIPELINE_SNAPSHOT_WAIT_SECONDS,
                 record_limit=_PIPELINE_MARKETPLACE_RECORD_LIMIT,
             )
-            print(f'[scraping] Marketplace discovery status={marketData.get("status")} marketplace={mp} keyword={keyword}', flush=True)
+            print(
+                f'[scraping] Marketplace discovery status={marketData.get("status")} '
+                f'marketplace={mp} keyword={keyword} '
+                f'duration={time.monotonic() - market_started:.1f}s '
+                f'elapsed={_pipelineElapsed(started_at)}',
+                flush=True,
+            )
             if marketData.get('status') == 'success':
                 for result in marketData.get('results', [])[:3]:
+                    if len(rows) >= _MAX_SIGNALS:
+                        break
                     record = result.get('record') or {}
                     metrics = []
                     for key in ['final_price', 'price', 'rating', 'reviews_count', 'review_count', 'sold', 'number_sold', 'gmv']:
@@ -562,6 +644,8 @@ def scrapeMarketSignals(
                         text = _recordFallbackText(record)
                     if text.strip():
                         rows.append((text[:1000], mp, result.get('url', ''), country, category))
+        if _pipelineTimeExceeded(started_at):
+            break
     if not rows and _PIPELINE_ALLOW_FALLBACK_SIGNALS:
         fallback_parts = [
             f'Product: {product_name or category}',

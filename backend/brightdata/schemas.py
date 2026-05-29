@@ -668,13 +668,13 @@ class AmazonVariation(LooseModel):
     currency: str | None = None
     image: str | None = None
     name: str | None = None
-    price: PriceAmount | None = None
+    price: PriceAmount | float | int | None = None
     size: str | None = None
     unit_price: str | None = None
 
 
 class AmazonBuyboxPrices(LooseModel):
-    final_price: PriceAmount | None = None
+    final_price: PriceAmount | float | int | None = None
     unit_price: str | None = None
 
 
@@ -771,15 +771,15 @@ class AmazonProductRecord(LooseModel):
     product_details: list[TypeValue] = Field(default_factory=list)
     prices_breakdown: AmazonPricesBreakdown | None = None
     country_of_origin: str | None = None
-    from_the_brand: str | None = None
-    product_description: str | None = None
+    from_the_brand: str | list[Any] | dict[str, Any] | None = None
+    product_description: str | list[Any] | dict[str, Any] | None = None
     seller_url: str | None = None
     customer_says: str | None = None
-    sustainability_features: str | None = None
+    sustainability_features: str | list[Any] | dict[str, Any] | None = None
     climate_pledge_friendly: bool | None = None
-    videos: list[dict[str, Any]] | None = None
+    videos: list[dict[str, Any] | str] | None = None
     other_sellers_prices: list[dict[str, Any]] | None = None
-    downloadable_videos: list[dict[str, Any]] | None = None
+    downloadable_videos: list[dict[str, Any] | str] | None = None
     editorial_reviews: list[dict[str, Any]] | None = None
     about_the_author: str | None = None
     zipcode: str | None = None
@@ -1475,8 +1475,6 @@ class XProfilePayload(RootModel[list[XProfileRecord]]):
 BRIGHTDATA_SCHEMA_REGISTRY: dict[str, type[BaseModel]] = {
     "brightdata.error": BrightDataErrorPayload,
     "tokopedia.products": TokopediaProductPayload,
-    "sephora.products": SephoraProductPayload,
-    "alibaba.products": AlibabaProductPayload,
     "aliexpress.products": AliExpressProductPayload,
     "lazada.products": LazadaProductPayload,
     "lazada.products.search_gmv": LazadaSearchGmvPayload,
@@ -1524,18 +1522,6 @@ BRIGHTDATA_DATASET_KEYS: list[BrightDataDatasetKey] = [
             "Tokopedia Products - discover by keyword",
             "Tokopedia Products - discover by seller URL",
         ],
-    ),
-    BrightDataDatasetKey(
-        key="sephora.products",
-        description="Sephora product detail and sitemap discovery results.",
-        model="SephoraProductPayload",
-        endpoints=["Sephora Products - collect by URL", "Sephora Products - discover by sitemap"],
-    ),
-    BrightDataDatasetKey(
-        key="alibaba.products",
-        description="Alibaba product detail and category/search discovery results.",
-        model="AlibabaProductPayload",
-        endpoints=["Alibaba - collect by URL", "Alibaba - discover by category URL"],
     ),
     BrightDataDatasetKey(
         key="aliexpress.products",
