@@ -323,7 +323,12 @@ async def getFormPipeline(formId: str = Path(..., alias='form_id')):
             from backend.redis.worker import celeryApp
             ir = AsyncResult(inference_task_id, app=celeryApp)
             if ir.successful():
-                result['inference'] = {'status': 'completed', 'stage': 'completed'}
+                if inference_stage == 'failed':
+                    result['inference'] = {'status': 'failed', 'stage': 'failed'}
+                elif inference_stage == 'completed':
+                    result['inference'] = {'status': 'completed', 'stage': 'completed'}
+                else:
+                    result['inference'] = {'status': 'processing', 'stage': inference_stage or 'synthesizing'}
             elif ir.failed():
                 result['inference'] = {'status': 'failed', 'stage': 'failed'}
             else:

@@ -315,7 +315,9 @@ def _generate_dashboard_data(
         "marketOverview schema:\n"
         '{"trendVelocity":"string e.g. +67%","trendVelocityStatus":"context e.g. +12% vs last month","estimatedDemand":"string e.g. 12.4K","priceTarget":"string e.g. $19","marketGaps":integer,'
         '"topSkus":[{"name":"str","tag":"str e.g. Amazon Hero SKU","price":"$X.XX","stock":"str e.g. 82% or In Stock","momentum":"str e.g. +12.4%"}],'
-        '"regionDemand":[{"city":"str","percentage":float}]}\n\n'
+        '"regionDemand":[{"city":"str","percentage":float}],'
+        '"whitespaceBrands":[{"brand":"str (real brand name from signals)","priceTier":"budget|mid|premium","claimLevel":"low|medium|high"}],'
+        '"whitespaceZones":[{"label":"short positioning gap e.g. Premium · fragrance-free","priceTier":"budget|mid|premium","claimLevel":"low|medium|high"}]}\n\n'
         "demandPulse schema:\n"
         '{"demandSupply":{"points":[{"product":"str","demand":0-100,"saturation":0-100}],"insights":[{"label":"str","formula":"str","tone":"opportunity|danger|muted|default"}]},'
         '"marketplaceShare":[{"name":"str","value":0-100,"change":number}],'
@@ -330,6 +332,7 @@ def _generate_dashboard_data(
         "launchCompass schema:\n"
         '{"seasonality":[{"id":"jan","month":"J","index":number,"status":"peak|normal|avoid"},{"id":"feb","month":"F",...},...],'
         '"citySales":[{"city":"str","sales":"str","growth":"str","channels":"str","rating":"str","searchDemand":"str","personaFit":"str","gdpPerCapita":"str","signal":"Best first city|High intent|Expansion pocket|Low competition"}],'
+        '"readinessCountries":[{"country":"str (full country name)","countryId":"ISO 3166-1 numeric e.g. 840 for USA, 124 Canada, 360 Indonesia, 826 UK, 276 Germany, 392 Japan, 036 Australia, 702 Singapore, 156 China, 356 India","readinessScore":0-100,"demandIndex":0-200,"competitorPressure":0-100,"personaFit":0-100,"primaryChannel":"str","signal":"Best first market|High intent|Expansion pocket|Premium test market|Watchlist|Needs validation"}],'
         '"advisorRecommendation":"str","advisorSignals":[{"label":"str","value":"str"}]}\n\n'
         "Constraints:\n"
         "- seasonality: exactly 12 entries jan through dec, in order\n"
@@ -337,6 +340,9 @@ def _generate_dashboard_data(
         f"- competitors: 3-5 entries, use real brand names from signals where available\n"
         f"- regionDemand: 3-5 cities relevant to {country}\n"
         f"- citySales: 3-4 cities relevant to {country}\n"
+        "- whitespaceBrands: 8-14 entries using real brand names from signals/competitors, varied across priceTier x claimLevel\n"
+        "- whitespaceZones: 2-3 underserved (priceTier, claimLevel) combinations not crowded by whitespaceBrands\n"
+        "- readinessCountries: 6-8 entries spanning multiple continents; one country must clearly lead by demandIndex (the demand winner); a different country should lead by opportunityScore-implying mix (high persona fit + lower competitor pressure) as the expansion recommendation\n"
         "- demandSupply.points: 3-6 entries\n"
         f"- All values must be realistic for the {category} category in {country}"
     )

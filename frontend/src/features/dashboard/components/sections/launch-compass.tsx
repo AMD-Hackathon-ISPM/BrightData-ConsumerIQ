@@ -88,8 +88,14 @@ const FALLBACK_CITY_SALES = [
 const FALLBACK_ADVISOR_RECOMMENDATION =
   "Los Angeles has the strongest Amazon sales density and enough competitor distance to validate premium positioning. Use Amazon Sponsored Products and creator review seeding first. Once review confidence is visible, use Temu coupon bundles in Dallas and Phoenix to capture value-sensitive expansion demand.";
 
+const LAUNCH_COMPASS_ADVISOR_LABELS = [
+  "Pilot Market",
+  "Launch Tactic",
+  "Expansion",
+] as const;
+
 const FALLBACK_ADVISOR_SIGNALS = [
-  { label: "Pilot City", value: "Los Angeles · Amazon-first" },
+  { label: "Pilot Market", value: "Los Angeles · Amazon-first" },
   {
     label: "Launch Tactic",
     value: "Sponsored Products + creator review seeding",
@@ -138,6 +144,7 @@ export function LaunchCompass() {
       </Panel>
 
       <AdvisorIntelligence
+        fixedLabels={LAUNCH_COMPASS_ADVISOR_LABELS}
         recommendation={advisorRecommendation}
         signals={advisorSignals}
       />

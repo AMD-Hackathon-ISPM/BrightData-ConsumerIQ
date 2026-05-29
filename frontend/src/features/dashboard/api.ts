@@ -2,6 +2,21 @@ import { useEffect, useState } from "react";
 import { getAuthToken } from "@/lib/auth";
 import type { DemandPulseData } from "./data/demand-pulse";
 
+export type WhitespacePriceTier = "budget" | "mid" | "premium";
+export type WhitespaceClaimLevel = "low" | "medium" | "high";
+
+export type WhitespaceBrand = {
+  brand: string;
+  priceTier: WhitespacePriceTier;
+  claimLevel: WhitespaceClaimLevel;
+};
+
+export type WhitespaceZone = {
+  label: string;
+  priceTier: WhitespacePriceTier;
+  claimLevel: WhitespaceClaimLevel;
+};
+
 export type MarketOverviewData = {
   trendVelocity: string;
   trendVelocityStatus: string;
@@ -16,6 +31,8 @@ export type MarketOverviewData = {
     momentum: string;
   }>;
   regionDemand: Array<{ city: string; percentage: number }>;
+  whitespaceBrands?: WhitespaceBrand[];
+  whitespaceZones?: WhitespaceZone[];
 };
 
 export type CompetitorMirrorData = {
@@ -42,6 +59,17 @@ export type CompetitorMirrorData = {
   advisorSignals: Array<{ label: string; value: string }>;
 };
 
+export type ReadinessCountry = {
+  country: string;
+  countryId: string;
+  readinessScore: number;
+  demandIndex: number;
+  competitorPressure: number;
+  personaFit: number;
+  primaryChannel: string;
+  signal: string;
+};
+
 export type LaunchCompassData = {
   seasonality: Array<{
     id: string;
@@ -60,6 +88,7 @@ export type LaunchCompassData = {
     gdpPerCapita: string;
     signal: string;
   }>;
+  readinessCountries?: ReadinessCountry[];
   advisorRecommendation: string;
   advisorSignals: Array<{ label: string; value: string }>;
 };

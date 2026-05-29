@@ -890,6 +890,24 @@ def _updateInferenceStage(form_id: str, stage: str) -> None:
         print(f'[pipeline] Failed to update inference_stage={stage}: {exc}')
 
 
+_DASHBOARD_REQUIRED_SECTIONS = (
+    'marketOverview',
+    'demandPulse',
+    'competitorMirror',
+    'launchCompass',
+)
+
+
+def _dashboardIsComplete(dashboard: Any) -> bool:
+    if not isinstance(dashboard, dict):
+        return False
+    for key in _DASHBOARD_REQUIRED_SECTIONS:
+        value = dashboard.get(key)
+        if not isinstance(value, dict) or not value:
+            return False
+    return True
+
+
 @celeryApp.task(name='processLlmInsights', queue='synthesis', bind=True, max_retries=3)
 def processLlmInsights(self, categoryName: str, country: str = '', form_id: str = ''):
     print(f'Worker picked up job for category: {categoryName}, country: {country}, form_id: {form_id}')
@@ -912,16 +930,39 @@ def processLlmInsights(self, categoryName: str, country: str = '', form_id: str 
 
     _updateInferenceStage(form_id, 'cross_referencing')
     insights['extraAnalysis'] = _runOpenAiExtraAnalysis(categoryName, country, insights, translatedSignals)
-    _saveCategoryInsights(categoryName, country, insights)
-
-    _updateInferenceStage(form_id, 'completed')
 
     extra = insights.get('extraAnalysis') or {}
     dashboard = extra.get('dashboardData') if isinstance(extra, dict) else None
+
+    _updateInferenceStage(form_id, 'synthesizing')
+    if not _dashboardIsComplete(dashboard):
+        try:
+            print('[openai] Dashboard data incomplete; retrying extra analysis.')
+            insights['extraAnalysis'] = _runOpenAiExtraAnalysis(
+                categoryName, country, insights, translatedSignals
+            )
+            extra = insights.get('extraAnalysis') or {}
+            dashboard = extra.get('dashboardData') if isinstance(extra, dict) else None
+        except Exception as exc:
+            print(f'[openai] Dashboard retry failed: {exc}')
+
+    _saveCategoryInsights(categoryName, country, insights)
+
+    if not _dashboardIsComplete(dashboard):
+        _updateInferenceStage(form_id, 'failed')
+        return {
+            **insights,
+            'contextSignals': translatedSignals,
+            'status': 'failed',
+            'error': 'Dashboard data is incomplete after synthesis.',
+        }
+
+    _updateInferenceStage(form_id, 'completed')
+
     if (
         _COGNEE_ENABLED
         and isinstance(dashboard, dict)
-        and any(dashboard.get(k) for k in ('marketOverview', 'demandPulse', 'competitorMirror', 'launchCompass'))
+        and any(dashboard.get(k) for k in _DASHBOARD_REQUIRED_SECTIONS)
     ):
         try:
             ingestDashboardIntoMemory.delay(categoryName, country, dashboard)

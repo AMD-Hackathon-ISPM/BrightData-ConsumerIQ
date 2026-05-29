@@ -20,7 +20,13 @@ import {
   ScoreRing,
 } from "../dashboard-primitives";
 import { AdvisorIntelligence } from "./shared";
-import { useInsights } from "../../api";
+import {
+  useInsights,
+  type WhitespaceBrand,
+  type WhitespaceClaimLevel,
+  type WhitespacePriceTier,
+  type WhitespaceZone,
+} from "../../api";
 
 function Entrance({
   animate,
@@ -45,6 +51,12 @@ function Entrance({
 }
 
 const DEMAND_TREND = [38, 42, 40, 47, 45, 52, 58, 61, 66, 74];
+
+const MARKET_OVERVIEW_ADVISOR_LABELS = [
+  "Pricing",
+  "Positioning",
+  "Channel",
+] as const;
 
 type MarketplaceRow = {
   channel: string;
@@ -104,59 +116,92 @@ function SignalRow({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-const WHITESPACE_DOTS = [
-  { x: 16, y: 24 },
-  { x: 23, y: 32 },
-  { x: 19, y: 42 },
-  { x: 33, y: 16 },
-  { x: 36, y: 48 },
-  { x: 31, y: 62 },
-  { x: 47, y: 56 },
-  { x: 44, y: 72 },
-  { x: 58, y: 50 },
-  { x: 67, y: 54 },
-  { x: 74, y: 38 },
-  { x: 80, y: 64 },
-  { x: 84, y: 46 },
-] as const;
+const WHITESPACE_COLUMNS: WhitespacePriceTier[] = ["budget", "mid", "premium"];
+const WHITESPACE_COLUMN_LABELS: Record<WhitespacePriceTier, string> = {
+  budget: "Budget",
+  mid: "Mid",
+  premium: "Premium",
+};
+const WHITESPACE_ROWS: WhitespaceClaimLevel[] = ["high", "medium", "low"];
+const WHITESPACE_ROW_LABELS: Record<WhitespaceClaimLevel, string> = {
+  high: "High claim",
+  medium: "Medium claim",
+  low: "Low claim",
+};
 
-const WHITESPACE_COLUMNS = ["Budget", "Mid", "Premium"] as const;
-const WHITESPACE_ROWS = ["High claim", "Medium claim", "Low claim"] as const;
+const FALLBACK_WHITESPACE_BRANDS: WhitespaceBrand[] = [
+  { brand: "CeraVe", priceTier: "budget", claimLevel: "medium" },
+  { brand: "Cetaphil", priceTier: "budget", claimLevel: "low" },
+  { brand: "The Ordinary", priceTier: "mid", claimLevel: "high" },
+  { brand: "COSRX", priceTier: "mid", claimLevel: "medium" },
+  { brand: "Paula's Choice", priceTier: "premium", claimLevel: "high" },
+  { brand: "Drunk Elephant", priceTier: "premium", claimLevel: "high" },
+  { brand: "Olay", priceTier: "mid", claimLevel: "low" },
+  { brand: "La Roche-Posay", priceTier: "premium", claimLevel: "medium" },
+];
 
-const WHITESPACE_ZONES = [
-  {
-    height: "18%",
-    id: 1,
-    label: "Premium · fragrance-free",
-    left: "57%",
-    top: "9%",
-    width: "27%",
-  },
-  {
-    height: "17%",
-    id: 2,
-    label: "Mid · sensitive skin",
-    left: "37%",
-    top: "30%",
-    width: "23%",
-  },
-  {
-    height: "17%",
-    id: 3,
-    label: "Budget · clinical claim",
-    left: "11%",
-    top: "65%",
-    width: "25%",
-  },
-] as const;
+const FALLBACK_WHITESPACE_ZONES: WhitespaceZone[] = [
+  { label: "Premium · fragrance-free", priceTier: "premium", claimLevel: "high" },
+  { label: "Mid · sensitive skin", priceTier: "mid", claimLevel: "medium" },
+  { label: "Budget · clinical claim", priceTier: "budget", claimLevel: "high" },
+];
 
-function WhitespaceMap() {
+function cellCenter(tier: WhitespacePriceTier, claim: WhitespaceClaimLevel) {
+  const columnIndex = WHITESPACE_COLUMNS.indexOf(tier);
+  const rowIndex = WHITESPACE_ROWS.indexOf(claim);
+  return {
+    cx: (columnIndex + 0.5) * (100 / WHITESPACE_COLUMNS.length),
+    cy: (rowIndex + 0.5) * (100 / WHITESPACE_ROWS.length),
+  };
+}
+
+function jitter(seed: string, range: number): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  }
+  const normalized = (Math.abs(hash) % 1000) / 1000;
+  return (normalized - 0.5) * range;
+}
+
+function brandDotPosition(brand: WhitespaceBrand, index: number) {
+  const { cx, cy } = cellCenter(brand.priceTier, brand.claimLevel);
+  const cellWidth = 100 / WHITESPACE_COLUMNS.length;
+  const cellHeight = 100 / WHITESPACE_ROWS.length;
+  return {
+    left: cx + jitter(`${brand.brand}-${index}-x`, cellWidth * 0.65),
+    top: cy + jitter(`${brand.brand}-${index}-y`, cellHeight * 0.65),
+  };
+}
+
+function zoneRect(zone: WhitespaceZone) {
+  const columnIndex = WHITESPACE_COLUMNS.indexOf(zone.priceTier);
+  const rowIndex = WHITESPACE_ROWS.indexOf(zone.claimLevel);
+  const cellWidth = 100 / WHITESPACE_COLUMNS.length;
+  const cellHeight = 100 / WHITESPACE_ROWS.length;
+  const padX = cellWidth * 0.12;
+  const padY = cellHeight * 0.18;
+  return {
+    left: `${columnIndex * cellWidth + padX}%`,
+    top: `${rowIndex * cellHeight + padY}%`,
+    width: `${cellWidth - padX * 2}%`,
+    height: `${cellHeight - padY * 2}%`,
+  };
+}
+
+function WhitespaceMap({
+  brands,
+  zones,
+}: {
+  brands: WhitespaceBrand[];
+  zones: WhitespaceZone[];
+}) {
   return (
     <div className="w-full">
       <div className="mb-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="size-2 rounded-full bg-foreground-light" />
-          Competitor SKU
+          Competitor brand
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="size-2.5 rounded-[3px] border border-chart-5/60 bg-chart-5/15" />
@@ -168,14 +213,14 @@ function WhitespaceMap() {
         <div />
         <div className="grid grid-cols-3 text-center text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           {WHITESPACE_COLUMNS.map((column) => (
-            <span key={column}>{column}</span>
+            <span key={column}>{WHITESPACE_COLUMN_LABELS[column]}</span>
           ))}
         </div>
 
         <div className="grid grid-rows-3 py-2 text-right text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
           {WHITESPACE_ROWS.map((row) => (
             <span className="flex items-center justify-end" key={row}>
-              {row}
+              {WHITESPACE_ROW_LABELS[row]}
             </span>
           ))}
         </div>
@@ -200,35 +245,43 @@ function WhitespaceMap() {
               )}
             </div>
 
-            {WHITESPACE_ZONES.map((zone) => (
-              <div
-                className="absolute flex items-center justify-center rounded-md border border-chart-5/40 bg-chart-5/10 px-2 text-center"
-                key={zone.label}
-                style={{
-                  height: zone.height,
-                  left: zone.left,
-                  top: zone.top,
-                  width: zone.width,
-                }}
-              >
-                <span className="-left-2 -top-2 absolute flex size-4 items-center justify-center rounded-full bg-chart-5 text-[9px] font-bold text-background shadow-sm">
-                  {zone.id}
-                </span>
-                <span className="text-[11px] font-medium leading-tight text-chart-5">
-                  {zone.label}
-                </span>
-              </div>
-            ))}
+            {zones.map((zone, index) => {
+              const rect = zoneRect(zone);
+              return (
+                <div
+                  className="absolute flex items-center justify-center rounded-md border border-chart-5/40 bg-chart-5/10 px-2 text-center"
+                  key={zone.label}
+                  style={rect}
+                >
+                  <span className="-left-2 -top-2 absolute flex size-4 items-center justify-center rounded-full bg-chart-5 text-[9px] font-bold text-background shadow-sm">
+                    {index + 1}
+                  </span>
+                  <span className="text-[11px] font-medium leading-tight text-chart-5">
+                    {zone.label}
+                  </span>
+                </div>
+              );
+            })}
 
-            {WHITESPACE_DOTS.map((dot) => (
-              <span
-                className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground-light"
-                key={`${dot.x}-${dot.y}`}
-                style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
-              />
-            ))}
+            {brands.map((brand, index) => {
+              const pos = brandDotPosition(brand, index);
+              return (
+                <span
+                  className="group absolute -translate-x-1/2 -translate-y-1/2"
+                  key={`${brand.brand}-${index}`}
+                  style={{ left: `${pos.left}%`, top: `${pos.top}%` }}
+                >
+                  <span
+                    className="block size-2 rounded-full bg-foreground-light"
+                    aria-label={brand.brand}
+                  />
+                  <span className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded-md border border-border-default bg-card px-1.5 py-0.5 text-[10px] font-medium text-foreground opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100">
+                    {brand.brand}
+                  </span>
+                </span>
+              );
+            })}
           </div>
-
         </div>
       </div>
     </div>
@@ -293,28 +346,23 @@ export function MarketOverview({ animate = true }: { animate?: boolean }) {
 
       <Entrance animate={animate} delay={680} transitionKey="panel-moves">
         <AdvisorIntelligence
+          fixedLabels={MARKET_OVERVIEW_ADVISOR_LABELS}
           recommendation="Demand is climbing and the $18–24 fragrance-free band is underserved, so there's room to enter without a price war. Hold at $18.99 to sit below the median yet above the bargain tier, lead the listing with a fragrance-free claim to capture the top unmet review request, then test a Temu bundle at $14.50 to ride the fastest-growing SKU format."
           signals={[
             {
               label: "Pricing",
               value: "Hold at $18.99",
               detail: "Below median, above bargain band",
-              icon: "target",
-              tone: "neutral",
             },
             {
               label: "Positioning",
               value: 'Lead with "fragrance-free"',
               detail: "Top unmet review request",
-              icon: "trend",
-              tone: "positive",
             },
             {
               label: "Channel",
               value: "Test Temu at $14.50",
               detail: "Bundle SKU +28%",
-              icon: "up",
-              tone: "positive",
             },
           ]}
         />
@@ -433,7 +481,18 @@ export function MarketOverview({ animate = true }: { animate?: boolean }) {
 
       <Entrance animate={animate} delay={1040} transitionKey="panel-whitespace">
         <Panel title="Whitespace Map">
-          <WhitespaceMap />
+          <WhitespaceMap
+            brands={
+              overview?.whitespaceBrands?.length
+                ? overview.whitespaceBrands
+                : FALLBACK_WHITESPACE_BRANDS
+            }
+            zones={
+              overview?.whitespaceZones?.length
+                ? overview.whitespaceZones
+                : FALLBACK_WHITESPACE_ZONES
+            }
+          />
         </Panel>
       </Entrance>
     </div>

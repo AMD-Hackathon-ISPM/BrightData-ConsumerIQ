@@ -68,18 +68,24 @@ const FALLBACK_COMPETITOR_ROWS: CompetitorMirrorData["competitors"] = [
 const FALLBACK_ADVISOR_RECOMMENDATION =
   "Competitors are either credible but expensive on Amazon, or cheap but low-trust on Temu. Position the product as a clinically clear, affordable barrier-repair routine with enough proof for Amazon and enough bundle value for Temu.";
 
+const COMPETITOR_MIRROR_ADVISOR_LABELS = [
+  "Pricing",
+  "Positioning",
+  "Channel",
+] as const;
+
 const FALLBACK_ADVISOR_SIGNALS = [
   {
-    label: "Key Advantage",
-    value: "Proof-led barrier repair positioning",
-  },
-  {
-    label: "Pricing Advice",
+    label: "Pricing",
     value: "$18–$22 Amazon core SKU",
   },
   {
     label: "Positioning",
-    value: "Premium efficacy without premium friction",
+    value: "Proof-led barrier repair",
+  },
+  {
+    label: "Channel",
+    value: "Amazon-led, Temu bundles",
   },
 ];
 
@@ -171,6 +177,7 @@ export function CompetitorMirror() {
       </div>
 
       <AdvisorIntelligence
+        fixedLabels={COMPETITOR_MIRROR_ADVISOR_LABELS}
         recommendation={advisorRecommendation}
         signals={advisorSignals}
       />

@@ -16,17 +16,9 @@ import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import countriesTopologyUrl from "world-atlas/countries-110m.json?url";
 import { cn } from "@/lib/utils";
+import { useInsights, type ReadinessCountry } from "../../api";
 
-type CountryReadinessDatum = {
-  country: string;
-  countryId: string;
-  readinessScore: number;
-  demandIndex: number;
-  competitorPressure: number;
-  personaFit: number;
-  primaryChannel: string;
-  signal: string;
-};
+type CountryReadinessDatum = ReadinessCountry;
 
 type EnrichedCountryDatum = CountryReadinessDatum & {
   opportunityScore: number;
@@ -117,7 +109,7 @@ const FALLBACK_MAP_STYLE: StyleSpecification = {
 
 const MAP_STYLE = import.meta.env.VITE_MAP_STYLE_URL ?? FALLBACK_MAP_STYLE;
 
-const launchReadinessData: CountryReadinessDatum[] = [
+const FALLBACK_READINESS_COUNTRIES: CountryReadinessDatum[] = [
   {
     country: "United States",
     countryId: "840",
@@ -200,19 +192,25 @@ const launchReadinessData: CountryReadinessDatum[] = [
   },
 ];
 
-const enrichedReadinessData: EnrichedCountryDatum[] = launchReadinessData.map(
-  (datum) => ({
-    ...datum,
-    opportunityScore:
-      Math.round(
-        ((datum.demandIndex * datum.personaFit) / datum.competitorPressure) * 10,
-      ) / 10,
-  }),
-);
+function normalizeCountryId(raw: string | number | undefined): string {
+  const value = String(raw ?? "").trim();
+  if (!value) return "";
+  if (/^\d+$/.test(value)) return value.padStart(3, "0");
+  return value;
+}
 
-const readinessByCountryId = new Map(
-  enrichedReadinessData.map((datum) => [datum.countryId, datum]),
-);
+function enrichReadiness(data: CountryReadinessDatum[]): EnrichedCountryDatum[] {
+  return data.map((datum) => {
+    const pressure = Math.max(datum.competitorPressure, 1);
+    return {
+      ...datum,
+      countryId: normalizeCountryId(datum.countryId),
+      opportunityScore:
+        Math.round(((datum.demandIndex * datum.personaFit) / pressure) * 10) /
+        10,
+    };
+  });
+}
 
 type ModeConfig = {
   label: string;
@@ -324,15 +322,30 @@ function formatMetricValue(mode: MapMode, datum: EnrichedCountryDatum): string {
 }
 
 export function LaunchReadinessMap() {
-  const [mapLoadState, setMapLoadState] = useState<MapLoadState>({
-    data: null,
-    status: "loading",
-  });
+  const { dashboardData } = useInsights();
+  const [rawTopology, setRawTopology] = useState<
+    FeatureCollection<Geometry, WorldCountryProperties> | null
+  >(null);
+  const [topologyError, setTopologyError] = useState(false);
   const [hoveredCountry, setHoveredCountry] = useState<HoveredCountry | null>(
     null,
   );
   const [mode, setMode] = useState<MapMode>("demand");
   const hoveredCountryIdRef = useRef<string | null>(null);
+
+  const enrichedReadinessData = useMemo<EnrichedCountryDatum[]>(() => {
+    const fromApi = dashboardData?.launchCompass?.readinessCountries;
+    if (fromApi && fromApi.length > 0) {
+      return enrichReadiness(fromApi);
+    }
+    return enrichReadiness(FALLBACK_READINESS_COUNTRIES);
+  }, [dashboardData]);
+
+  const readinessByCountryId = useMemo(
+    () =>
+      new Map(enrichedReadinessData.map((datum) => [datum.countryId, datum])),
+    [enrichedReadinessData],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -358,45 +371,14 @@ export function LaunchReadinessMap() {
             return [{ ...country, geometry: normalizeGeometry(country.geometry) }];
           }),
         };
-        const land: LandFeatureCollection = {
-          ...countries,
-          features: countries.features,
-        };
-        const readinessCountries: CountryFeatureCollection = {
-          ...countries,
-          features: countries.features.flatMap((country) => {
-            const countryId = String(country.id ?? "");
-            const datum = readinessByCountryId.get(countryId);
-
-            if (!datum) {
-              return [];
-            }
-
-            return [
-              {
-                ...country,
-                id: countryId,
-                properties: {
-                  ...country.properties,
-                  ...datum,
-                  countryId,
-                  hasReadiness: true,
-                  name: datum.country,
-                },
-              },
-            ];
-          }),
-        };
 
         if (isMounted) {
-          setMapLoadState({
-            data: { land, readinessCountries },
-            status: "ready",
-          });
+          setRawTopology(countries);
+          setTopologyError(false);
         }
       } catch {
         if (isMounted) {
-          setMapLoadState({ data: null, status: "error" });
+          setTopologyError(true);
         }
       }
     }
@@ -407,6 +389,43 @@ export function LaunchReadinessMap() {
       isMounted = false;
     };
   }, []);
+
+  const mapLoadState = useMemo<MapLoadState>(() => {
+    if (topologyError) return { data: null, status: "error" };
+    if (!rawTopology) return { data: null, status: "loading" };
+
+    const land: LandFeatureCollection = {
+      ...rawTopology,
+      features: rawTopology.features,
+    };
+    const readinessCountries: CountryFeatureCollection = {
+      ...rawTopology,
+      features: rawTopology.features.flatMap((country) => {
+        const countryId = normalizeCountryId(country.id as string | number);
+        const datum = readinessByCountryId.get(countryId);
+
+        if (!datum) {
+          return [];
+        }
+
+        return [
+          {
+            ...country,
+            id: countryId,
+            properties: {
+              ...country.properties,
+              ...datum,
+              countryId,
+              hasReadiness: true,
+              name: datum.country,
+            },
+          },
+        ];
+      }),
+    };
+
+    return { data: { land, readinessCountries }, status: "ready" };
+  }, [rawTopology, topologyError, readinessByCountryId]);
 
   const countryFillLayer = useMemo<LayerProps>(() => {
     const config = MODE_CONFIG[mode];
@@ -481,7 +500,9 @@ export function LaunchReadinessMap() {
     const featureProperties = event.features?.[0]?.properties as
       | Partial<CountryMapProperties>
       | undefined;
-    const countryId = featureProperties?.countryId;
+    const countryId = featureProperties?.countryId
+      ? normalizeCountryId(featureProperties.countryId)
+      : "";
     const datum = countryId ? readinessByCountryId.get(countryId) : undefined;
 
     if (!countryId || !datum) {
@@ -513,7 +534,7 @@ export function LaunchReadinessMap() {
       [...enrichedReadinessData]
         .sort((a, b) => b[config.metricKey] - a[config.metricKey])
         .slice(0, 3),
-    [config.metricKey],
+    [config.metricKey, enrichedReadinessData],
   );
 
   return (
@@ -521,6 +542,11 @@ export function LaunchReadinessMap() {
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="break-words font-semibold">Market Readiness Map</h3>
+          <p className="mt-1 break-words text-xs text-foreground-light">
+            {mode === "demand"
+              ? "Where consumer demand is strongest right now."
+              : "Where to expand next - high persona fit, low competitive pressure."}
+          </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-3">
           <div

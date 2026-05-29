@@ -33,6 +33,7 @@ interface AdvisorSignal {
 interface AdvisorIntelligenceProps {
   recommendation: string;
   signals: AdvisorSignal[];
+  fixedLabels?: readonly string[];
 }
 
 const advisorSignalToneClass = {
@@ -48,9 +49,33 @@ const advisorSignalIcon = {
   up: ArrowUpRight,
 } as const;
 
+const NEGATIVE_VALUE_PATTERN = /(-\s?\d|\bdown\b|\bdrop\b|\bweak\b|\bdecline\b|\bavoid\b|\blow\b)/i;
+const NEUTRAL_VALUE_PATTERN = /(\bhold\b|\bsteady\b|\bstable\b|\bmaintain\b)/i;
+
+function inferTone(
+  signal: AdvisorSignal,
+): "negative" | "neutral" | "positive" {
+  if (signal.tone) return signal.tone;
+  const haystack = `${signal.value} ${signal.detail ?? ""}`;
+  if (NEGATIVE_VALUE_PATTERN.test(haystack)) return "negative";
+  if (NEUTRAL_VALUE_PATTERN.test(haystack)) return "neutral";
+  return "positive";
+}
+
+function iconForTone(
+  signal: AdvisorSignal,
+  tone: "negative" | "neutral" | "positive",
+) {
+  if (signal.icon) return advisorSignalIcon[signal.icon];
+  if (tone === "negative") return ArrowDownRight;
+  if (tone === "neutral") return Target;
+  return ArrowUpRight;
+}
+
 export function AdvisorIntelligence({
   recommendation,
   signals,
+  fixedLabels,
 }: AdvisorIntelligenceProps) {
   return (
     <section className="relative min-w-0 overflow-hidden rounded-xl border border-chart-5/25 bg-card shadow-sm">
@@ -74,21 +99,19 @@ export function AdvisorIntelligence({
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          {signals.map((signal) => {
-            const tone = signal.tone ?? "positive";
-            const Icon =
-              advisorSignalIcon[
-                signal.icon ?? (tone === "negative" ? "down" : "up")
-              ];
+          {signals.slice(0, fixedLabels?.length ?? signals.length).map((signal, index) => {
+            const tone = inferTone(signal);
+            const Icon = iconForTone(signal, tone);
+            const label = fixedLabels?.[index] ?? signal.label;
 
             return (
               <div
                 className="group/signal relative overflow-hidden rounded-lg border border-chart-5/20 bg-background-default/60 p-3 transition-colors hover:border-chart-5/40"
-                key={signal.label}
+                key={label}
               >
                 <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-chart-5/70 via-chart-5/30 to-chart-4/60" />
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground-lighter">
-                  {signal.label}
+                  {label}
                 </p>
                 <p className="mt-2 text-sm font-semibold text-foreground-default">
                   {signal.value}

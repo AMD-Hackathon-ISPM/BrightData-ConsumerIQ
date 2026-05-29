@@ -15,6 +15,7 @@ type InferenceStage =
   | "pending"
   | "analyzing"
   | "cross_referencing"
+  | "synthesizing"
   | "completed"
   | "failed";
 
@@ -39,8 +40,9 @@ function pipelineTarget(p: PipelineStatus | null): number {
   const scrape = p.scraping.status;
   const inference = p.inference.status;
   const stage = p.inference.stage ?? "pending";
-  if (inference === "completed" || stage === "completed") return 7;
-  if (inference === "failed" || stage === "failed") return 7;
+  if (stage === "completed" && inference === "completed") return 8;
+  if (stage === "failed" || inference === "failed") return 8;
+  if (stage === "synthesizing") return 7;
   if (stage === "cross_referencing") return 6;
   if (stage === "analyzing") return 5;
   if (scrape === "completed" || scrape === "skipped" || scrape === "failed")
@@ -89,7 +91,8 @@ export function GeneratingStep({
       signalsLine,
       "Reading verified-purchase reviews and demand cues…",
       "Generating launch insight hypotheses…",
-      "Preparing your dashboard insights…",
+      "Synthesizing dashboard, whitespace map, and readiness signals…",
+      "Assembling your notebook…",
     ];
   }, [region, industry, signalsStored]);
 
@@ -115,6 +118,9 @@ export function GeneratingStep({
   const isMockRun =
     import.meta.env.DEV && submitStatus === "success" && !formId;
   const target = isMockRun ? lines.length : pipelineTarget(pipeline);
+  const stageReachedCompletion =
+    pipeline?.inference.stage === "completed" &&
+    pipeline?.inference.status === "completed";
 
   useEffect(() => {
     if (submitStatus !== "success") return;
@@ -148,12 +154,9 @@ export function GeneratingStep({
   const inferenceFailed =
     pipeline?.inference.stage === "failed" ||
     pipeline?.inference.status === "failed";
-  const inferenceCompleted =
-    pipeline?.inference.stage === "completed" ||
-    pipeline?.inference.status === "completed";
   const mockComplete = isMockRun && revealed >= lines.length;
-  const isComplete = inferenceCompleted || mockComplete;
-  const canContinue = isComplete;
+  const isComplete = stageReachedCompletion || mockComplete;
+  const canContinue = isComplete && revealed >= lines.length;
 
   const currentStatus = lines[Math.max(0, revealed - 1)] ?? lines[0];
   const statusText =
