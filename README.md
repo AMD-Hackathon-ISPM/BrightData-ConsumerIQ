@@ -38,7 +38,7 @@ POST /go-api/founder-form/submit
            └─ writes categoryInsights row, sets inference_stage=completed
 ```
 
-The frontend polls `/api/form-pipeline/{formId}` every 3 s. Five granular stages are surfaced (`pending → analyzing → cross_referencing → completed | failed`); the "Open dashboard" button stays disabled until `completed` is verified with non-empty `dashboardData`. No timeout escape, no mock-data fallback — see [ForHackathon.md §4](ForHackathon.md).
+The frontend polls `/api/form-pipeline/{formId}` every 3 s. Six granular stages are surfaced (`pending → analyzing → cross_referencing → synthesizing → completed | failed`); the "Open dashboard" button stays disabled until `completed` is verified with non-empty `dashboardData` for all four sections. No timeout escape, no mock-data fallback — see [ForHackathon.md §4](ForHackathon.md).
 
 ---
 
@@ -114,21 +114,54 @@ Pass `-Rebuild` to also rebuild and push the images before starting:
 
 The script starts `ciq-inference-gpu` and `ciq-translator-gpu` on the `k3d-consumeriq-local` Docker network with `--gpus all`, then applies k8s Endpoints pointing to their IPs so the existing `consumeriq-inference` and `consumeriq-translator` ClusterIP services route to them.
 
-### 5 — Create backend secrets
+### 5 — Configure `.env` and create secrets
 
 ```powershell
 cp infra/k8s/backend/.env.example infra/k8s/backend/.env
-# Fill in BRIGHTDATA_API_TOKEN (required)
-# Optionally fill in SCRAPINGBEE_API_KEY for Google SERP fallback
+```
+
+Open `infra/k8s/backend/.env` and fill in **at minimum**:
+
+| Variable | What to put |
+|---|---|
+| `BRIGHTDATA_API_TOKEN` | Bright Data API key (required for any scraping) |
+| `OPENAI_API_KEY` | Provider key (see provider table below) |
+| `OPENAI_BASE_URL` | Provider endpoint (see provider table below) |
+| `OPENAI_MODEL` | Model identifier (see provider table below) |
+
+**Pick a provider** for the Layer 2 dashboard generation call. The k8s deployments now read `OPENAI_BASE_URL`, `OPENAI_MODEL`, and `OPENAI_API_KEY` from the `consumeriq-api-keys` Secret — so editing `.env` is enough to switch between them.
+
+| Provider | `OPENAI_BASE_URL` | `OPENAI_MODEL` | `OPENAI_API_KEY` |
+|---|---|---|---|
+| OpenAI direct (default in code) | `https://api.openai.com/v1` | `gpt-4o-mini` | OpenAI key |
+| AI/ML API gateway (Claude, DeepSeek, Llama, etc.) | `https://api.aimlapi.com/v1` | e.g. `deepseek/deepseek-chat-v3.1`, `claude-3-5-sonnet`, `llama-3.1-70b-instruct` | AI/ML API key |
+| Local Llama (not recommended for dashboard) | `http://consumeriq-inference.consumeriq.svc.cluster.local:8080/v1` | `llama-3.2-3b` | `not-required` |
+
+**Hackathon-fast preset** — to skip the 10-min Bright Data ChatGPT second-opinion call (dashboard JSON is still generated, just without the cross-reference):
+
+```env
+OPENAI_EXTRA_ANALYSIS_ENABLED=false
+```
+
+Then push `.env` into the cluster and create the admin token Secret:
+
+```powershell
+# Main app Secret (OPENAI_*, BRIGHTDATA_API_TOKEN, SCRAPINGBEE_API_KEY, …)
 kubectl create secret generic consumeriq-api-keys -n consumeriq `
   --from-env-file=infra/k8s/backend/.env `
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Admin token Secret (required for /api/admin/* endpoints + CronJobs)
+$adminToken = -join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
+kubectl create secret generic consumeriq-admin -n consumeriq `
+  --from-literal=ADMIN_API_TOKEN=$adminToken `
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
 ### 6 — Deploy everything
 
 ```powershell
-kubectl apply -k infra/k8s/inference   # deploys services + embeddings only (inference/translator use Docker containers above)
+kubectl apply -k infra/k8s/inference   # services + embeddings only (inference/translator use Docker containers from step 4)
 kubectl apply -k infra/k8s/backend
 kubectl apply -k infra/k8s/frontend
 kubectl apply -k infra/k8s/nginx
@@ -139,6 +172,25 @@ Watch until all pods are Running:
 ```powershell
 kubectl get pods -n consumeriq -w
 ```
+
+### 7 — Verify the LLM provider wiring
+
+Env vars sourced from Secrets are read **once at pod start** and don't hot-reload. After any `.env` change + `kubectl create secret … apply -f -`, you must restart the pods that consume the secret:
+
+```powershell
+kubectl rollout restart -n consumeriq `
+  deploy/consumeriq-api `
+  deploy/consumeriq-worker-inference `
+  deploy/consumeriq-worker-scraping
+```
+
+Confirm the API pod sees the right values:
+
+```powershell
+kubectl exec -n consumeriq deploy/consumeriq-api -- env | Select-String "OPENAI|BRIGHT"
+```
+
+You should see `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_API_KEY`, and `BRIGHTDATA_API_TOKEN` populated. If `OPENAI_BASE_URL` or `OPENAI_MODEL` is missing, the line is absent from `.env` — fix and re-run step 5.
 
 ---
 
@@ -161,10 +213,14 @@ See [infra/k8s/backend/.env.example](infra/k8s/backend/.env.example) for the com
 | Variable | Description |
 |---|---|
 | `BRIGHTDATA_API_TOKEN` | BrightData API key for marketplace + social scraping |
-| `OPENAI_API_KEY` | OpenAI key for Layer 2 dashboard generation (and Cognee, when enabled) |
+| `OPENAI_API_KEY` | Provider key for Layer 2 dashboard generation (and Cognee, when enabled) |
+| `OPENAI_BASE_URL` | Provider endpoint (`https://api.openai.com/v1`, `https://api.aimlapi.com/v1`, or local Llama URL) |
+| `OPENAI_MODEL` | Model identifier — must be valid for the chosen `OPENAI_BASE_URL` |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `REDIS_URL` | Redis connection string |
 | `JWT_SECRET` | Go service session token signing key |
+
+`OPENAI_BASE_URL`, `OPENAI_MODEL`, and `OPENAI_API_KEY` are read from the `consumeriq-api-keys` Secret by the api / worker-inference / worker-scraping deployments. Changing any of them requires `kubectl create secret … --from-env-file=… --dry-run=client -o yaml | kubectl apply -f -` **followed by** `kubectl rollout restart deploy/consumeriq-api deploy/consumeriq-worker-inference deploy/consumeriq-worker-scraping`.
 
 **Pipeline tuning**
 
@@ -322,6 +378,26 @@ kubectl get endpoints -n consumeriq consumeriq-inference consumeriq-translator
 
 Re-apply Endpoints if IPs changed (see step 4 of setup above).
 
+### "Assembling your notebook" never finishes / dashboard empty
+
+Symptoms: pipeline reaches `synthesizing` but never `completed`, or completes but the dashboard sections all show fallback fixture copy (CeraVe, Los Angeles, etc.).
+
+Almost always a Layer 2 LLM call failure. Check in this order:
+
+```powershell
+# 1. Confirm the worker can see the provider env vars
+kubectl exec -n consumeriq deploy/consumeriq-worker-inference -- env | Select-String "OPENAI"
+
+# 2. Tail the worker for OpenAI / dashboard errors
+kubectl logs -n consumeriq deploy/consumeriq-worker-inference --tail 200 | Select-String "openai|dashboard|401|429|timeout"
+```
+
+Common causes:
+- `OPENAI_BASE_URL` and `OPENAI_API_KEY` mismatched (AI/ML key against `api.openai.com` → 401).
+- `OPENAI_MODEL` invalid for the chosen endpoint (e.g. `deepseek/deepseek-chat-v3.1` against `api.openai.com` → 404).
+- `.env` updated but pods not restarted — Secret env vars don't hot-reload. Fix with the recipe in [Rebuilding Individual Services](#rebuilding-individual-services).
+- `OPENAI_EXTRA_ANALYSIS_ENABLED=true` + `EXTRA_ANALYSIS_SOURCE=gd_m7aof0k82r803d5bjm` + no Bright Data quota → the Bright Data ChatGPT call waits up to 10 minutes per attempt. Set `OPENAI_EXTRA_ANALYSIS_ENABLED=false` for fast demo runs.
+
 ### Pipeline returns 404 / stays Pending forever
 
 The Go worker writes `form_pipeline:{formId}` to Redis immediately on form receipt. If the key is missing, Python returns `pending` rather than 404. If the frontend stays stuck:
@@ -373,6 +449,15 @@ kubectl rollout restart -n consumeriq deploy/consumeriq-frontend
 
 # After changing inference or translator model / Dockerfile:
 .\scripts\start-gpu-inference.ps1 -Rebuild
+
+# After changing .env (provider switch, new API key, flag toggle):
+kubectl create secret generic consumeriq-api-keys -n consumeriq `
+  --from-env-file=infra/k8s/backend/.env `
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl rollout restart -n consumeriq `
+  deploy/consumeriq-api `
+  deploy/consumeriq-worker-inference `
+  deploy/consumeriq-worker-scraping
 ```
 
 Apply a single manifest update without full rebuild:

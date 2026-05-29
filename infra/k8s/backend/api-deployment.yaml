@@ -39,9 +39,17 @@ spec:
             - name: SIGNAL_RECENCY_WEIGHT
               value: "0.005"
             - name: OPENAI_BASE_URL
-              value: "https://api.openai.com/v1"
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: OPENAI_BASE_URL
+                  optional: true
             - name: OPENAI_MODEL
-              value: "deepseek/deepseek-chat-v3.1"
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: OPENAI_MODEL
+                  optional: true
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
