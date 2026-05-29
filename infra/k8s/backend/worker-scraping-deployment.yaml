@@ -38,6 +38,24 @@ spec:
               value: "false"
             - name: SIGNAL_RECENCY_WEIGHT
               value: "0.005"
+            - name: PIPELINE_ENABLED_MARKETPLACES
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: PIPELINE_ENABLED_MARKETPLACES
+                  optional: true
+            - name: PIPELINE_SKIP_MARKETPLACES
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: PIPELINE_SKIP_MARKETPLACES
+                  optional: true
+            - name: PIPELINE_SOCIAL_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: PIPELINE_SOCIAL_ENABLED
+                  optional: true
             - name: OPENAI_BASE_URL
               valueFrom:
                 secretKeyRef:
