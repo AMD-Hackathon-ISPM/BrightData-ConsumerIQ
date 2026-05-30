@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { SpiralLoader } from "@/components/ui/spiral-loader";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Button } from "@/components/ui/button";
-import { startPersonaDecode, PERSONA_TASK_KEY } from "./api";
+import { toast } from "sonner";
+import {
+  requestEmailWhenReady,
+  startPersonaDecode,
+  PERSONA_TASK_KEY,
+} from "./api";
 import { getAuthToken } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import type { FounderFormState } from "./types";
@@ -54,7 +59,6 @@ function pipelineTarget(p: PipelineStatus | null): number {
 
 type GeneratingStepProps = {
   onComplete: () => void;
-  onLeave?: () => void;
   submitStatus: "idle" | "submitting" | "success" | "error";
   formId: string | null;
   formState: FounderFormState;
@@ -64,7 +68,6 @@ type GeneratingStepProps = {
 
 export function GeneratingStep({
   onComplete,
-  onLeave,
   submitStatus,
   formId,
   formState,
@@ -74,6 +77,8 @@ export function GeneratingStep({
   const [pipeline, setPipeline] = useState<PipelineStatus | null>(null);
   const [revealed, setRevealed] = useState(0);
   const personaStarted = useRef(false);
+  const [emailRequested, setEmailRequested] = useState(false);
+  const [emailSubmitting, setEmailSubmitting] = useState(false);
 
   const signalsStored = pipeline?.scraping.signalsStored ?? 0;
 
@@ -184,6 +189,20 @@ export function GeneratingStep({
     onComplete();
   };
 
+  const handleEmailRequest = async () => {
+    if (!formId || emailSubmitting || emailRequested) return;
+    setEmailSubmitting(true);
+    try {
+      await requestEmailWhenReady(formId);
+      setEmailRequested(true);
+      toast.success("We'll email you when your dashboard is ready.");
+    } catch {
+      toast.error("Unable to schedule the email. Please try again.");
+    } finally {
+      setEmailSubmitting(false);
+    }
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center">
       <button
@@ -234,11 +253,16 @@ export function GeneratingStep({
       {submitStatus === "success" && formId && !canContinue ? (
         <Button
           className="mt-6"
-          onClick={onLeave}
+          onClick={handleEmailRequest}
           type="button"
           variant="ghost"
+          disabled={emailSubmitting || emailRequested}
         >
-          Email me when ready
+          {emailRequested
+            ? "Email queued"
+            : emailSubmitting
+              ? "Saving email…"
+              : "Email me when ready"}
         </Button>
       ) : null}
     </div>

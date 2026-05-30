@@ -16,9 +16,14 @@ type PipelineSession = {
 
 type FounderPipelineStore = {
   activeSession: PipelineSession | null;
+  draftFormState: FounderFormState | null;
+  draftStep: number;
   saveSubmittedSession: (
     session: Omit<PipelineSession, "state" | "startedAt">,
   ) => void;
+  saveDraft: (formState: FounderFormState) => void;
+  setDraftStep: (step: number) => void;
+  clearDraft: () => void;
   markCompleted: () => void;
   clearSession: () => void;
 };
@@ -27,6 +32,8 @@ export const useFounderPipelineStore = create<FounderPipelineStore>()(
   persist(
     (set) => ({
       activeSession: null,
+      draftFormState: null,
+      draftStep: 1,
       saveSubmittedSession: (session) =>
         set({
           activeSession: {
@@ -35,6 +42,9 @@ export const useFounderPipelineStore = create<FounderPipelineStore>()(
             startedAt: Date.now(),
           },
         }),
+      saveDraft: (formState) => set({ draftFormState: formState }),
+      setDraftStep: (step) => set({ draftStep: Math.max(1, step) }),
+      clearDraft: () => set({ draftFormState: null, draftStep: 1 }),
       markCompleted: () =>
         set((current) => ({
           activeSession: current.activeSession
@@ -45,7 +55,20 @@ export const useFounderPipelineStore = create<FounderPipelineStore>()(
     }),
     {
       name: "consumeriq:founder-pipeline",
-      version: 1,
+      version: 2,
+      partialize: (state) => ({
+        activeSession: state.activeSession,
+        draftFormState: state.draftFormState,
+        draftStep: state.draftStep,
+      }),
+      migrate: (state) => {
+        const stored = (state ?? {}) as Partial<FounderPipelineStore>;
+        return {
+          activeSession: stored.activeSession ?? null,
+          draftFormState: stored.draftFormState ?? null,
+          draftStep: stored.draftStep ?? 1,
+        } as FounderPipelineStore;
+      },
     },
   ),
 );

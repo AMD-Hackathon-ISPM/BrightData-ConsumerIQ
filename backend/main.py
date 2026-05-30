@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import time
 from functools import partial
 from typing import Any
 
@@ -470,6 +471,48 @@ async def getFormPipeline(formId: str = Path(..., alias='form_id')):
         result['inference'] = {'status': 'pending', 'stage': 'pending'}
 
     return result
+
+
+@app.post('/api/form-pipeline/{form_id}/notify')
+async def requestEmailNotification(
+    request: Request,
+    formId: str = Path(..., alias='form_id'),
+):
+    import redis as redis_lib
+
+    user_id = _resolveUserIdFromRequest(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail='Unauthorized')
+
+    try:
+        rdb = redis_lib.from_url(_REDIS_URL, decode_responses=True)
+    except Exception:
+        raise HTTPException(status_code=503, detail='Redis unavailable')
+
+    session_raw = rdb.get(f'form_session:{formId}')
+    if not session_raw:
+        raise HTTPException(status_code=404, detail='Form session not found')
+
+    try:
+        session = json.loads(session_raw)
+    except json.JSONDecodeError:
+        session = {}
+
+    if str(session.get('user_id')) != str(user_id):
+        raise HTTPException(status_code=403, detail='Forbidden')
+
+    notify_key = f'form_notify:{formId}'
+    if rdb.get(notify_key):
+        return {'status': 'already_queued'}
+
+    payload = json.dumps(
+        {
+            'user_id': user_id,
+            'requested_at': time.time(),
+        }
+    )
+    rdb.set(notify_key, payload, ex=7 * 24 * 60 * 60)
+    return {'status': 'queued'}
 
 
 @app.post('/api/admin/trigger-daily-refresh')

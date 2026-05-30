@@ -8,6 +8,17 @@ function authHeader(): Record<string, string> {
 
 export const PERSONA_TASK_KEY = "ciq_persona_task_id";
 
+export async function requestEmailWhenReady(formId: string): Promise<void> {
+  const response = await fetch(`/api/form-pipeline/${formId}/notify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeader() },
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || "notify request failed");
+  }
+}
+
 export async function startPersonaDecode(
   state: FounderFormState,
 ): Promise<{ taskId: string }> {

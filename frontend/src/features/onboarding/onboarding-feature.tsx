@@ -22,12 +22,22 @@ export function ConsumerIQOnboarding({
 }: {
   onComplete: () => void;
 }) {
-  const { user, loginWithToken, clearLocalSession } = useAuth();
+  const { user, loginWithToken } = useAuth();
   const activeSession = useFounderPipelineStore((state) => state.activeSession);
+  const draftFormState = useFounderPipelineStore(
+    (state) => state.draftFormState
+  );
+  const draftStep = useFounderPipelineStore((state) => state.draftStep);
   const saveSubmittedSession = useFounderPipelineStore(
     (state) => state.saveSubmittedSession
   );
-  const [step, setStep] = useState(() => (activeSession ? 5 : 1));
+  const saveDraft = useFounderPipelineStore((state) => state.saveDraft);
+  const setDraftStep = useFounderPipelineStore((state) => state.setDraftStep);
+  const clearDraft = useFounderPipelineStore((state) => state.clearDraft);
+  const initialStep = activeSession
+    ? 5
+    : Math.min(4, Math.max(1, draftStep || 1));
+  const [step, setStep] = useState(() => initialStep);
   const [submitStatus, setSubmitStatus] = useState<
     "idle" | "submitting" | "success" | "error"
   >(() => (activeSession ? "success" : "idle"));
@@ -35,7 +45,7 @@ export function ConsumerIQOnboarding({
     () => activeSession?.formId ?? null
   );
   const [formState, setFormState] = useState<FounderFormState>({
-    ...(activeSession?.formState ?? {
+    ...(activeSession?.formState ?? draftFormState ?? {
       fullName: user?.fullName ?? "",
       workEmail: user?.email ?? "",
       password: user ? "AUTHENTICATED_USER" : "",
@@ -68,9 +78,23 @@ export function ConsumerIQOnboarding({
       field: T,
       value: FounderFormState[T]
     ) => {
-      setFormState((current) => ({ ...current, [field]: value }));
+      setFormState((current) => {
+        const next = { ...current, [field]: value };
+        saveDraft(next);
+        return next;
+      });
     },
-    []
+    [saveDraft]
+  );
+
+  const goToStep = useCallback(
+    (next: number) => {
+      setStep(next);
+      if (!activeSession) {
+        setDraftStep(next);
+      }
+    },
+    [activeSession, setDraftStep]
   );
 
   const handleComplete = useCallback(async () => {
@@ -101,6 +125,7 @@ export function ConsumerIQOnboarding({
         { fullName: formState.fullName, email: formState.workEmail },
         response.token
       );
+      clearDraft();
       setSubmitStatus("success");
     } catch (_error) {
       if (import.meta.env.DEV) {
@@ -110,11 +135,7 @@ export function ConsumerIQOnboarding({
       setSubmitStatus("error");
       toast.error("Unable to submit the founder form");
     }
-  }, [formState, loginWithToken, onComplete, saveSubmittedSession, submitStatus]);
-
-  const handleLeaveForEmail = useCallback(() => {
-    clearLocalSession();
-  }, [clearLocalSession]);
+  }, [clearDraft, formState, loginWithToken, onComplete, saveSubmittedSession, submitStatus]);
 
   const isBusinessSetupValid =
     formState.workspaceName.trim().length > 0 &&
@@ -148,13 +169,13 @@ export function ConsumerIQOnboarding({
         >
           {step === 1 ? (
             <SignupStep
-              onNext={() => setStep(2)}
+              onNext={() => goToStep(2)}
               signedInAs={user?.email ?? null}
             />
           ) : step === 2 ? (
             <BusinessSetupStep
-              onBack={() => setStep(1)}
-              onNext={() => setStep(3)}
+              onBack={() => goToStep(1)}
+              onNext={() => goToStep(3)}
               workspaceName={formState.workspaceName}
               industry={formState.industry}
               region={formState.region}
@@ -193,8 +214,8 @@ export function ConsumerIQOnboarding({
             />
           ) : step === 3 ? (
             <ProductContextStep
-              onBack={() => setStep(2)}
-              onNext={() => setStep(4)}
+              onBack={() => goToStep(2)}
+              onNext={() => goToStep(4)}
               workspaceName={formState.workspaceName}
               industry={formState.industry}
               country={formState.country}
@@ -227,9 +248,9 @@ export function ConsumerIQOnboarding({
             />
           ) : step === 4 ? (
             <ResearchGoalsStep
-              onBack={() => setStep(3)}
+              onBack={() => goToStep(3)}
               onNext={() => {
-                setStep(5);
+                goToStep(5);
                 void handleComplete();
               }}
               workspaceName={formState.workspaceName}
@@ -243,7 +264,6 @@ export function ConsumerIQOnboarding({
           ) : (
             <GeneratingStep
               onComplete={handleComplete}
-              onLeave={handleLeaveForEmail}
               submitStatus={submitStatus}
               formId={submittedFormId}
               formState={formState}
