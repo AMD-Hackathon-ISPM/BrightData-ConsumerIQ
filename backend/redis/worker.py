@@ -1,10 +1,8 @@
 import gc
 import json
 import os
-import smtplib
 import time
 from datetime import datetime, timezone
-from email.message import EmailMessage
 from html import escape
 from typing import Any
 from urllib.parse import urlencode
@@ -28,15 +26,10 @@ def _intEnv(name: str, default: int) -> int:
 
 REDIS_URL = os.getenv('REDIS_URL', 'redis://redis.consumeriq.svc.cluster.local:6379/0')
 APP_PUBLIC_URL = os.getenv('APP_PUBLIC_URL', 'http://localhost:30080').rstrip('/')
-MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY', '').strip()
-MAILGUN_DOMAIN = os.getenv('MAILGUN_DOMAIN', '').strip()
-MAILGUN_API_BASE_URL = os.getenv('MAILGUN_API_BASE_URL', 'https://api.mailgun.net/v3').rstrip('/')
-SMTP_HOST = os.getenv('SMTP_HOST') or os.getenv('MAILGUN_SMTP_HOST') or ''
-SMTP_PORT = _intEnv('SMTP_PORT', _intEnv('MAILGUN_SMTP_PORT', 587))
-SMTP_USERNAME = os.getenv('SMTP_USERNAME') or os.getenv('MAILGUN_SMTP_USERNAME', '')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD') or os.getenv('MAILGUN_SMTP_PASSWORD', '')
-SMTP_FROM = os.getenv('SMTP_FROM') or os.getenv('MAILGUN_FROM') or SMTP_USERNAME
-SMTP_USE_TLS = (os.getenv('SMTP_USE_TLS') or os.getenv('MAILGUN_SMTP_USE_TLS', 'true')).lower() != 'false'
+MAILERSEND_API_KEY = os.getenv('MAILERSEND_API_KEY', '').strip()
+MAILERSEND_API_BASE_URL = os.getenv('MAILERSEND_API_BASE_URL', 'https://api.mailersend.com/v1').rstrip('/')
+MAILERSEND_FROM_EMAIL = os.getenv('MAILERSEND_FROM_EMAIL', '').strip()
+MAILERSEND_FROM_NAME = os.getenv('MAILERSEND_FROM_NAME', 'ConsumerIQ').strip()
 DASHBOARD_SESSION_TTL_SECONDS = _intEnv('DASHBOARD_SESSION_TTL_SECONDS', 7 * 24 * 60 * 60)
 
 CATEGORY_MARKETPLACES: dict[str, list[str]] = {
@@ -1246,45 +1239,35 @@ def _dashboardReadyEmailHtml(link: str, label: str) -> str:
 </html>'''
 
 
-def _sendMailgunApiEmail(recipient: str, subject: str, text: str, html: str) -> None:
-    url = f'{MAILGUN_API_BASE_URL}/{MAILGUN_DOMAIN}/messages'
+def _sendMailerSendEmail(recipient: str, subject: str, text: str, html: str) -> None:
+    payload: dict[str, Any] = {
+        'from': {'email': MAILERSEND_FROM_EMAIL, 'name': MAILERSEND_FROM_NAME},
+        'to': [{'email': recipient}],
+        'subject': subject,
+        'text': text,
+        'html': html,
+    }
     response = requests.post(
-        url,
-        auth=('api', MAILGUN_API_KEY),
-        data={
-            'from': SMTP_FROM,
-            'to': recipient,
-            'subject': subject,
-            'text': text,
-            'html': html,
+        f'{MAILERSEND_API_BASE_URL}/email',
+        headers={
+            'Authorization': f'Bearer {MAILERSEND_API_KEY}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
         },
+        json=payload,
         timeout=20,
     )
-    response.raise_for_status()
-
-
-def _sendSmtpEmail(recipient: str, subject: str, text: str, html: str) -> None:
-    message = EmailMessage()
-    message['Subject'] = subject
-    message['From'] = SMTP_FROM
-    message['To'] = recipient
-    message.set_content(text)
-    message.add_alternative(html, subtype='html')
-
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
-        if SMTP_USE_TLS:
-            smtp.starttls()
-        smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
-        smtp.send_message(message)
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f'MailerSend returned {response.status_code}: {response.text[:500]}'
+        )
 
 
 def _sendDashboardReadyEmail(form_id: str, category: str, country: str) -> None:
     if not form_id:
         return
-    mailgun_api_ready = bool(MAILGUN_API_KEY and MAILGUN_DOMAIN and SMTP_FROM)
-    smtp_ready = bool(SMTP_HOST and SMTP_FROM and SMTP_USERNAME and SMTP_PASSWORD)
-    if not mailgun_api_ready and not smtp_ready:
-        print('[email] Mailgun API/SMTP not configured; dashboard-ready email skipped.')
+    if not (MAILERSEND_API_KEY and MAILERSEND_FROM_EMAIL):
+        print('[email] MailerSend not configured; dashboard-ready email skipped.')
         return
 
     try:
@@ -1326,10 +1309,7 @@ def _sendDashboardReadyEmail(form_id: str, category: str, country: str) -> None:
             ]
         )
         html = _dashboardReadyEmailHtml(link, label)
-        if mailgun_api_ready:
-            _sendMailgunApiEmail(recipient, subject, text, html)
-        else:
-            _sendSmtpEmail(recipient, subject, text, html)
+        _sendMailerSendEmail(recipient, subject, text, html)
 
         print(f'[email] Dashboard-ready email sent to {recipient} for form_id={form_id}')
     except Exception as exc:

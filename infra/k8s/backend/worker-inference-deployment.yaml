@@ -118,89 +118,29 @@ spec:
                   name: consumeriq-api-keys
                   key: APP_PUBLIC_URL
                   optional: true
-            - name: MAILGUN_API_KEY
+            - name: MAILERSEND_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: consumeriq-api-keys
-                  key: MAILGUN_API_KEY
+                  key: MAILERSEND_API_KEY
                   optional: true
-            - name: MAILGUN_DOMAIN
+            - name: MAILERSEND_API_BASE_URL
               valueFrom:
                 secretKeyRef:
                   name: consumeriq-api-keys
-                  key: MAILGUN_DOMAIN
+                  key: MAILERSEND_API_BASE_URL
                   optional: true
-            - name: MAILGUN_API_BASE_URL
+            - name: MAILERSEND_FROM_EMAIL
               valueFrom:
                 secretKeyRef:
                   name: consumeriq-api-keys
-                  key: MAILGUN_API_BASE_URL
+                  key: MAILERSEND_FROM_EMAIL
                   optional: true
-            - name: SMTP_HOST
+            - name: MAILERSEND_FROM_NAME
               valueFrom:
                 secretKeyRef:
                   name: consumeriq-api-keys
-                  key: SMTP_HOST
-                  optional: true
-            - name: SMTP_PORT
-              valueFrom:
-                secretKeyRef:
-                  name: consumeriq-api-keys
-                  key: SMTP_PORT
-                  optional: true
-            - name: SMTP_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: consumeriq-api-keys
-                  key: SMTP_USERNAME
-                  optional: true
-            - name: SMTP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: consumeriq-api-keys
-                  key: SMTP_PASSWORD
-                  optional: true
-            - name: SMTP_FROM
-              valueFrom:
-                secretKeyRef:
-                  name: consumeriq-api-keys
-                  key: SMTP_FROM
-                  optional: true
-            - name: SMTP_USE_TLS
-              valueFrom:
-                secretKeyRef:
-                  name: consumeriq-api-keys
-                  key: SMTP_USE_TLS
-                  optional: true
-            - name: MAILGUN_SMTP_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: consumeriq-api-keys
-                  key: MAILGUN_SMTP_HOST
-                  optional: true
-            - name: MAILGUN_SMTP_PORT
-              valueFrom:
-                secretKeyRef:
-                  name: consumeriq-api-keys
-                  key: MAILGUN_SMTP_PORT
-                  optional: true
-            - name: MAILGUN_SMTP_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: consumeriq-api-keys
-                  key: MAILGUN_SMTP_USERNAME
-                  optional: true
-            - name: MAILGUN_SMTP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: consumeriq-api-keys
-                  key: MAILGUN_SMTP_PASSWORD
-                  optional: true
-            - name: MAILGUN_FROM
-              valueFrom:
-                secretKeyRef:
-                  name: consumeriq-api-keys
-                  key: MAILGUN_FROM
+                  key: MAILERSEND_FROM_NAME
                   optional: true
             - name: DASHBOARD_SESSION_TTL_SECONDS
               valueFrom:
