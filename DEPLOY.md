@@ -141,22 +141,20 @@ dig daffatrg.dev +short
 
 ---
 
-## 4. Apply the cloud-routing patch (REQUIRED)
+## 4. Confirm cloud-routing is active
 
-The default code path has Layer 0 (`_generateScrapingKeywords`) and Layer 1 (`_runLlmInsights`) calling local Llama at `consumeriq-inference:8080`. On this VPS there's no Llama container, so these calls would `Connection refused` and the dashboard pipeline would crash at the `analyzing` stage.
+Every LLM call site (Layer 0 keywords, Layer 1 insights, Persona Decode, advisor chat, compliance keywords) is now **cloud-primary** with the local Llama as an optional fallback. The kill-switch is the `LLM_LOCAL_ENABLED` env var — set to `false` on a CPU-only VPS, the entire local-Llama path is bypassed cleanly and Cognee-side translator calls are also skipped.
 
-You need both call sites cloud-routed via `OPENAI_BASE_URL` / `OPENAI_MODEL` / `OPENAI_API_KEY` before building images. If you haven't applied the patch yet, see [the project's `feat/cloud-only-mode` branch] / ask the maintainer for the diff. The patch:
-
-1. Adds `_runCloudLayer0Keywords` + `_runCloudLayer1Insights` (~30 lines, mirrors the existing `_runCloudPersonaDecode` pattern)
-2. Swaps the call sites
-3. Adds `LLM_LOCAL_ENABLED=false` env support so the fallback to Llama doesn't fire (which on CPU would hang for minutes)
-
-Verify the patch is in:
+Confirm the cloud-routing code is in this checkout:
 
 ```bash
-grep -n "_runCloudLayer1Insights\|LLM_LOCAL_ENABLED" backend/redis/worker.py
-# Both should show matches. If they don't, apply the patch first.
+grep -n "_runCloudLayer1Insights\|_cloudChatCompletion\|LLM_LOCAL_ENABLED" backend/redis/worker.py
+# Expect at least 4 matches across the file
+grep -n "_LLM_LOCAL_ENABLED" backend/models/translator.py
+# Expect 1 match
 ```
+
+If anything is missing, this checkout is behind — `git pull` until the matches appear.
 
 ---
 
@@ -672,9 +670,9 @@ Use this as your one-screen reference on the day you deploy. Each line links bac
 [ ]  6. docker run -d --name local-registry registry:2 on :127.0.0.1:5001  (§2)
 [ ]  7. /etc/rancher/k3s/registries.yaml → mirror localhost:5001, restart k3s  (§2)
 [ ]  8. git clone repo, set DNS A record daffatrg.dev → VPS IP, wait for dig  (§3)
-[ ]  9. VERIFY cloud-routing patch is in:                            (§4)
-       grep "_runCloudLayer1Insights\|LLM_LOCAL_ENABLED" backend/redis/worker.py
-       (must match. If not, ask maintainer for the patch. Stop here. Don't proceed.)
+[ ]  9. CONFIRM cloud-routing code is in this checkout:               (§4)
+       grep "_runCloudLayer1Insights\|_cloudChatCompletion" backend/redis/worker.py
+       (must match. If empty, `git pull` first.)
 [ ] 10. docker build + push: backend, go, frontend, embeddings       (§5)
 [ ] 11. sed-rewrite manifests: k3d-consumeriq-registry:5000 → localhost:5001  (§5)
 [ ] 12. trim infra/k8s/inference/kustomization.yaml to embeddings-only  (§6)
@@ -699,7 +697,7 @@ Use this as your one-screen reference on the day you deploy. Each line links bac
 [ ] 31. Hardening checklist done                                     (§15)
 ```
 
-The single most-likely failure point is **step 9** — the cloud-routing patch. If you skip it, steps 24–27 will fail with the pipeline stuck at `analyzing`. The grep check is the cheapest possible guard.
+The single most-likely failure point is **step 13** — forgetting `LLM_LOCAL_ENABLED=false` in `.env`. If it stays at the `true` default, a cloud-LLM failure will fall through to a local Llama call and hit `Connection refused` because there's no inference container. The pipeline crashes at `analyzing`. Set it to `false` for any deploy without a GPU.
 
 The second most-likely is **step 22** — TLS cert not issuing because DNS hasn't actually propagated yet. Validate with `dig daffatrg.dev +short @1.1.1.1` (uses Cloudflare's resolver, not your local DNS cache) before applying the Ingress.
 

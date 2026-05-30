@@ -68,6 +68,12 @@ spec:
                   name: consumeriq-api-keys
                   key: CHAT_API_KEY
                   optional: true
+            - name: LLM_LOCAL_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: LLM_LOCAL_ENABLED
+                  optional: true
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:

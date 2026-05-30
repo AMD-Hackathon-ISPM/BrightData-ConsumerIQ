@@ -28,9 +28,17 @@ def _translateText(text: str) -> str:
     return response.json()['choices'][0]['text'].strip()
 
 
+_LLM_LOCAL_ENABLED = os.getenv('LLM_LOCAL_ENABLED', 'true').lower() == 'true'
+
+
 def translateTextsIfNeeded(texts: Iterable[str]) -> list[str]:
     items = list(texts)
+    if not _LLM_LOCAL_ENABLED:
+        return items
     for i, text in enumerate(items):
         if _isCjk(text):
-            items[i] = _translateText(text)
+            try:
+                items[i] = _translateText(text)
+            except Exception as exc:
+                print(f'[translator] skipped (call failed): {exc}')
     return items

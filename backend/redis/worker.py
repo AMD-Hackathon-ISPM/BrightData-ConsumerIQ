@@ -110,6 +110,70 @@ _PIPELINE_TOTAL_BUDGET_SECONDS = int(os.getenv('PIPELINE_TOTAL_BUDGET_SECONDS', 
 _PIPELINE_MAX_MARKETPLACES_PER_KEYWORD = int(
     os.getenv('PIPELINE_MAX_MARKETPLACES_PER_KEYWORD', '2')
 )
+_LLM_LOCAL_ENABLED = os.getenv('LLM_LOCAL_ENABLED', 'true').lower() == 'true'
+
+
+def _cloudLlmAvailable() -> bool:
+    return bool(
+        os.getenv('OPENAI_API_KEY')
+        or os.getenv('BRIGHTDATA_API_TOKEN')
+        or os.getenv('BRIGHT_DATA_API_TOKEN')
+    )
+
+
+def _cloudChatCompletion(
+    *,
+    system: str,
+    user: str,
+    max_tokens: int = 900,
+    temperature: float = 0.2,
+    json_mode: bool = False,
+    timeout: int = 120,
+) -> str | None:
+    import httpx
+    api_key = (
+        os.getenv('OPENAI_API_KEY')
+        or os.getenv('BRIGHTDATA_API_TOKEN')
+        or os.getenv('BRIGHT_DATA_API_TOKEN')
+    )
+    if not api_key:
+        return None
+    base_url = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1').rstrip('/')
+    model = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
+
+    body: dict[str, Any] = {
+        'model': model,
+        'messages': [
+            {'role': 'system', 'content': system},
+            {'role': 'user', 'content': user},
+        ],
+        'temperature': temperature,
+        'max_tokens': max_tokens,
+    }
+    if json_mode:
+        body['response_format'] = {'type': 'json_object'}
+
+    try:
+        response = httpx.post(
+            f'{base_url}/chat/completions',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
+            },
+            json=body,
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        choices = payload.get('choices') or []
+        if choices and isinstance(choices, list):
+            message = choices[0].get('message') or {}
+            content = message.get('content')
+            if isinstance(content, str):
+                return content
+    except Exception as exc:
+        print(f'[cloud-llm] call failed (model={model}): {exc}')
+    return None
 
 
 def _runTwitterSerpDiscovery(keyword: str, country: str, limit: int) -> dict[str, Any]:
@@ -374,7 +438,83 @@ def _parseInsights(rawText: str) -> dict[str, Any]:
     return {'rawOutput': rawText}
 
 
+def _runCloudLayer1Insights(categoryName: str, signals: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not _cloudLlmAvailable():
+        return None
+
+    signal_lines: list[str] = []
+    for sig in signals[:50]:
+        text = str(sig.get('signalText') or '')[:1000]
+        if not text.strip():
+            continue
+        src = sig.get('sourceType') or 'unknown'
+        signal_lines.append(f'- [{src}] {text}')
+
+    user_message = (
+        f'Category: {categoryName}\n\n'
+        f'Market signals:\n{chr(10).join(signal_lines) if signal_lines else "- No signals available."}\n\n'
+        'Analyze and return a JSON object with exactly these top-level keys:\n'
+        '- gtmIntelligence: object with market-entry recommendations\n'
+        '- financeIntelligence: object with pricing/margin/CAC observations\n'
+        '- securityCompliance: object with regulatory & safety risks\n'
+        '- extractedData: object with {competitors:[{name,price,rating,reviews,sales}], '
+        'priceRange:{min,max,avg}, topProducts:[str], geographicSignals:[str]}\n'
+        'Ground every brand name and price in the signals above. '
+        'Do not invent competitors not present in the signals.'
+    )
+    system_message = (
+        'You are a senior market intelligence analyst. '
+        'Return ONLY a single valid JSON object. No prose, no markdown, no code fences.'
+    )
+
+    content = _cloudChatCompletion(
+        system=system_message,
+        user=user_message,
+        max_tokens=1500,
+        temperature=0.2,
+        json_mode=True,
+        timeout=120,
+    )
+    if not content:
+        return None
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError:
+        parsed = _parseInsights(content)
+
+    if not isinstance(parsed, dict):
+        return None
+
+    return {
+        'category': categoryName,
+        'status': 'completed',
+        'gtmIntelligence': parsed.get('gtmIntelligence', {}),
+        'financeIntelligence': parsed.get('financeIntelligence', {}),
+        'securityCompliance': parsed.get('securityCompliance', {}),
+        'extractedData': parsed.get('extractedData', {}),
+        'source': 'cloud',
+    }
+
+
 def _runLlmInsights(categoryName: str, signals: list[dict[str, Any]]) -> dict[str, Any]:
+    cloud = _runCloudLayer1Insights(categoryName, signals)
+    if cloud:
+        print('[layer1] Served by cloud LLM.', flush=True)
+        return cloud
+
+    if not _LLM_LOCAL_ENABLED:
+        print('[layer1] Cloud failed and LLM_LOCAL_ENABLED=false — returning empty insights.', flush=True)
+        return {
+            'category': categoryName,
+            'status': 'failed',
+            'gtmIntelligence': {},
+            'financeIntelligence': {},
+            'securityCompliance': {},
+            'extractedData': {},
+            'error': 'Cloud LLM unavailable and local Llama disabled.',
+        }
+
+    print('[layer1] Cloud unavailable; falling back to local Llama.', flush=True)
     prompt = _buildPrompt(categoryName, signals)
     llm = createLlm()
     try:
@@ -399,6 +539,7 @@ def _runLlmInsights(categoryName: str, signals: list[dict[str, Any]]) -> dict[st
         'securityCompliance': parsed.get('securityCompliance', {}),
         'extractedData': parsed.get('extractedData', {}),
         'rawOutput': parsed.get('rawOutput'),
+        'source': 'llama',
     }
 
 
@@ -496,6 +637,38 @@ def _saveCategoryInsights(categoryName: str, country: str, insights: dict[str, A
         _saveCategoryInsightsLegacy(categoryName, country, insights)
 
 
+def _dedupeKeywords(raw: list[Any], product_name: str, category: str) -> list[str]:
+    keywords: list[str] = []
+    seen: set[str] = set()
+    for keyword in raw:
+        normalized = str(keyword).strip()
+        if not normalized:
+            continue
+        key = normalized.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        keywords.append(normalized)
+        if len(keywords) == 6:
+            break
+    if keywords:
+        while len(keywords) < 6:
+            keywords.append(f'{product_name or category} {len(keywords) + 1}')
+    return keywords
+
+
+def _deterministicKeywords(category: str, product_name: str) -> list[str]:
+    fallback_seed = product_name or category or 'product'
+    return [
+        fallback_seed,
+        f'{fallback_seed} reviews',
+        f'{fallback_seed} price',
+        f'{fallback_seed} alternatives',
+        f'{category or fallback_seed} best seller',
+        f'{fallback_seed} customer demand',
+    ]
+
+
 def _generateScrapingKeywords(
     category: str,
     product_name: str,
@@ -506,13 +679,11 @@ def _generateScrapingKeywords(
     pain_point: str,
     customer_segment: str,
 ) -> list[str]:
-    from backend.models.llm import createLlm
     import re
 
-    llm = createLlm()
     prompt = (
-        'You are a market research assistant. Based on the product details below, '
-        'generate exactly 6 targeted search keywords to find similar products, '
+        'You generate marketplace search keywords. Based on the product details, '
+        'produce exactly 6 short keywords (2-4 words each) to find similar products, '
         'competitor products, and customer demand on e-commerce marketplaces.\n\n'
         f'Category: {category}\n'
         f'Product Name: {product_name}\n'
@@ -522,45 +693,55 @@ def _generateScrapingKeywords(
         f'Problem Solved: {pain_point}\n'
         f'Target Customer: {customer_segment}\n'
         f'Competitive Advantage: {competitive_advantage}\n\n'
-        'Return ONLY a JSON array of 6 short keyword strings suitable for marketplace search. '
-        'No explanation, no markdown, no extra text.\n'
-        'JSON array:'
+        'Return JSON: {"keywords": ["kw1", "kw2", "kw3", "kw4", "kw5", "kw6"]}'
     )
+
+    cloud_content = _cloudChatCompletion(
+        system='You generate marketplace search keywords. Return ONLY a JSON object {"keywords": [str,...]} with 6 entries.',
+        user=prompt,
+        max_tokens=200,
+        temperature=0.3,
+        json_mode=True,
+        timeout=60,
+    )
+    if cloud_content:
+        try:
+            parsed = json.loads(cloud_content)
+            raw_list = parsed.get('keywords') if isinstance(parsed, dict) else parsed
+            if isinstance(raw_list, list):
+                keywords = _dedupeKeywords(raw_list, product_name, category)
+                if keywords:
+                    print('[scraping] Keywords served by cloud LLM.', flush=True)
+                    return keywords
+        except Exception as exc:
+            print(f'[scraping] Cloud keyword parse failed: {exc}')
+
+    if not _LLM_LOCAL_ENABLED:
+        print('[scraping] Cloud unavailable and LLM_LOCAL_ENABLED=false — deterministic fallback.', flush=True)
+        return _deterministicKeywords(category, product_name)
+
+    print('[scraping] Cloud unavailable; falling back to local Llama for keywords.', flush=True)
+    from backend.models.llm import createLlm
+    llm = createLlm()
     try:
         response = llm.create_completion(prompt=prompt, max_tokens=150, temperature=0.3, stop=['\n\n'])
         text = response['choices'][0]['text'].strip()
         match = re.search(r'\[.*?\]', text, re.DOTALL)
         if match:
-            parsed = json.loads(match.group())
-            if isinstance(parsed, list) and parsed:
-                keywords = []
-                seen = set()
-                for keyword in parsed:
-                    normalized = str(keyword).strip()
-                    if not normalized:
-                        continue
-                    key = normalized.lower()
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    keywords.append(normalized)
-                    if len(keywords) == 6:
-                        return keywords
+            raw_list = json.loads(match.group())
+            if isinstance(raw_list, list) and raw_list:
+                keywords = _dedupeKeywords(raw_list, product_name, category)
                 if keywords:
-                    while len(keywords) < 6:
-                        keywords.append(f'{product_name or category} {len(keywords) + 1}')
                     return keywords
     except Exception as exc:
-        print(f'[scraping] Keyword LLM generation failed: {exc}')
-    fallback_seed = product_name or category or 'product'
-    return [
-        fallback_seed,
-        f'{fallback_seed} reviews',
-        f'{fallback_seed} price',
-        f'{fallback_seed} alternatives',
-        f'{category or fallback_seed} best seller',
-        f'{fallback_seed} customer demand',
-    ]
+        print(f'[scraping] Local Llama keyword generation failed: {exc}')
+    finally:
+        try:
+            del llm
+            gc.collect()
+        except Exception:
+            pass
+    return _deterministicKeywords(category, product_name)
 
 
 @celeryApp.task(name='scrapeMarketSignals', queue='scraping')
@@ -919,6 +1100,15 @@ def runPersonaDecodeTask(formData: dict) -> dict[str, Any]:
         print('[persona-decode] Served by cloud LLM.', flush=True)
         return {'status': 'completed', 'personaData': cloudData, 'source': 'cloud'}
 
+    if not _LLM_LOCAL_ENABLED:
+        print('[persona-decode] Cloud unavailable and LLM_LOCAL_ENABLED=false.', flush=True)
+        return {
+            'status': 'failed',
+            'personaData': {},
+            'source': 'cloud-failed',
+            'error': 'Cloud persona decode failed and local Llama is disabled.',
+        }
+
     print('[persona-decode] Cloud unavailable or invalid; falling back to local Llama.', flush=True)
     localData = _runLocalPersonaDecode(prompt)
     return {
@@ -963,6 +1153,18 @@ def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | Non
             'source': 'cloud',
         }
 
+    if not _LLM_LOCAL_ENABLED:
+        closeSession(redis_client, session_id, success=False)
+        print('[agent] Cloud unavailable and LLM_LOCAL_ENABLED=false.', flush=True)
+        return {
+            'session_id': session_id,
+            'steps': [],
+            'final_answer': None,
+            'success': False,
+            'source': 'cloud-failed',
+            'error': 'Cloud chat unavailable and local Llama is disabled.',
+        }
+
     print('[agent] Cloud unavailable; falling back to local Llama ReAct.', flush=True)
     llm = createLlm()
     try:
@@ -985,20 +1187,63 @@ def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | Non
 def _generateComplianceKeywords(category: str, country: str, product_name: str) -> list[str]:
     import re
 
-    llm = createLlm()
     prompt = (
-        f'You are a compliance and risk research assistant. For a business in the "{category}" '
-        f'category operating in {country}, generate exactly 5 search keywords to monitor news, '
-        f'regulatory updates, safety recalls, or hazard alerts relevant to this business.\n\n'
+        f'For a business in the "{category}" category operating in {country}, '
+        f'generate exactly 5 search keywords to monitor news, regulatory updates, '
+        f'safety recalls, or hazard alerts.\n\n'
         'Examples:\n'
-        '- food/beverage in US: ["FDA recall food", "food safety alert", "FDA warning letter", "USDA recall", "food contamination news"]\n'
-        '- electronics: ["FCC recall", "consumer product safety commission", "lithium battery recall", "electronics safety alert", "CPSC warning"]\n'
-        '- cosmetics: ["FDA cosmetic warning", "MOCRA compliance", "cosmetic recall", "skincare allergen alert", "FDA enforcement report"]\n'
-        '- apparel: ["CPSC clothing recall", "flammable fabric warning", "lead in clothing", "textile safety", "garment recall"]\n\n'
+        '- food/beverage in US: FDA recall food, food safety alert, FDA warning letter, USDA recall, food contamination news\n'
+        '- electronics: FCC recall, consumer product safety commission, lithium battery recall, electronics safety alert, CPSC warning\n'
+        '- cosmetics: FDA cosmetic warning, MOCRA compliance, cosmetic recall, skincare allergen alert, FDA enforcement report\n'
+        '- apparel: CPSC clothing recall, flammable fabric warning, lead in clothing, textile safety, garment recall\n\n'
         f'Product: {product_name}\n\n'
-        'Return ONLY a JSON array of exactly 5 short keyword strings. No explanation, no markdown.\n'
-        'JSON:'
+        'Return JSON: {"keywords": ["kw1","kw2","kw3","kw4","kw5"]}'
     )
+
+    def _dedupe(items: list[Any]) -> list[str]:
+        seen: set[str] = set()
+        out: list[str] = []
+        for item in items:
+            normalized = str(item).strip()
+            if normalized and normalized.lower() not in seen:
+                seen.add(normalized.lower())
+                out.append(normalized)
+            if len(out) == 5:
+                break
+        return out
+
+    fallback_base = product_name or category or 'product'
+    fallback = [
+        f'{fallback_base} recall',
+        f'{fallback_base} safety alert',
+        f'{fallback_base} FDA warning',
+        f'{category} regulation news',
+        f'{category} hazard',
+    ]
+
+    cloud_content = _cloudChatCompletion(
+        system='You generate compliance/risk monitoring keywords. Return ONLY JSON {"keywords":[str,...]} with 5 entries.',
+        user=prompt,
+        max_tokens=200,
+        temperature=0.3,
+        json_mode=True,
+        timeout=60,
+    )
+    if cloud_content:
+        try:
+            parsed = json.loads(cloud_content)
+            raw_list = parsed.get('keywords') if isinstance(parsed, dict) else parsed
+            if isinstance(raw_list, list):
+                kws = _dedupe(raw_list)
+                if kws:
+                    return kws
+        except Exception as exc:
+            print(f'[compliance] Cloud keyword parse failed: {exc}')
+
+    if not _LLM_LOCAL_ENABLED:
+        return fallback
+
+    llm = createLlm()
     try:
         response = llm.create_completion(prompt=prompt, max_tokens=200, temperature=0.3, stop=['\n\n'])
         text = response['choices'][0]['text'].strip()
@@ -1006,30 +1251,15 @@ def _generateComplianceKeywords(category: str, country: str, product_name: str) 
         if match:
             parsed = json.loads(match.group())
             if isinstance(parsed, list):
-                seen = set()
-                keywords: list[str] = []
-                for item in parsed:
-                    normalized = str(item).strip()
-                    if normalized and normalized.lower() not in seen:
-                        seen.add(normalized.lower())
-                        keywords.append(normalized)
-                    if len(keywords) == 5:
-                        return keywords
-                if keywords:
-                    return keywords
+                kws = _dedupe(parsed)
+                if kws:
+                    return kws
     except Exception as exc:
-        print(f'[compliance] Keyword generation failed: {exc}')
+        print(f'[compliance] Local Llama keyword generation failed: {exc}')
     finally:
         del llm
         gc.collect()
-    base = product_name or category or 'product'
-    return [
-        f'{base} recall',
-        f'{base} safety alert',
-        f'{base} FDA warning',
-        f'{category} regulation news',
-        f'{category} hazard',
-    ]
+    return fallback
 
 
 def _loadFormPayload(user_id: int) -> dict | None:

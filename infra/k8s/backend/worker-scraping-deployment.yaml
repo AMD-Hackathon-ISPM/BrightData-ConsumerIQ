@@ -68,6 +68,12 @@ spec:
                   name: consumeriq-api-keys
                   key: PIPELINE_TWITTER_RESULTS_PER_KEYWORD
                   optional: true
+            - name: LLM_LOCAL_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: LLM_LOCAL_ENABLED
+                  optional: true
             - name: OPENAI_BASE_URL
               valueFrom:
                 secretKeyRef:

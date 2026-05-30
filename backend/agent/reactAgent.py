@@ -264,6 +264,8 @@ def _fallbackChat(
     user_context: dict | None,
     steps: list[dict[str, Any]],
 ) -> str:
+    if os.getenv('LLM_LOCAL_ENABLED', 'true').lower() != 'true':
+        return ''
     user_message = _buildFallbackUserMessage(user_prompt, user_context, steps)
     prompt = (
         _BOS
