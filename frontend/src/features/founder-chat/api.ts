@@ -49,3 +49,49 @@ export async function getTaskStatus(taskId: string, signal?: AbortSignal) {
 
   return response.json() as Promise<TaskStatusResponse>
 }
+
+export async function fetchChatHistory(
+  signal?: AbortSignal,
+): Promise<unknown[] | null> {
+  try {
+    const response = await fetch('/api/chat/history', {
+      headers: authHeader(),
+      signal,
+    })
+    if (!response.ok) return null
+    const payload = (await response.json()) as { messages?: unknown }
+    return Array.isArray(payload.messages) ? payload.messages : []
+  } catch {
+    return null
+  }
+}
+
+export async function saveChatHistory(
+  messages: unknown[],
+  signal?: AbortSignal,
+): Promise<void> {
+  try {
+    await fetch('/api/chat/history', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(),
+      },
+      body: JSON.stringify({ messages }),
+      signal,
+    })
+  } catch {
+    // best-effort; localStorage still has the cache
+  }
+}
+
+export async function clearChatHistoryRemote(): Promise<void> {
+  try {
+    await fetch('/api/chat/history', {
+      method: 'DELETE',
+      headers: authHeader(),
+    })
+  } catch {
+    // fail silent
+  }
+}

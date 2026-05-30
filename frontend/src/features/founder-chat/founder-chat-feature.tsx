@@ -9,7 +9,13 @@ import {
 import { toast } from 'sonner'
 import type { PromptInputMessage } from '@/components/ai-elements/prompt-input'
 import { cn } from '@/lib/utils'
-import { getTaskStatus, startAgentRun } from './api'
+import {
+  clearChatHistoryRemote,
+  fetchChatHistory,
+  getTaskStatus,
+  saveChatHistory,
+  startAgentRun,
+} from './api'
 import { ChatComposer } from './components/chat-composer'
 import { ChatConversation } from './components/chat-conversation'
 import { ChatPanel } from './components/chat-panel'
@@ -57,6 +63,19 @@ export function clearStoredChatMessages(): void {
   } catch {
     // fail silent
   }
+}
+
+export async function clearChatHistory(): Promise<void> {
+  clearStoredChatMessages()
+  await clearChatHistoryRemote()
+}
+
+function messagesAreInitialOrEmpty(messages: MessageType[]): boolean {
+  if (messages.length === 0) return true
+  if (messages.length !== initialMessages.length) return false
+  return messages.every(
+    (message, idx) => message.key === initialMessages[idx]?.key,
+  )
 }
 
 const formatSection = (label: string, value: unknown) => {
@@ -139,10 +158,49 @@ export function FounderChat({
     return stored && stored.length > 0 ? stored : initialMessages
   })
   const [, setStreamingMessageId] = useState<string | null>(null)
+  const hydratedFromBackendRef = useRef(false)
+  const remoteSaveTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     saveStoredMessages(messages)
   }, [messages])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void (async () => {
+      const remote = await fetchChatHistory(controller.signal)
+      if (controller.signal.aborted) return
+      hydratedFromBackendRef.current = true
+      if (Array.isArray(remote) && remote.length > 0) {
+        setMessages(remote as MessageType[])
+      }
+    })()
+    return () => {
+      controller.abort()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!hydratedFromBackendRef.current) return
+    if (status === 'streaming' || status === 'submitted') return
+    if (messagesAreInitialOrEmpty(messages)) return
+
+    if (remoteSaveTimerRef.current !== null) {
+      window.clearTimeout(remoteSaveTimerRef.current)
+    }
+    const snapshot = messages
+    remoteSaveTimerRef.current = window.setTimeout(() => {
+      remoteSaveTimerRef.current = null
+      void saveChatHistory(snapshot)
+    }, 800)
+
+    return () => {
+      if (remoteSaveTimerRef.current !== null) {
+        window.clearTimeout(remoteSaveTimerRef.current)
+        remoteSaveTimerRef.current = null
+      }
+    }
+  }, [messages, status])
 
   const updateMessageContent = useCallback(
     (messageId: string, newContent: string) => {

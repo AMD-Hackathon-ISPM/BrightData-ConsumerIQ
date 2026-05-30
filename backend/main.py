@@ -186,6 +186,106 @@ async def agentSession(session_id: str = Path(..., alias='session_id')):
     return getFullSession(redis_client, session_id)
 
 
+class ChatHistoryPayload(BaseModel):
+    messages: list[dict[str, Any]]
+
+
+def _ensureChatHistoryTable() -> None:
+    try:
+        with psycopg2.connect(_DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    CREATE TABLE IF NOT EXISTS chatHistory (
+                        user_id   BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                        messages  JSONB NOT NULL DEFAULT '[]'::jsonb,
+                        updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                    )
+                    '''
+                )
+    except Exception as exc:
+        print(f'[chat-history] ensure-table failed: {exc}')
+
+
+@app.get('/api/chat/history')
+async def getChatHistory(request: Request):
+    user_id = _resolveUserIdFromRequest(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail='Not authenticated')
+
+    def _fetch() -> list[dict[str, Any]]:
+        _ensureChatHistoryTable()
+        with psycopg2.connect(_DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'SELECT messages FROM chatHistory WHERE user_id = %s',
+                    (int(user_id),),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return []
+                raw = row[0]
+                if isinstance(raw, str):
+                    try:
+                        return json.loads(raw)
+                    except json.JSONDecodeError:
+                        return []
+                if isinstance(raw, list):
+                    return raw
+                return []
+
+    loop = asyncio.get_event_loop()
+    messages = await loop.run_in_executor(None, _fetch)
+    return {'messages': messages}
+
+
+@app.put('/api/chat/history')
+async def putChatHistory(payload: ChatHistoryPayload, request: Request):
+    user_id = _resolveUserIdFromRequest(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail='Not authenticated')
+
+    capped_messages = payload.messages[-200:] if isinstance(payload.messages, list) else []
+
+    def _upsert() -> None:
+        _ensureChatHistoryTable()
+        with psycopg2.connect(_DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    INSERT INTO chatHistory (user_id, messages, updatedAt)
+                    VALUES (%s, %s::jsonb, NOW())
+                    ON CONFLICT (user_id)
+                    DO UPDATE SET messages = EXCLUDED.messages, updatedAt = NOW()
+                    ''',
+                    (int(user_id), json.dumps(capped_messages, ensure_ascii=False)),
+                )
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _upsert)
+    return {'status': 'saved', 'count': len(capped_messages)}
+
+
+@app.delete('/api/chat/history')
+async def deleteChatHistory(request: Request):
+    user_id = _resolveUserIdFromRequest(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail='Not authenticated')
+
+    def _delete() -> None:
+        _ensureChatHistoryTable()
+        with psycopg2.connect(_DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'DELETE FROM chatHistory WHERE user_id = %s',
+                    (int(user_id),),
+                )
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _delete)
+    return {'status': 'cleared'}
+
+
 @app.post('/api/scrape-market-signals')
 async def scrapeMarketSignals(payload: ScrapeMarketSignalsRequest):
     from backend.redis.worker import scrapeMarketSignals as scrapeTask

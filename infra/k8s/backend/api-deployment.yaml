@@ -103,7 +103,7 @@ spec:
             - name: ADMIN_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: consumeriq-admin
+                  name: consumeriq-api-keys
                   key: ADMIN_API_TOKEN
                   optional: true
             - name: SCRAPINGBEE_API_KEY

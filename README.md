@@ -322,16 +322,22 @@ Three Kubernetes CronJobs ship with the cluster, all idle by default. Each runs 
 
 **To enable in production:**
 
+`ADMIN_API_TOKEN` lives in `.env` and flows into the shared `consumeriq-api-keys` Secret via the standard `kubectl create secret --from-env-file=.env` flow — no separate Secret to manage. Set the value in `.env` first, then:
+
 ```powershell
-# 1. Create the admin token Secret
-kubectl create secret generic consumeriq-admin -n consumeriq `
-  --from-literal=ADMIN_API_TOKEN="$(openssl rand -hex 32)"
+# 1. Refresh the Secret so ADMIN_API_TOKEN lands in consumeriq-api-keys
+kubectl create secret generic consumeriq-api-keys -n consumeriq `
+  --from-env-file=infra/k8s/backend/.env `
+  --dry-run=client -o yaml | kubectl apply -f -
 
 # 2. Flip the env flags in infra/k8s/backend/api-deployment.yaml
 #    and worker-scraping-deployment.yaml from "false" to "true"
 
 # 3. Reapply
 kubectl apply -k infra/k8s/backend/
+
+# 4. Restart the API so it picks up ADMIN_API_TOKEN from the updated Secret
+kubectl rollout restart -n consumeriq deploy/consumeriq-api
 ```
 
 Inspect a manual run:
@@ -352,6 +358,24 @@ kubectl logs -n consumeriq job/manual-refresh-1
 ---
 
 ## Troubleshooting
+
+### `start-gpu-inference.ps1` fails with "bad address" on the first run
+
+NVIDIA Container Toolkit + WSL2-preview-driver race: when the WSL2 backend has just resumed or Docker Desktop just finished initializing, the GPU device hasn't been published into containerd's runc yet. The first `docker run --gpus all` lands too early, bind-mounting `/dev/dxg` returns `EFAULT` ("bad address"), and the container exits before `docker inspect` can read its IP.
+
+**Fix: just run the script again.**
+
+```powershell
+.\scripts\start-gpu-inference.ps1
+```
+
+The second invocation succeeds because by then the toolkit has registered the device. If it fails twice, the cause is upstream — likely a stale WSL2 vhdx (run `wsl --shutdown` and restart Docker Desktop) or the NVIDIA driver isn't actually CUDA-on-WSL2 capable. Confirm with:
+
+```powershell
+docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
+```
+
+If this prints the GPU table, the script will work on retry. If this errors, fix Docker Desktop + NVIDIA driver first.
 
 ### Inference / translator not responding
 

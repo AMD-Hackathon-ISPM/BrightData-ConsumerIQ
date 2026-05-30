@@ -326,12 +326,19 @@ categoryInsights (
   lastUpdated timestamptz,
   PRIMARY KEY (category, country)
 )
+
+chatHistory (
+  user_id   bigint PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  messages  jsonb NOT NULL DEFAULT '[]'::jsonb,  -- full advisor-chat blob, ~200 message cap
+  updatedAt timestamptz
+)
 ```
 
 Design decisions:
 - **`founderForms.payload` as jsonb** — schema evolution doesn't require migrations during a hackathon
 - **`marketSignals.embedding` indexed via IVFFlat** — sub-100ms vector search even at 100K rows
 - **`categoryInsights` keyed by (category, country) not (user_id)** — multiple users in the same market share insights, cuts cost by ~80%
+- **`chatHistory` as one-row-per-user blob** — chat is a single linear conversation per user; storing the whole array as JSONB is faster to read/write than a join-heavy `messages` table, and we never need to query individual messages. `ON DELETE CASCADE` means account deletion takes the chat with it. The FE uses localStorage as a fast-render cache and PUTs to `/api/chat/history` with an 800ms debounce on the stable post-stream state.
 
 ---
 
@@ -361,6 +368,10 @@ k3d's CoreDNS Corefile forwards external DNS lookups to the node container's `/e
 ```
 forward . 1.1.1.1 8.8.8.8 9.9.9.9
 ```
+
+### Follow-up bug #3 — NVIDIA Container Toolkit cold-start race
+
+On the first run of `start-gpu-inference.ps1` after Docker Desktop / WSL2 has resumed, `docker run --gpus all` can fail with `EFAULT` ("bad address"). Root cause: the NVIDIA Container Toolkit needs a beat to register `/dev/dxg` as a usable device with containerd's runc; the script lands before that registration completes. The script self-recovers on re-invocation because by then the device is published. We document this in the README troubleshooting section because no amount of "fix the script" actually changes the underlying timing — the only deterministic fix would be a 10s sleep before the first `docker run`, which would slow every subsequent run for no reason.
 
 Cost: 1 PowerShell script (`start-gpu-inference.ps1`) + 1 ConfigMap patch. Benefit: GPU + outbound DNS actually work on Windows dev machines.
 
@@ -549,6 +560,23 @@ The ReAct path itself is what gives the agent the *option* to call tools. Cloud-
 
 Implementation: [`backend/agent/reactAgent.py`](backend/agent/reactAgent.py) (loop + fallback ladder + Cognee recall), [`backend/agent/tools.py`](backend/agent/tools.py) (tool registry), [`backend/redis/worker.py:runAgentTask`](backend/redis/worker.py) (Celery wrapper + tier orchestration).
 
+### Reasoning surfacing
+
+Reasoning-distilled models (Qwen3.5-27B from Claude-4.6-Opus) emit chain-of-thought either via a separate `message.reasoning_content` field (DeepSeek-style) or as inline `<think>...</think>` tags inside the content body. The worker extracts both shapes with a single helper (`_extractReasoningAndContent`), strips the thinking block out of the visible answer, and returns it as a sibling `reasoning: {content, duration}` field in the task result. The FE's `<Reasoning duration={...}>` panel renders it as an expandable "Reasoned for N seconds" pill above the assistant message — judges click to see the literal step-by-step that produced the answer.
+
+For the Llama ReAct fallback path, no `<think>` tags exist, but the loop's accumulated `steps[]` (each with `thought`, `action`, `action_input`, `observation_summary`) is converted into the same reasoning shape by `_reasoningFromSteps`. So *every* serve produces a reasoning trace, whether the cloud or local path served it — the only failure mode is the Llama-plain-chat tier-3 fallback, which legitimately has no trace and just renders without the reasoning panel.
+
+### Chat persistence
+
+The advisor chat is stored in Postgres (`chatHistory` table — see §8), not just in localStorage. The FE keeps localStorage as a fast-render cache so first paint is instant (Gemini-style), then a background `GET /api/chat/history` fetch either confirms the cache or replaces it with the canonical server copy. Writes are debounced 800ms and only fire when chat status is back to `ready` — partial mid-stream content never gets persisted.
+
+This means a user can:
+- Hard-refresh and see history reappear in <500ms
+- Open in a new browser / device and pick up where they left off
+- Clear browser cache without losing anything
+
+API surface: `GET /api/chat/history`, `PUT /api/chat/history`, `DELETE /api/chat/history`. All auth-gated via the same `_resolveUserIdFromRequest` helper used elsewhere — token in `Authorization: Bearer` or `X-User-Id` header from NGINX `auth_request`.
+
 ---
 
 ## 13. Scrape Budget & Marketplace Allowlist
@@ -638,6 +666,7 @@ In dev, all of these are loosened (concurrency=2, backpressure off, GPU containe
 | Scraping     | BrightData (Amazon, Walmart, Tokopedia datasets), ScrapingBee (Google SERP, Twitter via `site:` query) |
 | Cluster      | k3d (local), Kubernetes 1.30, kustomize, CoreDNS patched to upstream Cloudflare/Google directly |
 | Container    | Docker, local registry on :5001, GPU containers wired via selector-less Services + named-port Endpoints |
+| Email        | MailerSend transactional API (`POST /v1/email`) — dashboard-ready notifications when the pipeline completes |
 
 ---
 

@@ -75,3 +75,9 @@ CREATE TABLE competitors (
 );
 
 CREATE INDEX ON competitors (category, country);
+
+CREATE TABLE chatHistory (
+    user_id   BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    messages  JSONB NOT NULL DEFAULT '[]'::jsonb,
+    updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
