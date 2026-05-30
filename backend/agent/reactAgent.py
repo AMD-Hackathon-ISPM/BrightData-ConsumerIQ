@@ -113,8 +113,64 @@ _FALLBACK_SYSTEM = '''\
 You are a market intelligence advisor for a founder. Reply in clear, conversational English.
 - Be concise (3-6 short paragraphs max). Use plain text, no JSON, no markdown headers.
 - If you have context about the founder's product, weave it into the answer.
+- If "Relevant memory from prior scrapes & dashboards" is provided, treat it as ground truth from previous research — cite specific brands, claims, or prices it surfaces.
 - If you have findings from earlier tool calls, use them to ground your answer.
 - If a fact is unknown, say so honestly instead of inventing one.'''
+
+
+def _recallCogneeMemory(query: str, user_context: dict | None) -> str:
+    try:
+        from backend.models.cognee_memory import is_enabled, run_async, search_memory
+    except ImportError:
+        return ''
+    if not is_enabled():
+        return ''
+
+    category = ''
+    country = ''
+    if isinstance(user_context, dict):
+        category = str(user_context.get('industry') or '')
+        country = str(user_context.get('country') or '')
+
+    try:
+        results = run_async(
+            search_memory(
+                query=query[:500],
+                category=category,
+                country=country,
+                search_type='chunks',
+            )
+        )
+    except Exception as exc:
+        print(f'[agent] Cognee memory recall failed: {exc}')
+        return ''
+
+    if not results:
+        return ''
+
+    lines: list[str] = []
+    for item in results[:5]:
+        if isinstance(item, dict):
+            text = (
+                item.get('text')
+                or item.get('content')
+                or item.get('chunk')
+                or item.get('payload')
+                or ''
+            )
+            if isinstance(text, dict):
+                text = json.dumps(text, ensure_ascii=False)[:240]
+        else:
+            text = str(item)
+        text = str(text).strip()
+        if text:
+            lines.append(f'- {text[:240]}')
+
+    if not lines:
+        return ''
+
+    print(f'[agent] Cognee recall: {len(lines)} memory chunks', flush=True)
+    return 'Relevant memory from prior scrapes & dashboards:\n' + '\n'.join(lines) + '\n\n'
 
 
 def _buildFallbackUserMessage(
@@ -132,6 +188,8 @@ def _buildFallbackUserMessage(
         if ctx_lines:
             context_block = 'Founder context:\n' + '\n'.join(ctx_lines) + '\n\n'
 
+    memory_block = _recallCogneeMemory(user_prompt, user_context)
+
     findings_block = ''
     finding_lines = []
     for step in steps:
@@ -141,7 +199,7 @@ def _buildFallbackUserMessage(
     if finding_lines:
         findings_block = 'Findings collected from earlier tool calls:\n' + '\n'.join(finding_lines[-8:]) + '\n\n'
 
-    return f'{context_block}{findings_block}Founder question: {user_prompt}'
+    return f'{context_block}{memory_block}{findings_block}Founder question: {user_prompt}'
 
 
 def _fallbackChat(

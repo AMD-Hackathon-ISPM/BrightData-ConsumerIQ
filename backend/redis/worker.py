@@ -757,6 +757,84 @@ def scrapeMarketSignals(
     return {'category': category, 'country': country, 'keywords': keywords, 'signals_stored': stored, 'status': 'completed'}
 
 
+def _personaDecodeIsValid(data: Any) -> bool:
+    if not isinstance(data, dict):
+        return False
+    personas = data.get('personas')
+    if not isinstance(personas, list) or len(personas) < 1:
+        return False
+    for entry in personas:
+        if not isinstance(entry, dict):
+            return False
+        if not entry.get('name') or not entry.get('description'):
+            return False
+    return True
+
+
+def _runCloudPersonaDecode(prompt: str) -> dict[str, Any] | None:
+    import httpx
+
+    api_key = (
+        os.getenv('OPENAI_API_KEY')
+        or os.getenv('BRIGHTDATA_API_TOKEN')
+        or os.getenv('BRIGHT_DATA_API_TOKEN')
+    )
+    if not api_key:
+        return None
+
+    base_url = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1').rstrip('/')
+    model = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
+
+    try:
+        response = httpx.post(
+            f'{base_url}/chat/completions',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
+            },
+            json={
+                'model': model,
+                'messages': [
+                    {
+                        'role': 'system',
+                        'content': (
+                            'You are a senior consumer market analyst. Return ONLY a valid JSON '
+                            'object that matches the schema the user gives you. No prose, no '
+                            'markdown, no code fences.'
+                        ),
+                    },
+                    {'role': 'user', 'content': prompt},
+                ],
+                'temperature': 0.3,
+                'max_tokens': 1500,
+                'response_format': {'type': 'json_object'},
+            },
+            timeout=60,
+        )
+        response.raise_for_status()
+        content = response.json()['choices'][0]['message']['content']
+        return json.loads(content)
+    except Exception as exc:
+        print(f'[persona-decode] Cloud call failed: {exc}')
+        return None
+
+
+def _runLocalPersonaDecode(prompt: str) -> dict[str, Any]:
+    llm = createLlm()
+    try:
+        response = llm.create_completion(
+            prompt=prompt,
+            max_tokens=1200,
+            temperature=0.3,
+            stop=['\n\n\n'],
+        )
+        rawText = response['choices'][0]['text']
+    finally:
+        del llm
+        gc.collect()
+    return _parseInsights(rawText)
+
+
 @celeryApp.task(name='runPersonaDecodeTask', queue='inference')
 def runPersonaDecodeTask(formData: dict) -> dict[str, Any]:
     category = formData.get('category', '')
@@ -795,30 +873,49 @@ def runPersonaDecodeTask(formData: dict) -> dict[str, Any]:
         'JSON:'
     )
 
-    llm = createLlm()
-    try:
-        response = llm.create_completion(
-            prompt=prompt,
-            max_tokens=1200,
-            temperature=0.3,
-            stop=['\n\n\n'],
-        )
-        rawText = response['choices'][0]['text']
-    finally:
-        del llm
-        gc.collect()
+    cloudData = _runCloudPersonaDecode(prompt)
+    if _personaDecodeIsValid(cloudData):
+        print('[persona-decode] Served by cloud LLM.', flush=True)
+        return {'status': 'completed', 'personaData': cloudData, 'source': 'cloud'}
 
-    personaData = _parseInsights(rawText)
-    return {'status': 'completed', 'personaData': personaData}
+    print('[persona-decode] Cloud unavailable or invalid; falling back to local Llama.', flush=True)
+    localData = _runLocalPersonaDecode(prompt)
+    return {
+        'status': 'completed',
+        'personaData': localData,
+        'source': 'llama',
+        'fallback': True,
+    }
 
 
 @celeryApp.task(name='runAgentTask', bind=True, queue='inference')
 def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | None = None) -> dict[str, Any]:
-    from backend.agent.reactAgent import runReactAgent
-    from backend.agent.session import getRedisClient
+    from backend.agent.reactAgent import _cloudFallbackChat, runReactAgent
+    from backend.agent.session import getRedisClient, initSession, closeSession, saveStep
 
     session_id = self.request.id
     redis_client = getRedisClient()
+
+    initSession(redis_client, session_id, prompt)
+
+    cloud_answer = _cloudFallbackChat(prompt, user_context, steps=[])
+    if cloud_answer and cloud_answer.strip():
+        saveStep(
+            redis_client,
+            session_id,
+            {'step': 1, 'thought': 'Cloud chat served directly.', 'final_answer': cloud_answer},
+        )
+        closeSession(redis_client, session_id, success=True)
+        print('[agent] Served by cloud LLM.', flush=True)
+        return {
+            'session_id': session_id,
+            'steps': [],
+            'final_answer': cloud_answer,
+            'success': True,
+            'source': 'cloud',
+        }
+
+    print('[agent] Cloud unavailable; falling back to local Llama ReAct.', flush=True)
     llm = createLlm()
     try:
         result = runReactAgent(
@@ -833,6 +930,7 @@ def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | Non
         del llm
         gc.collect()
 
+    result['source'] = 'llama'
     return result
 
 
