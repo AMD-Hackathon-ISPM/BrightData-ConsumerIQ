@@ -21,6 +21,44 @@ import type { ChatStatus, MessageType } from './types'
 const TASK_POLL_INTERVALS_MS = [1200, 2000, 3500, 5000]
 const TASK_TIMEOUT_MS = 240000
 
+const STORAGE_KEY = 'ciq_chat_messages_v1'
+const STORAGE_MAX_MESSAGES = 200
+
+function loadStoredMessages(): MessageType[] | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || !Array.isArray(parsed.messages)) return null
+    return parsed.messages as MessageType[]
+  } catch {
+    return null
+  }
+}
+
+function saveStoredMessages(messages: MessageType[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    const trimmed = messages.slice(-STORAGE_MAX_MESSAGES)
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ savedAt: Date.now(), messages: trimmed }),
+    )
+  } catch {
+    // localStorage disabled or quota exceeded — fail silent
+  }
+}
+
+export function clearStoredChatMessages(): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // fail silent
+  }
+}
+
 const formatSection = (label: string, value: unknown) => {
   if (
     !value ||
@@ -96,8 +134,15 @@ export function FounderChat({
   const abortControllerRef = useRef<AbortController | null>(null)
   const [text, setText] = useState('')
   const [status, setStatus] = useState<ChatStatus>('ready')
-  const [messages, setMessages] = useState<MessageType[]>(initialMessages)
+  const [messages, setMessages] = useState<MessageType[]>(() => {
+    const stored = loadStoredMessages()
+    return stored && stored.length > 0 ? stored : initialMessages
+  })
   const [, setStreamingMessageId] = useState<string | null>(null)
+
+  useEffect(() => {
+    saveStoredMessages(messages)
+  }, [messages])
 
   const updateMessageContent = useCallback(
     (messageId: string, newContent: string) => {
