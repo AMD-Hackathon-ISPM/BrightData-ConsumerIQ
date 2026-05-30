@@ -1,265 +1,337 @@
-import { useEffect, useState } from "react";
-import { getAuthToken } from "@/lib/auth";
-import { PERSONA_TASK_KEY } from "@/features/onboarding/founder-form/api";
-import { cn } from "@/lib/utils";
+import { useEffect, useState } from 'react'
+import { PERSONA_TASK_KEY } from '@/features/onboarding/founder-form/api'
+import { getAuthToken } from '@/lib/auth'
+import { cn } from '@/lib/utils'
 import {
   AdvisorIntelligence,
-  cardHoverBorderClass,
   type CardTone,
-} from "./shared";
+  cardHoverBorderClass,
+} from './shared'
 
 type PersonaCard = {
-  name?: string;
-  age?: string;
-  tone?: string;
-  description?: string;
-  painPoints?: string[];
-  goals?: string;
-};
-
-type TamSamSomTier = {
-  value?: string;
-  percentOfParent?: number;
-  description?: string;
-};
-
-type PersonaResult = {
-  personas?: PersonaCard[];
-  stp?: {
-    segmentation?: string;
-    targeting?: string;
-    positioning?: string;
-    geographic?: string;
-    demographic?: string;
-    psychographic?: string;
-    behavioral?: string;
-    needs?: string;
-  };
-  advisorIntelligence?: {
-    recommendation?: string;
-    keyPainPoint?: string;
-    brandMessage?: string;
-    marketOpportunity?: string;
-  };
-  tamSamSom?: {
-    tam?: TamSamSomTier;
-    sam?: TamSamSomTier;
-    som?: TamSamSomTier;
-    methodology?: string;
-  };
-};
-
-async function fetchTaskStatus(taskId: string) {
-  const token = getAuthToken();
-  const headers: Record<string, string> = token
-    ? { Authorization: `Bearer ${token}` }
-    : {};
-  const res = await fetch(`/api/task-status/${taskId}`, { headers });
-  if (!res.ok) throw new Error("task status failed");
-  return res.json() as Promise<{
-    taskId: string;
-    status: string;
-    result?: { personaData?: PersonaResult };
-  }>;
+  name?: string
+  age?: string
+  tone?: string
+  description?: string
+  painPoints?: string[]
+  goals?: string
 }
 
-const PERSONA_DATA_KEY = "ciq_persona_data";
+type TamSamSomTier = {
+  value?: string
+  percentOfParent?: number
+  description?: string
+}
+
+type PersonaResult = {
+  personas?: PersonaCard[]
+  stp?: {
+    segmentation?: string
+    targeting?: string
+    positioning?: string
+    geographic?: string
+    demographic?: string
+    psychographic?: string
+    behavioral?: string
+    needs?: string
+  }
+  advisorIntelligence?: {
+    recommendation?: string
+    keyPainPoint?: string
+    brandMessage?: string
+    marketOpportunity?: string
+  }
+  tamSamSom?: {
+    tam?: TamSamSomTier
+    sam?: TamSamSomTier
+    som?: TamSamSomTier
+    methodology?: string
+  }
+}
+
+type TamSamSomKey = 'tam' | 'sam' | 'som'
+
+function formatPercent(value?: number) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null
+  const clamped = Math.min(100, Math.max(0, value))
+  return `${clamped.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`
+}
+
+function parentLabel(key: TamSamSomKey) {
+  if (key === 'tam') return 'global market'
+  if (key === 'sam') return 'TAM'
+  return 'SAM'
+}
+
+async function fetchTaskStatus(taskId: string) {
+  const token = getAuthToken()
+  const headers: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {}
+  const res = await fetch(`/api/task-status/${taskId}`, { headers })
+  if (!res.ok) throw new Error('task status failed')
+  return res.json() as Promise<{
+    taskId: string
+    status: string
+    result?: { personaData?: PersonaResult }
+  }>
+}
+
+const PERSONA_DATA_KEY = 'ciq_persona_data'
 
 function loadStoredPersonaData(): PersonaResult | null {
   try {
-    const raw = localStorage.getItem(PERSONA_DATA_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersonaResult;
+    const raw = localStorage.getItem(PERSONA_DATA_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as PersonaResult
     return Array.isArray(parsed.personas) && parsed.personas.length > 0
       ? parsed
-      : null;
+      : null
   } catch {
-    return null;
+    return null
   }
 }
 
 function EmptyDataState({
-  message = "Analysis pending - data will appear here after scraping completes.",
+  message = 'Analysis pending - data will appear here after scraping completes.',
 }: {
-  message?: string;
+  message?: string
 }) {
   return (
     <div className="flex min-h-[8rem] flex-col items-center justify-center rounded-lg border border-dashed bg-muted/10 py-10 text-center">
       <p className="max-w-xs text-sm text-muted-foreground">{message}</p>
     </div>
-  );
+  )
 }
 
 function TamSamSomChart({
   data,
 }: {
-  data: NonNullable<PersonaResult["tamSamSom"]>;
+  data: NonNullable<PersonaResult['tamSamSom']>
 }) {
   const tiers: Array<{
-    key: "tam" | "sam" | "som";
-    label: string;
-    tier?: TamSamSomTier;
-    accent: string;
-    ring: string;
+    key: TamSamSomKey
+    label: string
+    scope: string
+    tier?: TamSamSomTier
+    circleClass: string
+    circleSlotClass: string
+    cardClass: string
+    dotClass: string
+    labelClass: string
   }> = [
     {
-      key: "tam",
-      label: "TAM",
+      key: 'tam',
+      label: 'TAM',
+      scope: 'Total addressable market',
       tier: data.tam,
-      accent: "bg-chart-5/15 text-chart-5",
-      ring: "ring-chart-5/30",
+      circleClass: 'inset-0 border-chart-5/45 bg-chart-5/[0.08] text-chart-5',
+      circleSlotClass: 'top-5',
+      cardClass: 'border-chart-5/30 bg-chart-5/[0.07]',
+      dotClass: 'bg-chart-5',
+      labelClass: 'text-chart-5',
     },
     {
-      key: "sam",
-      label: "SAM",
+      key: 'sam',
+      label: 'SAM',
+      scope: 'Serviceable available market',
       tier: data.sam,
-      accent: "bg-chart-4/15 text-chart-4",
-      ring: "ring-chart-4/30",
+      circleClass:
+        'inset-[17%] border-chart-4/45 bg-chart-4/[0.1] text-chart-4',
+      circleSlotClass: 'top-3',
+      cardClass: 'border-chart-4/30 bg-chart-4/[0.07]',
+      dotClass: 'bg-chart-4',
+      labelClass: 'text-chart-4',
     },
     {
-      key: "som",
-      label: "SOM",
+      key: 'som',
+      label: 'SOM',
+      scope: 'Serviceable obtainable market',
       tier: data.som,
-      accent: "bg-chart-3/15 text-chart-3",
-      ring: "ring-chart-3/30",
+      circleClass:
+        'inset-[34%] border-chart-3/50 bg-chart-3/[0.12] text-chart-3',
+      circleSlotClass: 'inset-0 justify-center',
+      cardClass: 'border-chart-3/30 bg-chart-3/[0.07]',
+      dotClass: 'bg-chart-3',
+      labelClass: 'text-chart-3',
     },
-  ];
+  ]
 
   return (
-    <div className="flex min-w-0 flex-col gap-3">
-      <div className="grid gap-2">
-        {tiers.map(({ key, label, tier, accent, ring }) => (
-          <div
-            className={cn(
-              "flex min-w-0 items-start gap-3 rounded-lg border bg-background-default p-3 ring-1",
-              ring,
-            )}
-            key={key}
-          >
-            <span
-              className={cn(
-                "inline-flex shrink-0 items-center justify-center rounded-md px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]",
-                accent,
-              )}
-            >
-              {label}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                <span className="break-words font-mono text-base font-semibold tabular-nums">
-                  {tier?.value || "—"}
-                </span>
-                {typeof tier?.percentOfParent === "number" ? (
-                  <span className="font-mono text-[11px] text-foreground-light tabular-nums">
-                    {tier.percentOfParent}% of {key === "tam" ? "global" : key === "sam" ? "TAM" : "SAM"}
+    <div className="flex min-w-0 flex-col gap-4">
+      <div className="flex justify-center rounded-lg border bg-background-default/60 px-4 py-5">
+        <div className="relative aspect-square w-full max-w-72">
+          {tiers.map(({ key, label, tier, circleClass, circleSlotClass }) => {
+            const percent = formatPercent(tier?.percentOfParent)
+            return (
+              <div
+                className={cn(
+                  'absolute flex rounded-full border shadow-sm',
+                  circleClass,
+                )}
+                key={key}
+              >
+                <div
+                  className={cn(
+                    'absolute left-1/2 flex min-w-0 -translate-x-1/2 flex-col items-center text-center',
+                    circleSlotClass,
+                  )}
+                >
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]">
+                    {label}
                   </span>
-                ) : null}
+                  <span className="mt-1 max-w-28 truncate font-mono text-sm font-semibold leading-none tabular-nums sm:text-base">
+                    {tier?.value || '-'}
+                  </span>
+                  {percent ? (
+                    <span className="mt-1 max-w-28 truncate text-[10px] font-medium text-foreground-light">
+                      {percent} of {parentLabel(key)}
+                    </span>
+                  ) : null}
+                </div>
               </div>
-              {tier?.description ? (
-                <p className="mt-0.5 break-words text-xs text-foreground-light">
-                  {tier.description}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        ))}
+            )
+          })}
+        </div>
       </div>
+
+      <div className="grid gap-2.5 sm:grid-cols-3">
+        {tiers.map(
+          ({ key, label, scope, tier, cardClass, dotClass, labelClass }) => {
+            const percent = formatPercent(tier?.percentOfParent)
+            return (
+              <div
+                className={cn(
+                  'min-w-0 rounded-lg border p-3 transition-colors',
+                  cardClass,
+                )}
+                key={key}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className={cn('size-2 shrink-0 rounded-full', dotClass)}
+                  />
+                  <p
+                    className={cn(
+                      'font-mono text-[10px] font-semibold uppercase tracking-[0.16em]',
+                      labelClass,
+                    )}
+                  >
+                    {label}
+                  </p>
+                </div>
+                <p className="mt-2 truncate font-mono text-sm font-semibold tabular-nums">
+                  {tier?.value || '-'}
+                </p>
+                <p className="mt-1 text-[11px] font-medium text-foreground-light">
+                  {percent ? `${percent} of ${parentLabel(key)}` : scope}
+                </p>
+                <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-foreground-light">
+                  {tier?.description?.trim() ||
+                    'Sizing rationale unavailable yet.'}
+                </p>
+              </div>
+            )
+          },
+        )}
+      </div>
+
       {data.methodology ? (
         <p className="break-words border-t pt-2.5 text-[11px] leading-relaxed text-foreground-light">
           <span className="font-medium text-foreground-default">
-            Methodology —{" "}
+            Methodology -{' '}
           </span>
           {data.methodology}
         </p>
       ) : null}
     </div>
-  );
+  )
 }
 
 export function PersonaDecode() {
-  const [liveData, setLiveData] = useState<PersonaResult | null>(
-    () => loadStoredPersonaData(),
-  );
-  const [loading, setLoading] = useState(false);
+  const [liveData, setLiveData] = useState<PersonaResult | null>(() =>
+    loadStoredPersonaData(),
+  )
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const taskId = localStorage.getItem(PERSONA_TASK_KEY);
-    if (!taskId) return;
-    setLoading(true);
+    const taskId = localStorage.getItem(PERSONA_TASK_KEY)
+    if (!taskId) return
+    setLoading(true)
 
-    let cancelled = false;
+    let cancelled = false
     const poll = async () => {
       while (!cancelled) {
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-        if (cancelled) break;
+        await new Promise((resolve) => setTimeout(resolve, 3000))
+        if (cancelled) break
         try {
-          const res = await fetchTaskStatus(taskId);
-          if (res.status === "completed") {
-            const data = res.result?.personaData;
+          const res = await fetchTaskStatus(taskId)
+          if (res.status === 'completed') {
+            const data = res.result?.personaData
             if (
               data &&
               Array.isArray(data.personas) &&
               data.personas.length > 0
             ) {
-              setLiveData(data);
+              setLiveData(data)
               try {
-                localStorage.setItem(PERSONA_DATA_KEY, JSON.stringify(data));
+                localStorage.setItem(PERSONA_DATA_KEY, JSON.stringify(data))
               } catch {}
             }
-            localStorage.removeItem(PERSONA_TASK_KEY);
-            setLoading(false);
-            break;
+            localStorage.removeItem(PERSONA_TASK_KEY)
+            setLoading(false)
+            break
           }
-          if (res.status === "failed") {
-            localStorage.removeItem(PERSONA_TASK_KEY);
-            setLoading(false);
-            break;
+          if (res.status === 'failed') {
+            localStorage.removeItem(PERSONA_TASK_KEY)
+            setLoading(false)
+            break
           }
         } catch {
-          setLoading(false);
-          break;
+          setLoading(false)
+          break
         }
       }
-    };
-    void poll();
+    }
+    void poll()
     return () => {
-      cancelled = true;
-    };
-  }, []);
+      cancelled = true
+    }
+  }, [])
 
   const personaCards = liveData?.personas
     ? liveData.personas.map((p) => ({
         ...p,
-        age: p.age ?? "",
-        description: p.description ?? "",
-        goals: p.goals ?? "",
-        name: p.name ?? "Unnamed Persona",
+        age: p.age ?? '',
+        description: p.description ?? '',
+        goals: p.goals ?? '',
+        name: p.name ?? 'Unnamed Persona',
         painPoints: Array.isArray(p.painPoints) ? p.painPoints : [],
-        tone: (["high", "medium", "growth"].includes(p.tone ?? "")
+        tone: (['high', 'medium', 'growth'].includes(p.tone ?? '')
           ? p.tone
-          : "medium") as CardTone,
+          : 'medium') as CardTone,
       }))
-    : [];
+    : []
 
-  const stp = liveData?.stp ?? null;
-  const advisor = liveData?.advisorIntelligence ?? null;
-  const tamSamSom = liveData?.tamSamSom ?? null;
+  const stp = liveData?.stp ?? null
+  const advisor = liveData?.advisorIntelligence ?? null
+  const tamSamSom = liveData?.tamSamSom ?? null
 
   const initials = (name: string) =>
     name
       .split(/[\s-]+/)
       .map((w) => w[0])
-      .join("")
+      .join('')
       .slice(0, 3)
-      .toUpperCase();
+      .toUpperCase()
 
   const avatarToneClass: Record<CardTone, string> = {
-    high: "border-destructive-500/40 bg-destructive-500/15 text-destructive-500",
+    high: 'border-destructive-500/40 bg-destructive-500/15 text-destructive-500',
     medium:
-      "border-warning-500/40 bg-warning-500/15 text-warning-600 dark:text-warning-500",
+      'border-warning-500/40 bg-warning-500/15 text-warning-600 dark:text-warning-500',
     growth:
-      "border-[#98971a]/40 bg-[#98971a]/15 text-[#98971a] dark:border-[#b8bb26]/40 dark:bg-[#b8bb26]/15 dark:text-[#b8bb26]",
-  };
+      'border-[#98971a]/40 bg-[#98971a]/15 text-[#98971a] dark:border-[#b8bb26]/40 dark:bg-[#b8bb26]/15 dark:text-[#b8bb26]',
+  }
 
   return (
     <div className="grid gap-3">
@@ -278,12 +350,12 @@ export function PersonaDecode() {
             {personaCards.map((persona) => (
               <article
                 className={cn(
-                  "relative grid gap-3 rounded-xl border bg-card p-3.5 shadow-sm transition-colors md:row-span-6 md:grid-rows-subgrid",
+                  'relative grid gap-3 rounded-xl border bg-card p-3.5 shadow-sm transition-colors md:row-span-6 md:grid-rows-subgrid',
                   cardHoverBorderClass[persona.tone],
                 )}
                 key={persona.name}
               >
-                {persona.tone === "high" ? (
+                {persona.tone === 'high' ? (
                   <span className="absolute right-3 top-0 -translate-y-1/2 rounded-full bg-background-default px-px py-px">
                     <span className="block rounded-full bg-destructive-500/15 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-destructive-500">
                       High Priority
@@ -293,7 +365,7 @@ export function PersonaDecode() {
                 <div className="flex items-start gap-3">
                   <div
                     className={cn(
-                      "flex size-10 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
+                      'flex size-10 shrink-0 items-center justify-center rounded-full border text-xs font-semibold',
                       avatarToneClass[persona.tone],
                     )}
                   >
@@ -332,8 +404,8 @@ export function PersonaDecode() {
           <EmptyDataState
             message={
               loading
-                ? "Analyzing customer data with AI..."
-                : "Persona analysis will appear here after market analysis completes."
+                ? 'Analyzing customer data with AI...'
+                : 'Persona analysis will appear here after market analysis completes.'
             }
           />
         )}
@@ -355,9 +427,13 @@ export function PersonaDecode() {
             <>
               <div className="grid flex-1 auto-rows-fr gap-2">
                 {[
-                  { letter: "S", title: "Segmentation", text: stp.segmentation },
-                  { letter: "T", title: "Targeting", text: stp.targeting },
-                  { letter: "P", title: "Positioning", text: stp.positioning },
+                  {
+                    letter: 'S',
+                    title: 'Segmentation',
+                    text: stp.segmentation,
+                  },
+                  { letter: 'T', title: 'Targeting', text: stp.targeting },
+                  { letter: 'P', title: 'Positioning', text: stp.positioning },
                 ]
                   .filter((row) => row.text)
                   .map((row) => (
@@ -381,11 +457,11 @@ export function PersonaDecode() {
               </div>
               <div className="mt-4 grid gap-1.5">
                 {[
-                  { title: "Geographic", text: stp.geographic },
-                  { title: "Demographic", text: stp.demographic },
-                  { title: "Psychographic", text: stp.psychographic },
-                  { title: "Behavioral", text: stp.behavioral },
-                  { title: "Needs", text: stp.needs },
+                  { title: 'Geographic', text: stp.geographic },
+                  { title: 'Demographic', text: stp.demographic },
+                  { title: 'Psychographic', text: stp.psychographic },
+                  { title: 'Behavioral', text: stp.behavioral },
+                  { title: 'Needs', text: stp.needs },
                 ]
                   .filter((item) => item.text)
                   .map((item) => (
@@ -418,8 +494,8 @@ export function PersonaDecode() {
             <EmptyDataState
               message={
                 loading
-                  ? "Calculating market sizing..."
-                  : "Market sizing will appear after analysis completes."
+                  ? 'Calculating market sizing...'
+                  : 'Market sizing will appear after analysis completes.'
               }
             />
           )}
@@ -428,13 +504,13 @@ export function PersonaDecode() {
 
       {advisor ? (
         <AdvisorIntelligence
-          recommendation={advisor.recommendation ?? ""}
+          recommendation={advisor.recommendation ?? ''}
           signals={[
-            { label: "Key Pain Point", value: advisor.keyPainPoint ?? "-" },
-            { label: "Brand Message", value: advisor.brandMessage ?? "-" },
+            { label: 'Key Pain Point', value: advisor.keyPainPoint ?? '-' },
+            { label: 'Brand Message', value: advisor.brandMessage ?? '-' },
             {
-              label: "Market Opportunity",
-              value: advisor.marketOpportunity ?? "-",
+              label: 'Market Opportunity',
+              value: advisor.marketOpportunity ?? '-',
             },
           ]}
         />
@@ -452,5 +528,5 @@ export function PersonaDecode() {
         </section>
       )}
     </div>
-  );
+  )
 }

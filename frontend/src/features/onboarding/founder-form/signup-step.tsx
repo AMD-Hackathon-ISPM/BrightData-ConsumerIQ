@@ -1,16 +1,18 @@
 import { Button } from '@/components/ui/button'
-import {
-  Field,
-  FieldGroup,
-} from '@/components/ui/field'
+import { Field, FieldGroup } from '@/components/ui/field'
 import { OnboardingShell } from './shared'
 
 type SignupStepProps = {
+  onBackToAuth: () => void
   onNext: () => void
   signedInAs: string | null
 }
 
-export function SignupStep({ onNext, signedInAs }: SignupStepProps) {
+export function SignupStep({
+  onBackToAuth,
+  onNext,
+  signedInAs,
+}: SignupStepProps) {
   return (
     <div className="w-full max-w-xl">
       <OnboardingShell progress={0}>
@@ -20,8 +22,8 @@ export function SignupStep({ onNext, signedInAs }: SignupStepProps) {
               Welcome to ConsumerIQ
             </h1>
             <p className="text-sm text-balance text-foreground-light">
-              Answer a few launch questions and ConsumerIQ will assemble a focused
-              research notebook for your category.
+              Answer a few launch questions and ConsumerIQ will assemble a
+              focused research notebook for your category.
             </p>
           </div>
 
@@ -33,9 +35,22 @@ export function SignupStep({ onNext, signedInAs }: SignupStepProps) {
           ) : null}
 
           <Field>
-            <div className="flex justify-center">
-              <Button className="w-full" variant="submit" onClick={onNext}>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                className="w-full sm:flex-1"
+                type="button"
+                variant="submit"
+                onClick={onNext}
+              >
                 Begin
+              </Button>
+              <Button
+                className="h-[42px] w-full sm:w-auto"
+                type="button"
+                variant="outline"
+                onClick={onBackToAuth}
+              >
+                Back to sign in
               </Button>
             </div>
           </Field>

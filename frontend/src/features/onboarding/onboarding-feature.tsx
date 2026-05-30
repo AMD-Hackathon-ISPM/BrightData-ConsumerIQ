@@ -1,141 +1,146 @@
-import { useCallback, useState } from "react";
-import { toast } from "sonner";
+import { useCallback, useState } from 'react'
+import { toast } from 'sonner'
+import { AnimatedPage } from '@/components/animated-page'
+import { Button } from '@/components/ui/button'
+import { useAuth } from '@/lib/auth'
 import {
   BusinessSetupStep,
   GeneratingStep,
   ProductContextStep,
   ResearchGoalsStep,
   SignupStep,
-} from "./founder-form";
-import { AnimatedPage } from "@/components/animated-page";
-import { Button } from "@/components/ui/button";
-import { submitFounderForm } from "./founder-form/api";
-import { useFounderPipelineStore } from "./founder-form/session-store";
-import { useAuth } from "@/lib/auth";
-import type {
-  FounderFormPayload,
-  FounderFormState,
-} from "./founder-form/types";
+} from './founder-form'
+import { submitFounderForm } from './founder-form/api'
+import { useFounderPipelineStore } from './founder-form/session-store'
+import type { FounderFormPayload, FounderFormState } from './founder-form/types'
 
 export function ConsumerIQOnboarding({
   onComplete,
 }: {
-  onComplete: () => void;
+  onComplete: () => void
 }) {
-  const { user, loginWithToken } = useAuth();
-  const activeSession = useFounderPipelineStore((state) => state.activeSession);
+  const { user, loginWithToken, logout } = useAuth()
+  const activeSession = useFounderPipelineStore((state) => state.activeSession)
   const draftFormState = useFounderPipelineStore(
-    (state) => state.draftFormState
-  );
-  const draftStep = useFounderPipelineStore((state) => state.draftStep);
+    (state) => state.draftFormState,
+  )
+  const draftStep = useFounderPipelineStore((state) => state.draftStep)
   const saveSubmittedSession = useFounderPipelineStore(
-    (state) => state.saveSubmittedSession
-  );
-  const saveDraft = useFounderPipelineStore((state) => state.saveDraft);
-  const setDraftStep = useFounderPipelineStore((state) => state.setDraftStep);
-  const clearDraft = useFounderPipelineStore((state) => state.clearDraft);
+    (state) => state.saveSubmittedSession,
+  )
+  const saveDraft = useFounderPipelineStore((state) => state.saveDraft)
+  const setDraftStep = useFounderPipelineStore((state) => state.setDraftStep)
+  const clearDraft = useFounderPipelineStore((state) => state.clearDraft)
   const initialStep = activeSession
     ? 5
-    : Math.min(4, Math.max(1, draftStep || 1));
-  const [step, setStep] = useState(() => initialStep);
+    : Math.min(4, Math.max(1, draftStep || 1))
+  const [step, setStep] = useState(() => initialStep)
   const [submitStatus, setSubmitStatus] = useState<
-    "idle" | "submitting" | "success" | "error"
-  >(() => (activeSession ? "success" : "idle"));
+    'idle' | 'submitting' | 'success' | 'error'
+  >(() => (activeSession ? 'success' : 'idle'))
   const [submittedFormId, setSubmittedFormId] = useState<string | null>(
-    () => activeSession?.formId ?? null
-  );
+    () => activeSession?.formId ?? null,
+  )
   const [formState, setFormState] = useState<FounderFormState>({
-    ...(activeSession?.formState ?? draftFormState ?? {
-      fullName: user?.fullName ?? "",
-      workEmail: user?.email ?? "",
-      password: user ? "AUTHENTICATED_USER" : "",
+    ...(activeSession?.formState ??
+      draftFormState ?? {
+        fullName: user?.fullName ?? '',
+        workEmail: user?.email ?? '',
+        password: user ? 'AUTHENTICATED_USER' : '',
 
-      workspaceName: "",
-      industry: "",
-      region: "",
-      country: "",
-      countryCode: "",
-      targetGen: [],
-      targetGender: "",
-      targetMarketDetail: "",
-      salesChannel: "",
+        workspaceName: '',
+        industry: '',
+        region: '',
+        country: '',
+        countryCode: '',
+        targetGen: [],
+        targetGender: '',
+        targetMarketDetail: '',
+        salesChannel: '',
 
-      problemToSolve: "",
-      productName: "",
-      productDescription: "",
-      uniqueSellingPoint: "",
-      mainFeatures: "",
-      competitiveAdvantage: "",
-      priceRangeMin: 0,
-      priceRangeMax: 0,
+        problemToSolve: '',
+        productName: '',
+        productDescription: '',
+        uniqueSellingPoint: '',
+        mainFeatures: '',
+        competitiveAdvantage: '',
+        priceRangeMin: 0,
+        priceRangeMax: 0,
 
-      researchGoals: [],
-    }),
-  });
+        researchGoals: [],
+      }),
+  })
 
   const updateField = useCallback(
     <T extends keyof FounderFormState>(
       field: T,
-      value: FounderFormState[T]
+      value: FounderFormState[T],
     ) => {
       setFormState((current) => {
-        const next = { ...current, [field]: value };
-        saveDraft(next);
-        return next;
-      });
+        const next = { ...current, [field]: value }
+        saveDraft(next)
+        return next
+      })
     },
-    [saveDraft]
-  );
+    [saveDraft],
+  )
 
   const goToStep = useCallback(
     (next: number) => {
-      setStep(next);
+      setStep(next)
       if (!activeSession) {
-        setDraftStep(next);
+        setDraftStep(next)
       }
     },
-    [activeSession, setDraftStep]
-  );
+    [activeSession, setDraftStep],
+  )
 
   const handleComplete = useCallback(async () => {
-    if (submitStatus === "success" || submitStatus === "error") {
-      onComplete();
-      return;
+    if (submitStatus === 'success' || submitStatus === 'error') {
+      onComplete()
+      return
     }
-    if (submitStatus === "submitting") {
-      return;
+    if (submitStatus === 'submitting') {
+      return
     }
 
-    setSubmitStatus("submitting");
-    setSubmittedFormId(null);
+    setSubmitStatus('submitting')
+    setSubmittedFormId(null)
 
-    const payload: FounderFormPayload = { ...formState };
+    const payload: FounderFormPayload = { ...formState }
 
     try {
-      const response = await submitFounderForm(payload);
-      setSubmittedFormId(response.id);
+      const response = await submitFounderForm(payload)
+      setSubmittedFormId(response.id)
       saveSubmittedSession({
         formId: response.id,
         formState: payload,
         email: formState.workEmail,
         fullName: formState.fullName,
         token: response.token,
-      });
+      })
       loginWithToken(
         { fullName: formState.fullName, email: formState.workEmail },
-        response.token
-      );
-      clearDraft();
-      setSubmitStatus("success");
+        response.token,
+      )
+      clearDraft()
+      setSubmitStatus('success')
     } catch (_error) {
       if (import.meta.env.DEV) {
-        setSubmitStatus("success");
-        return;
+        setSubmitStatus('success')
+        return
       }
-      setSubmitStatus("error");
-      toast.error("Unable to submit the founder form");
+      setSubmitStatus('error')
+      toast.error('Unable to submit the founder form')
     }
-  }, [clearDraft, formState, loginWithToken, onComplete, saveSubmittedSession, submitStatus]);
+  }, [
+    clearDraft,
+    formState,
+    loginWithToken,
+    onComplete,
+    saveSubmittedSession,
+    submitStatus,
+  ])
 
   const isBusinessSetupValid =
     formState.workspaceName.trim().length > 0 &&
@@ -143,12 +148,12 @@ export function ConsumerIQOnboarding({
     formState.region.trim().length > 0 &&
     formState.country.trim().length > 0 &&
     formState.countryCode.trim().length > 0 &&
-    formState.salesChannel.trim().length > 0;
+    formState.salesChannel.trim().length > 0
   const isProductContextValid =
     formState.problemToSolve.trim().length > 0 &&
     formState.productName.trim().length > 0 &&
-    formState.productDescription.trim().length > 0;
-  const isResearchGoalsValid = formState.researchGoals.length > 0;
+    formState.productDescription.trim().length > 0
+  const isResearchGoalsValid = formState.researchGoals.length > 0
 
   return (
     <main className="relative min-h-screen bg-background-default text-foreground-default">
@@ -169,6 +174,7 @@ export function ConsumerIQOnboarding({
         >
           {step === 1 ? (
             <SignupStep
+              onBackToAuth={logout}
               onNext={() => goToStep(2)}
               signedInAs={user?.email ?? null}
             />
@@ -185,30 +191,28 @@ export function ConsumerIQOnboarding({
               targetMarketDetail={formState.targetMarketDetail}
               salesChannel={formState.salesChannel}
               onWorkspaceNameChange={(value) =>
-                updateField("workspaceName", value)
+                updateField('workspaceName', value)
               }
-              onIndustryChange={(value) => updateField("industry", value)}
+              onIndustryChange={(value) => updateField('industry', value)}
               onRegionChange={(value) => {
-                updateField("region", value);
-                updateField("country", "");
-                updateField("countryCode", "");
+                updateField('region', value)
+                updateField('country', '')
+                updateField('countryCode', '')
               }}
               onCountryChange={(value) => {
-                updateField("country", value);
-                updateField("countryCode", "");
+                updateField('country', value)
+                updateField('countryCode', '')
               }}
-              onCountryCodeChange={(value) =>
-                updateField("countryCode", value)
-              }
-              onTargetGenChange={(value) => updateField("targetGen", value)}
+              onCountryCodeChange={(value) => updateField('countryCode', value)}
+              onTargetGenChange={(value) => updateField('targetGen', value)}
               onTargetGenderChange={(value) =>
-                updateField("targetGender", value)
+                updateField('targetGender', value)
               }
               onTargetMarketDetailChange={(value) =>
-                updateField("targetMarketDetail", value)
+                updateField('targetMarketDetail', value)
               }
               onSalesChannelChange={(value) =>
-                updateField("salesChannel", value)
+                updateField('salesChannel', value)
               }
               isNextDisabled={!isBusinessSetupValid}
             />
@@ -226,23 +230,23 @@ export function ConsumerIQOnboarding({
               mainFeatures={formState.mainFeatures}
               competitiveAdvantage={formState.competitiveAdvantage}
               price={formState.priceRangeMin}
-              onProblemChange={(value) => updateField("problemToSolve", value)}
-              onProductNameChange={(value) => updateField("productName", value)}
+              onProblemChange={(value) => updateField('problemToSolve', value)}
+              onProductNameChange={(value) => updateField('productName', value)}
               onProductDescriptionChange={(value) =>
-                updateField("productDescription", value)
+                updateField('productDescription', value)
               }
               onUniqueSellingPointChange={(value) =>
-                updateField("uniqueSellingPoint", value)
+                updateField('uniqueSellingPoint', value)
               }
               onMainFeaturesChange={(value) =>
-                updateField("mainFeatures", value)
+                updateField('mainFeatures', value)
               }
               onCompetitiveAdvantageChange={(value) =>
-                updateField("competitiveAdvantage", value)
+                updateField('competitiveAdvantage', value)
               }
               onPriceChange={(value) => {
-                updateField("priceRangeMin", value);
-                updateField("priceRangeMax", value);
+                updateField('priceRangeMin', value)
+                updateField('priceRangeMax', value)
               }}
               isNextDisabled={!isProductContextValid}
             />
@@ -250,14 +254,14 @@ export function ConsumerIQOnboarding({
             <ResearchGoalsStep
               onBack={() => goToStep(3)}
               onNext={() => {
-                goToStep(5);
-                void handleComplete();
+                goToStep(5)
+                void handleComplete()
               }}
               workspaceName={formState.workspaceName}
               industry={formState.industry}
               researchGoals={formState.researchGoals}
               onResearchGoalsChange={(next) =>
-                updateField("researchGoals", next)
+                updateField('researchGoals', next)
               }
               isNextDisabled={!isResearchGoalsValid}
             />
@@ -274,5 +278,5 @@ export function ConsumerIQOnboarding({
         </AnimatedPage>
       </div>
     </main>
-  );
+  )
 }
