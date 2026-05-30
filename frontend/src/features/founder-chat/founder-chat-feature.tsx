@@ -19,7 +19,7 @@ import { delay, streamText } from './lib/streaming'
 import type { ChatStatus, MessageType } from './types'
 
 const TASK_POLL_INTERVALS_MS = [1200, 2000, 3500, 5000]
-const TASK_TIMEOUT_MS = 60000
+const TASK_TIMEOUT_MS = 240000
 
 const formatSection = (label: string, value: unknown) => {
   if (
@@ -30,6 +30,21 @@ const formatSection = (label: string, value: unknown) => {
   }
 
   return `### ${label}\n\n\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``
+}
+
+const extractReasoning = (
+  result: Record<string, unknown>,
+): { content: string; duration: number } | undefined => {
+  const raw = result.reasoning
+  if (!raw || typeof raw !== 'object') return undefined
+  const obj = raw as { content?: unknown; duration?: unknown }
+  const content = typeof obj.content === 'string' ? obj.content.trim() : ''
+  const duration =
+    typeof obj.duration === 'number' && Number.isFinite(obj.duration)
+      ? Math.max(0, Math.round(obj.duration))
+      : 0
+  if (!content) return undefined
+  return { content, duration }
 }
 
 const formatInsights = (result: Record<string, unknown>) => {
@@ -101,6 +116,22 @@ export function FounderChat({
 
           return message
         }),
+      )
+    },
+    [],
+  )
+
+  const setMessageReasoning = useCallback(
+    (
+      messageId: string,
+      reasoning: { content: string; duration: number } | undefined,
+    ) => {
+      setMessages((previousMessages) =>
+        previousMessages.map((message) =>
+          message.versions.some((version) => version.id === messageId)
+            ? { ...message, reasoning }
+            : message,
+        ),
       )
     },
     [],
@@ -191,11 +222,6 @@ export function FounderChat({
     const assistantMessage: MessageType = {
       from: 'assistant',
       key: nanoid(),
-      reasoning: {
-        content:
-          'I queued the market scan, waited for the insights to complete, and formatted the results into a structured summary.',
-        duration: 5,
-      },
       versions: [{ content: '', id: assistantMessageId }],
     }
 
@@ -256,6 +282,10 @@ export function FounderChat({
             ) {
               return
             }
+            const reasoning = extractReasoning(result)
+            if (reasoning) {
+              setMessageReasoning(assistantMessageId, reasoning)
+            }
             const formatted = formatInsights(result)
             await streamResponse(
               assistantMessageId,
@@ -288,6 +318,7 @@ export function FounderChat({
     [
       createAssistantMessage,
       pollTaskResult,
+      setMessageReasoning,
       streamResponse,
       updateMessageContent,
     ],

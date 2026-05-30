@@ -898,7 +898,8 @@ def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | Non
 
     initSession(redis_client, session_id, prompt)
 
-    cloud_answer = _cloudFallbackChat(prompt, user_context, steps=[])
+    cloud_result = _cloudFallbackChat(prompt, user_context, steps=[])
+    cloud_answer = cloud_result.get('content', '') if isinstance(cloud_result, dict) else ''
     if cloud_answer and cloud_answer.strip():
         saveStep(
             redis_client,
@@ -907,10 +908,16 @@ def runAgentTask(self, prompt: str, max_steps: int = 6, user_context: dict | Non
         )
         closeSession(redis_client, session_id, success=True)
         print('[agent] Served by cloud LLM.', flush=True)
+        reasoning_text = cloud_result.get('reasoning', '') if isinstance(cloud_result, dict) else ''
+        duration_s = cloud_result.get('duration_s', 0) if isinstance(cloud_result, dict) else 0
         return {
             'session_id': session_id,
             'steps': [],
             'final_answer': cloud_answer,
+            'reasoning': {
+                'content': reasoning_text,
+                'duration': int(duration_s),
+            },
             'success': True,
             'source': 'cloud',
         }

@@ -2,10 +2,66 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from typing import Any
 
 import httpx
 import redis as redis_lib
+
+
+_THINK_TAG_PATTERN = re.compile(r'<think>([\s\S]*?)</think>', re.IGNORECASE)
+
+
+def _extractReasoningAndContent(message: dict) -> tuple[str, str]:
+    content = ''
+    raw_content = message.get('content')
+    if isinstance(raw_content, str):
+        content = raw_content
+    elif isinstance(raw_content, list):
+        for part in raw_content:
+            if isinstance(part, dict) and isinstance(part.get('text'), str):
+                content += part['text']
+
+    reasoning_parts: list[str] = []
+
+    for key in ('reasoning_content', 'reasoning'):
+        explicit = message.get(key)
+        if isinstance(explicit, str) and explicit.strip():
+            reasoning_parts.append(explicit.strip())
+
+    tag_matches = _THINK_TAG_PATTERN.findall(content)
+    if tag_matches:
+        for inner in tag_matches:
+            inner = inner.strip()
+            if inner:
+                reasoning_parts.append(inner)
+        content = _THINK_TAG_PATTERN.sub('', content)
+
+    reasoning = '\n\n'.join(part for part in reasoning_parts if part).strip()
+    return reasoning, content.strip()
+
+
+def _reasoningFromSteps(steps: list[dict[str, Any]], duration_s: float) -> dict[str, Any]:
+    parts: list[str] = []
+    for step in steps:
+        step_no = step.get('step', '?')
+        thought = step.get('thought')
+        action = step.get('action')
+        observation = step.get('observation_summary')
+        if thought:
+            parts.append(f'**Step {step_no} — thinking**\n{str(thought).strip()}')
+        if action:
+            action_input = step.get('action_input') or {}
+            input_text = json.dumps(action_input, ensure_ascii=False)[:200] if action_input else ''
+            parts.append(
+                f'**Step {step_no} — calling `{action}`**'
+                + (f'\n```json\n{input_text}\n```' if input_text else '')
+            )
+        if observation:
+            parts.append(f'_Observation:_ {str(observation)[:300]}')
+    if not parts:
+        return {'content': '', 'duration': int(duration_s)}
+    return {'content': '\n\n'.join(parts), 'duration': int(duration_s)}
 
 from backend.agent.tools import TOOL_SCHEMAS, callTool
 from backend.agent.summarizer import summarizeObservation, keyFinding
@@ -222,17 +278,34 @@ def _cloudFallbackChat(
     user_prompt: str,
     user_context: dict | None,
     steps: list[dict[str, Any]],
-) -> str:
+) -> dict[str, Any]:
+    started = time.monotonic()
+    empty_result = {'content': '', 'reasoning': '', 'duration_s': 0.0}
+
     api_key = (
-        os.getenv('OPENAI_API_KEY')
+        os.getenv('CHAT_API_KEY')
+        or os.getenv('OPENAI_API_KEY')
         or os.getenv('BRIGHTDATA_API_TOKEN')
         or os.getenv('BRIGHT_DATA_API_TOKEN')
     )
     if not api_key:
-        return ''
+        return empty_result
 
-    base_url = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1').rstrip('/')
-    model = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
+    base_url = (
+        os.getenv('CHAT_BASE_URL')
+        or os.getenv('OPENAI_BASE_URL')
+        or 'https://api.openai.com/v1'
+    ).rstrip('/')
+    model = (
+        os.getenv('CHAT_MODEL')
+        or os.getenv('OPENAI_MODEL')
+        or 'gpt-4o-mini'
+    )
+    using_dedicated_chat = bool(os.getenv('CHAT_BASE_URL') or os.getenv('CHAT_MODEL') or os.getenv('CHAT_API_KEY'))
+    print(
+        f'[agent] Cloud chat → model={model} provider={"chat-dedicated" if using_dedicated_chat else "shared-openai"}',
+        flush=True,
+    )
     user_message = _buildFallbackUserMessage(user_prompt, user_context, steps)
 
     try:
@@ -249,9 +322,9 @@ def _cloudFallbackChat(
                     {'role': 'user', 'content': user_message},
                 ],
                 'temperature': 0.3,
-                'max_tokens': 800,
+                'max_tokens': 1500,
             },
-            timeout=60,
+            timeout=90,
         )
         response.raise_for_status()
         payload = response.json()
@@ -259,13 +332,22 @@ def _cloudFallbackChat(
         if choices and isinstance(choices, list):
             message = choices[0].get('message') or {}
             if isinstance(message, dict):
-                content = message.get('content')
-                if isinstance(content, str):
-                    return content.strip()
-        return ''
+                reasoning, content = _extractReasoningAndContent(message)
+                duration_s = time.monotonic() - started
+                if reasoning:
+                    print(
+                        f'[agent] Cloud chat reasoning captured: {len(reasoning)} chars, {duration_s:.1f}s',
+                        flush=True,
+                    )
+                return {
+                    'content': content,
+                    'reasoning': reasoning,
+                    'duration_s': duration_s,
+                }
+        return {**empty_result, 'duration_s': time.monotonic() - started}
     except Exception as exc:
         print(f'[agent] Cloud fallback chat failed: {exc}')
-        return ''
+        return {**empty_result, 'duration_s': time.monotonic() - started}
 
 
 def runReactAgent(
@@ -281,6 +363,7 @@ def runReactAgent(
     if use_redis:
         initSession(redis_client, session_id, user_prompt)
 
+    react_started = time.monotonic()
     system = _buildSystemPrompt(user_context)
     prompt = _initialPrompt(system, user_prompt)
     steps: list[dict[str, Any]] = []
@@ -319,6 +402,7 @@ def runReactAgent(
                 'session_id': session_id,
                 'steps': steps,
                 'final_answer': str(final_answer),
+                'reasoning': _reasoningFromSteps(steps, time.monotonic() - react_started),
                 'success': True,
             }
 
@@ -361,13 +445,17 @@ def runReactAgent(
 
         prompt = _appendObservation(prompt, raw, obs_summary, findings)
 
+    react_duration_s = time.monotonic() - react_started
+
     llama_answer = ''
     llama_error: Exception | None = None
+    llama_started = time.monotonic()
     try:
         llama_answer = _fallbackChat(llm, user_prompt, user_context, steps)
     except Exception as exc:
         llama_error = exc
         print(f'[agent] Llama fallback chat failed: {exc}')
+    llama_duration_s = time.monotonic() - llama_started
 
     if llama_answer and llama_answer.strip():
         if use_redis:
@@ -376,11 +464,13 @@ def runReactAgent(
             'session_id': session_id,
             'steps': steps,
             'final_answer': llama_answer,
+            'reasoning': _reasoningFromSteps(steps, react_duration_s + llama_duration_s),
             'success': True,
             'fallback': 'llama',
         }
 
-    cloud_answer = _cloudFallbackChat(user_prompt, user_context, steps)
+    cloud_result = _cloudFallbackChat(user_prompt, user_context, steps)
+    cloud_answer = cloud_result.get('content', '')
     if cloud_answer and cloud_answer.strip():
         if use_redis:
             closeSession(redis_client, session_id, success=True)
@@ -388,6 +478,10 @@ def runReactAgent(
             'session_id': session_id,
             'steps': steps,
             'final_answer': cloud_answer,
+            'reasoning': {
+                'content': cloud_result.get('reasoning', ''),
+                'duration': int(cloud_result.get('duration_s', 0)),
+            },
             'success': True,
             'fallback': 'cloud',
         }
