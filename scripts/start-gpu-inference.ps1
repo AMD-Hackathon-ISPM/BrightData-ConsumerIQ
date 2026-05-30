@@ -82,6 +82,16 @@ subsets:
 
 $endpointsYaml | kubectl apply -f -
 Write-Host "==> Done. Inference endpoints wired to k8s."
-Write-Host "==> Verifying connectivity (DNS + TCP through ClusterIP)..."
-kubectl run -n consumeriq endpoint-check --rm -i --image=busybox --restart=Never --timeout=20s -- `
-    sh -c "wget -q -O- --timeout=5 http://consumeriq-inference.consumeriq.svc.cluster.local:8080/v1/models >/dev/null && echo 'inference: OK' || echo 'inference: FAIL'" 2>$null
+
+# Only verify connectivity if the inference Service already exists.
+# On a fresh install the Service is created later (step 6 of README), so this
+# check is skipped on first run and only fires on subsequent re-runs.
+$serviceExists = (kubectl get svc -n consumeriq consumeriq-inference 2>$null | Out-String).Trim()
+if ($serviceExists) {
+    Write-Host "==> Verifying connectivity (DNS + TCP through ClusterIP)..."
+    kubectl run -n consumeriq endpoint-check --rm -i --image=busybox --restart=Never --timeout=20s -- `
+        sh -c "wget -q -O- --timeout=5 http://consumeriq-inference.consumeriq.svc.cluster.local:8080/v1/models >/dev/null && echo 'inference: OK' || echo 'inference: FAIL'" 2>$null
+} else {
+    Write-Host "==> Service consumeriq-inference not yet deployed. Skip verification."
+    Write-Host "    (Run this script again after 'kubectl apply -k infra/k8s/inference' to verify.)"
+}

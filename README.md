@@ -4,6 +4,8 @@ AI-powered consumer intelligence platform for founders launching e-commerce prod
 
 For the deep technical writeup (3-layer LLM pipeline, GPU-in-k3d workaround, recency-weighted pgvector, Cognee integration), see [ForHackathon.md](ForHackathon.md).
 
+For deploying to a real VPS with k3s instead of local k3d (HTTPS, public registry, persistent storage, cron emails), see [DEPLOY.md](DEPLOY.md).
+
 ## Architecture
 
 | Layer | Service | Language | Role |

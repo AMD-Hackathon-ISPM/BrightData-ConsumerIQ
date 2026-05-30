@@ -17,6 +17,12 @@ type PersonaCard = {
   goals?: string;
 };
 
+type TamSamSomTier = {
+  value?: string;
+  percentOfParent?: number;
+  description?: string;
+};
+
 type PersonaResult = {
   personas?: PersonaCard[];
   stp?: {
@@ -34,6 +40,12 @@ type PersonaResult = {
     keyPainPoint?: string;
     brandMessage?: string;
     marketOpportunity?: string;
+  };
+  tamSamSom?: {
+    tam?: TamSamSomTier;
+    sam?: TamSamSomTier;
+    som?: TamSamSomTier;
+    methodology?: string;
   };
 };
 
@@ -74,6 +86,92 @@ function EmptyDataState({
   return (
     <div className="flex min-h-[8rem] flex-col items-center justify-center rounded-lg border border-dashed bg-muted/10 py-10 text-center">
       <p className="max-w-xs text-sm text-muted-foreground">{message}</p>
+    </div>
+  );
+}
+
+function TamSamSomChart({
+  data,
+}: {
+  data: NonNullable<PersonaResult["tamSamSom"]>;
+}) {
+  const tiers: Array<{
+    key: "tam" | "sam" | "som";
+    label: string;
+    tier?: TamSamSomTier;
+    accent: string;
+    ring: string;
+  }> = [
+    {
+      key: "tam",
+      label: "TAM",
+      tier: data.tam,
+      accent: "bg-chart-5/15 text-chart-5",
+      ring: "ring-chart-5/30",
+    },
+    {
+      key: "sam",
+      label: "SAM",
+      tier: data.sam,
+      accent: "bg-chart-4/15 text-chart-4",
+      ring: "ring-chart-4/30",
+    },
+    {
+      key: "som",
+      label: "SOM",
+      tier: data.som,
+      accent: "bg-chart-3/15 text-chart-3",
+      ring: "ring-chart-3/30",
+    },
+  ];
+
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <div className="grid gap-2">
+        {tiers.map(({ key, label, tier, accent, ring }) => (
+          <div
+            className={cn(
+              "flex min-w-0 items-start gap-3 rounded-lg border bg-background-default p-3 ring-1",
+              ring,
+            )}
+            key={key}
+          >
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center justify-center rounded-md px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]",
+                accent,
+              )}
+            >
+              {label}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                <span className="break-words font-mono text-base font-semibold tabular-nums">
+                  {tier?.value || "—"}
+                </span>
+                {typeof tier?.percentOfParent === "number" ? (
+                  <span className="font-mono text-[11px] text-foreground-light tabular-nums">
+                    {tier.percentOfParent}% of {key === "tam" ? "global" : key === "sam" ? "TAM" : "SAM"}
+                  </span>
+                ) : null}
+              </div>
+              {tier?.description ? (
+                <p className="mt-0.5 break-words text-xs text-foreground-light">
+                  {tier.description}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+      {data.methodology ? (
+        <p className="break-words border-t pt-2.5 text-[11px] leading-relaxed text-foreground-light">
+          <span className="font-medium text-foreground-default">
+            Methodology —{" "}
+          </span>
+          {data.methodology}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -145,6 +243,7 @@ export function PersonaDecode() {
 
   const stp = liveData?.stp ?? null;
   const advisor = liveData?.advisorIntelligence ?? null;
+  const tamSamSom = liveData?.tamSamSom ?? null;
 
   const initials = (name: string) =>
     name
@@ -313,7 +412,17 @@ export function PersonaDecode() {
           <div className="mb-3 min-w-0">
             <h3 className="break-words font-semibold">TAM / SAM / SOM</h3>
           </div>
-          <EmptyDataState message="Market sizing will appear after analysis completes." />
+          {tamSamSom && (tamSamSom.tam || tamSamSom.sam || tamSamSom.som) ? (
+            <TamSamSomChart data={tamSamSom} />
+          ) : (
+            <EmptyDataState
+              message={
+                loading
+                  ? "Calculating market sizing..."
+                  : "Market sizing will appear after analysis completes."
+              }
+            />
+          )}
         </section>
       </div>
 
