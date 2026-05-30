@@ -311,6 +311,10 @@ def _translateSignalsIfNeeded(signals: list[dict[str, Any]]) -> list[dict[str, A
     return signals
 
 
+_LLM_PROMPT_MAX_SIGNALS = int(os.getenv('LLM_PROMPT_MAX_SIGNALS', '15'))
+_LLM_PROMPT_SIGNAL_CHAR_LIMIT = int(os.getenv('LLM_PROMPT_SIGNAL_CHAR_LIMIT', '300'))
+
+
 def _buildPrompt(categoryName: str, signals: list[dict[str, Any]]) -> str:
     if not signals:
         return (
@@ -320,9 +324,12 @@ def _buildPrompt(categoryName: str, signals: list[dict[str, Any]]) -> str:
             'JSON:'
         )
 
+    # Keep the prompt within the local Llama context window.
+    trimmed_signals = signals[:_LLM_PROMPT_MAX_SIGNALS]
+
     contextLines: list[str] = []
-    for signal in signals:
-        signalText = signal['signalText']
+    for signal in trimmed_signals:
+        signalText = str(signal['signalText'])[:_LLM_PROMPT_SIGNAL_CHAR_LIMIT]
         line = f'- {signalText}'
         meta: list[str] = []
         sourceType = signal.get('sourceType')
