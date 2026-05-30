@@ -62,7 +62,9 @@ subsets:
   - addresses:
       - ip: $inferenceIP
     ports:
-      - port: 8080
+      - name: http
+        port: 8080
+        protocol: TCP
 ---
 apiVersion: v1
 kind: Endpoints
@@ -73,8 +75,13 @@ subsets:
   - addresses:
       - ip: $translatorIP
     ports:
-      - port: 8080
+      - name: http
+        port: 8080
+        protocol: TCP
 "@
 
 $endpointsYaml | kubectl apply -f -
 Write-Host "==> Done. Inference endpoints wired to k8s."
+Write-Host "==> Verifying connectivity (DNS + TCP through ClusterIP)..."
+kubectl run -n consumeriq endpoint-check --rm -i --image=busybox --restart=Never --timeout=20s -- `
+    sh -c "wget -q -O- --timeout=5 http://consumeriq-inference.consumeriq.svc.cluster.local:8080/v1/models >/dev/null && echo 'inference: OK' || echo 'inference: FAIL'" 2>$null

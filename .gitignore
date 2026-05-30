@@ -8,6 +8,9 @@ testing/*
 
 .venv*
 .env
+.en.env
 
 tes.md
 .claude
+coredns-backup.yaml
+SCRAPING_RUNTIME_DEBUG_LOG.md

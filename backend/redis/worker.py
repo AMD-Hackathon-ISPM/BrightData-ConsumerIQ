@@ -85,6 +85,10 @@ _PIPELINE_TWITTER_RESULTS_PER_KEYWORD = int(
     os.getenv('PIPELINE_TWITTER_RESULTS_PER_KEYWORD', '2')
 )
 _PIPELINE_ALLOW_FALLBACK_SIGNALS = os.getenv('PIPELINE_ALLOW_FALLBACK_SIGNALS', 'true').lower() == 'true'
+_PIPELINE_TOTAL_BUDGET_SECONDS = int(os.getenv('PIPELINE_TOTAL_BUDGET_SECONDS', '600'))
+_PIPELINE_MAX_MARKETPLACES_PER_KEYWORD = int(
+    os.getenv('PIPELINE_MAX_MARKETPLACES_PER_KEYWORD', '2')
+)
 
 
 def _runTwitterSerpDiscovery(keyword: str, country: str, limit: int) -> dict[str, Any]:
@@ -666,11 +670,19 @@ def scrapeMarketSignals(
                 snapshot_wait_seconds=_PIPELINE_SNAPSHOT_WAIT_SECONDS,
                 record_limit=_PIPELINE_MARKETPLACE_RECORD_LIMIT,
             )
+            status_extras = ''
+            if marketData.get('status') != 'success':
+                status_extras = (
+                    f' error={marketData.get("error")!r}'
+                    f' httpStatus={marketData.get("httpStatus")}'
+                    f' response={str(marketData.get("response"))[:300]!r}'
+                )
             print(
                 f'[scraping] Marketplace discovery status={marketData.get("status")} '
                 f'marketplace={mp} keyword={keyword} '
                 f'duration={time.monotonic() - market_started:.1f}s '
-                f'elapsed={_pipelineElapsed(started_at)}',
+                f'elapsed={_pipelineElapsed(started_at)}'
+                f'{status_extras}',
                 flush=True,
             )
             if marketData.get('status') == 'success':

@@ -74,7 +74,7 @@ kubectl apply -k infra/k8s/redis
 ```powershell
 # Python backend
 docker build -t localhost:5001/consumeriq-backend:local -f backend/Dockerfile .
-docker push localhost:5001/consumeriq-backend:local
+  docker push localhost:5001/consumeriq-backend:local
 
 # Go service
 cd backend/go-service; go mod tidy; cd ../..
