@@ -40,6 +40,24 @@ spec:
                   name: consumeriq-api-keys
                   key: OPENAI_MODEL
                   optional: true
+            - name: CHAT_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: CHAT_BASE_URL
+                  optional: true
+            - name: CHAT_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: CHAT_MODEL
+                  optional: true
+            - name: CHAT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: consumeriq-api-keys
+                  key: CHAT_API_KEY
+                  optional: true
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:

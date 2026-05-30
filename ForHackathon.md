@@ -140,28 +140,44 @@ Tokens / latency: ~6000 max output tokens, ~30–60s wall time, ~$0.01–0.03 pe
 
 ## 4. LLM Routing Fabric
 
-Six distinct LLM jobs across the codebase, six different cost/latency/quality tradeoffs. We split them between local Llama and cloud DeepSeek based on a simple rule: **strict JSON schema or polished prose → cloud; loose JSON, keyword lists, or token-heavy bulk passes → local**.
+Eight distinct LLM jobs across the codebase, three different providers, each picked for what it's actually best at. The rule: **strict JSON schema → AI/ML/DeepSeek; open-ended reasoning → Featherless/Qwen3.5-27B-distilled; loose JSON, keyword lists, or token-heavy bulk passes → local Llama**.
 
 | Job | Endpoint | Model | Why |
 |---|---|---|---|
-| Scraping keyword generation | local | Llama 3.2 3B | 6 short strings, no schema penalty; high frequency (every form) |
-| Compliance keyword generation | local | Llama 3.2 3B | Same shape as above; runs in daily cron, cost adds up |
-| Layer 1 omni-prompt (gtm/finance/security) | local | Llama 3.2 3B | Loose JSON, stops early at `\n\n`; small enough that drift is acceptable |
-| **Layer 2 dashboard generation** | **cloud** | **DeepSeek v3.1 / gpt-4o-mini** | 6000-token strict JSON; the demo's primary output; quality matters |
-| **Persona Decode** (3 personas + STP + advisor) | **cloud-primary, Llama fallback** | DeepSeek v3.1 | Long structured JSON, user-blocking, schema-validated |
-| **Chat / ReAct agent** | **cloud-primary, Llama fallback** | DeepSeek v3.1 | User-visible answer quality matters; Llama 3.2 3B couldn't reliably drive a ReAct JSON loop |
-| BrightData ChatGPT cross-reference (when enabled) | local | Llama 3.2 3B | Reshapes raw text into a schema; uses Llama as a small JSON formatter |
-| **Cognee entity extraction** | **cloud** | DeepSeek v3.1 | Quality of the graph is downstream-load-bearing for chat recall |
+| Scraping keyword generation | local GPU | Llama 3.2 3B | 6 short strings, no schema penalty; high frequency (every form) |
+| Compliance keyword generation | local GPU | Llama 3.2 3B | Same shape as above; runs in daily cron, cost adds up |
+| Layer 1 omni-prompt (gtm/finance/security) | local GPU | Llama 3.2 3B | Loose JSON, stops early at `\n\n`; small enough that drift is acceptable |
+| BrightData ChatGPT cross-reference (when enabled) | local GPU | Llama 3.2 3B | Reshapes raw text into a schema; tiny formatter task |
+| **Layer 2 dashboard generation** | **AI/ML API** | **DeepSeek v3.1** | 6000-token strict JSON with 4 nested sections; JSON-mode supported; cheap |
+| **Persona Decode** (3 personas + STP + advisor) | **AI/ML API, Llama fallback** | DeepSeek v3.1 | Long structured JSON, user-blocking, schema-validated post-response |
+| **Cognee entity extraction** | **AI/ML API** | DeepSeek v3.1 | Volume-heavy graph ingestion; structured extraction not deep reasoning |
+| **Advisor chat (ReAct agent + Cognee recall)** | **Featherless AI, Llama fallback** | **Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled** | The one user-visible conversational surface; reasoning depth > schema discipline; distilled from Claude Opus traces |
 
-The cloud provider is single-source-of-truth via three env vars in `consumeriq-api-keys`:
+### Why split chat from dashboard providers
+
+The chat is the one place where **reasoning depth > schema discipline**. The user asks open-ended things ("find negative review drivers", "where should I expand next"). A reasoning-distilled model trains on chain-of-thought traces — exactly the skill the advisor bot needs.
+
+Dashboard generation doesn't benefit from reasoning depth — it benefits from following a strict 6000-token JSON schema. DeepSeek-Chat is best-in-class for that and we'd be paying premium for capability we wouldn't use.
+
+Splitting providers also gives us **independent failure domains** — if Featherless rate-limits during a demo, only the chat drops to local Llama. If AI/ML API has a hiccup, dashboards retry but chat is unaffected. Neither provider can take the other down.
+
+### Env contract (single-source-of-truth, Secret-driven)
 
 ```env
+# Dashboard + Persona + Cognee (workhorse provider)
 OPENAI_BASE_URL=https://api.aimlapi.com/v1
 OPENAI_MODEL=deepseek/deepseek-chat-v3.1
 OPENAI_API_KEY=<aimlapi key>
+
+# Advisor chat (reasoning-tier provider, falls back to OPENAI_* if any var is missing)
+CHAT_BASE_URL=https://api.featherless.ai/v1
+CHAT_MODEL=Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled
+CHAT_API_KEY=<featherless key>
 ```
 
-All three are read from a Secret with `secretKeyRef` (with `optional: true`, so a missing key falls back to the in-code default). Flipping to OpenAI direct, Claude, Llama-70B-via-AIML, etc. is a one-line `.env` edit + `kubectl create secret ... --from-env-file=.env` + `kubectl rollout restart`. The Python code never has to change.
+All six vars are read from `consumeriq-api-keys` with `secretKeyRef: optional: true` — so any missing key cascades through code-side defaults rather than crashing the deployment. The Python code reads `CHAT_*` first, falls back to `OPENAI_*` if any is unset, so partial config (e.g. `CHAT_BASE_URL` set but `CHAT_API_KEY` empty) just degrades gracefully back to the shared provider instead of erroring.
+
+Swapping any model is a `.env` edit + `kubectl create secret … --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -` + `kubectl rollout restart` — no Python changes ever needed.
 
 ---
 
