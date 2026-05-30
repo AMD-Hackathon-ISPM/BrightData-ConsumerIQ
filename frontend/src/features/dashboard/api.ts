@@ -102,6 +102,8 @@ export type DashboardData = {
 
 export type InsightsResponse = {
   status: string;
+  formId?: string;
+  formStatus?: string;
   category: string;
   country: string;
   gtmIntelligence?: Record<string, unknown>;

@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 import psycopg2
 import requests
 from celery import Celery
+from celery.exceptions import Retry
 from kombu import Queue
 from backend.models.embeddings import createEmbedder, embedTexts
 from backend.models.llm import createLlm
@@ -1169,6 +1170,20 @@ def _updateInferenceStage(form_id: str, stage: str) -> None:
         print(f'[pipeline] Failed to update inference_stage={stage}: {exc}')
 
 
+def _updateFormStatus(form_id: str, status: str) -> None:
+    if not form_id:
+        return
+    try:
+        with psycopg2.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'UPDATE founderForms SET status = %s WHERE id = %s',
+                    (status, form_id),
+                )
+    except Exception as exc:
+        print(f'[pipeline] Failed to update form status={status}: {exc}')
+
+
 def _dashboardReadyLink(token: str, form_id: str) -> str:
     query = urlencode({'session': token, 'formId': form_id})
     return f'{APP_PUBLIC_URL}/?{query}'
@@ -1356,72 +1371,82 @@ def _dashboardIsComplete(dashboard: Any) -> bool:
 def processLlmInsights(self, categoryName: str, country: str = '', form_id: str = ''):
     print(f'Worker picked up job for category: {categoryName}, country: {country}, form_id: {form_id}')
 
-    signals = _fetchRelevantSignals(categoryName, country)
-    if not signals:
-        try:
-            raise self.retry(countdown=90)
-        except self.MaxRetriesExceededError:
+    _updateFormStatus(form_id, 'processing')
+    try:
+        signals = _fetchRelevantSignals(categoryName, country)
+        if not signals:
+            try:
+                raise self.retry(countdown=90)
+            except self.MaxRetriesExceededError:
+                _updateInferenceStage(form_id, 'failed')
+                _updateFormStatus(form_id, 'failed')
+                return {
+                    'category': categoryName,
+                    'status': 'failed',
+                    'error': 'No signals found after retries.',
+                }
+
+        _updateInferenceStage(form_id, 'analyzing')
+        translatedSignals = _translateSignalsIfNeeded(signals)
+        insights = _runLlmInsights(categoryName, translatedSignals)
+
+        _updateInferenceStage(form_id, 'cross_referencing')
+        insights['extraAnalysis'] = _runOpenAiExtraAnalysis(categoryName, country, insights, translatedSignals)
+
+        extra = insights.get('extraAnalysis') or {}
+        dashboard = extra.get('dashboardData') if isinstance(extra, dict) else None
+
+        _updateInferenceStage(form_id, 'synthesizing')
+        if not _dashboardIsComplete(dashboard):
+            try:
+                print('[openai] Dashboard data incomplete; running dashboard-only retry.')
+                from backend.models.openai_cross_reference import generate_dashboard_data
+                dashboard = generate_dashboard_data(
+                    categoryName, country, insights, translatedSignals
+                )
+                if not isinstance(extra, dict):
+                    extra = {}
+                extra['dashboardData'] = dashboard
+                insights['extraAnalysis'] = extra
+            except Exception as exc:
+                print(f'[openai] Dashboard retry failed: {exc}')
+
+        _saveCategoryInsights(categoryName, country, insights)
+
+        if not _dashboardIsComplete(dashboard):
             _updateInferenceStage(form_id, 'failed')
+            _updateFormStatus(form_id, 'failed')
             return {
-                'category': categoryName,
+                **insights,
+                'contextSignals': translatedSignals,
                 'status': 'failed',
-                'error': 'No signals found after retries.',
+                'error': 'Dashboard data is incomplete after synthesis.',
             }
 
-    _updateInferenceStage(form_id, 'analyzing')
-    translatedSignals = _translateSignalsIfNeeded(signals)
-    insights = _runLlmInsights(categoryName, translatedSignals)
+        _updateInferenceStage(form_id, 'completed')
+        _updateFormStatus(form_id, 'completed')
+        _sendDashboardReadyEmail(form_id, categoryName, country)
 
-    _updateInferenceStage(form_id, 'cross_referencing')
-    insights['extraAnalysis'] = _runOpenAiExtraAnalysis(categoryName, country, insights, translatedSignals)
+        if (
+            _COGNEE_ENABLED
+            and isinstance(dashboard, dict)
+            and any(dashboard.get(k) for k in _DASHBOARD_REQUIRED_SECTIONS)
+        ):
+            try:
+                ingestDashboardIntoMemory.delay(categoryName, country, dashboard)
+            except Exception as exc:
+                print(f'[cognee] Dashboard dispatch failed: {exc}')
 
-    extra = insights.get('extraAnalysis') or {}
-    dashboard = extra.get('dashboardData') if isinstance(extra, dict) else None
-
-    _updateInferenceStage(form_id, 'synthesizing')
-    if not _dashboardIsComplete(dashboard):
-        try:
-            print('[openai] Dashboard data incomplete; running dashboard-only retry.')
-            from backend.models.openai_cross_reference import generate_dashboard_data
-            dashboard = generate_dashboard_data(
-                categoryName, country, insights, translatedSignals
-            )
-            if not isinstance(extra, dict):
-                extra = {}
-            extra['dashboardData'] = dashboard
-            insights['extraAnalysis'] = extra
-        except Exception as exc:
-            print(f'[openai] Dashboard retry failed: {exc}')
-
-    _saveCategoryInsights(categoryName, country, insights)
-
-    if not _dashboardIsComplete(dashboard):
-        _updateInferenceStage(form_id, 'failed')
+        print(f'Job complete for {categoryName}! Saved to Postgres.')
         return {
             **insights,
             'contextSignals': translatedSignals,
-            'status': 'failed',
-            'error': 'Dashboard data is incomplete after synthesis.',
         }
-
-    _updateInferenceStage(form_id, 'completed')
-    _sendDashboardReadyEmail(form_id, categoryName, country)
-
-    if (
-        _COGNEE_ENABLED
-        and isinstance(dashboard, dict)
-        and any(dashboard.get(k) for k in _DASHBOARD_REQUIRED_SECTIONS)
-    ):
-        try:
-            ingestDashboardIntoMemory.delay(categoryName, country, dashboard)
-        except Exception as exc:
-            print(f'[cognee] Dashboard dispatch failed: {exc}')
-
-    print(f'Job complete for {categoryName}! Saved to Postgres.')
-    return {
-        **insights,
-        'contextSignals': translatedSignals,
-    }
+    except Retry:
+        raise
+    except Exception:
+        _updateFormStatus(form_id, 'failed')
+        raise
 
 
 @celeryApp.task(name='scrapeMarketplacePage', queue='scraping')

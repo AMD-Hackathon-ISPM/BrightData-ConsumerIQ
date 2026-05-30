@@ -3,8 +3,6 @@ import { AuthGate } from '@/features/auth/AuthGate'
 import { useAuth } from '@/lib/auth'
 import { useEffect, useState } from 'react'
 
-const CONSUMER_IQ_ONBOARDED_KEY = 'consumeriq:onboarded'
-
 type SessionResponse = {
   email: string
   user_id: number
@@ -41,7 +39,6 @@ function App() {
           { fullName: email.split('@')[0] || 'User', email },
           token,
         )
-        window.localStorage.setItem(CONSUMER_IQ_ONBOARDED_KEY, email)
       })
       .catch(() => {})
       .finally(() => {

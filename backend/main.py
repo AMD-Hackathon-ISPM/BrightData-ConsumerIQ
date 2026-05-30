@@ -372,15 +372,27 @@ async def getInsightsForCurrentUser(request: Request):
         with psycopg2.connect(_DATABASE_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    'SELECT payload FROM founderforms WHERE user_id = %s ORDER BY createdat DESC LIMIT 1',
+                    'SELECT id, status, payload FROM founderforms WHERE user_id = %s ORDER BY createdat DESC LIMIT 1',
                     (int(user_id),),
                 )
                 row = cur.fetchone()
                 if not row:
                     return None
-                form = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+                form_id = row[0]
+                form_status = row[1] or 'received'
+                form = json.loads(row[2]) if isinstance(row[2], str) else row[2]
                 category = form.get('industry', '')
                 country = form.get('countryCode', 'us')
+                base = {
+                    'formId': form_id,
+                    'formStatus': form_status,
+                    'category': category,
+                    'country': country,
+                }
+                if form_status == 'failed':
+                    return {'status': 'failed', **base}
+                if form_status != 'completed':
+                    return {'status': 'processing', **base}
                 cur.execute(
                     '''SELECT gtmintelligence, financeintelligence, securitycompliance,
                               extraanalysis, status, lastupdated
@@ -391,11 +403,10 @@ async def getInsightsForCurrentUser(request: Request):
                 )
                 ins = cur.fetchone()
                 if not ins:
-                    return {'status': 'pending', 'category': category, 'country': country}
+                    return {'status': 'completed', **base}
                 return {
                     'status': ins[4],
-                    'category': category,
-                    'country': country,
+                    **base,
                     'gtmIntelligence': ins[0],
                     'financeIntelligence': ins[1],
                     'securityCompliance': ins[2],

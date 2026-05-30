@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SpiralLoader } from "@/components/ui/spiral-loader";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import {
-  requestEmailWhenReady,
   startPersonaDecode,
   PERSONA_TASK_KEY,
 } from "./api";
@@ -77,8 +74,6 @@ export function GeneratingStep({
   const [pipeline, setPipeline] = useState<PipelineStatus | null>(null);
   const [revealed, setRevealed] = useState(0);
   const personaStarted = useRef(false);
-  const [emailRequested, setEmailRequested] = useState(false);
-  const [emailSubmitting, setEmailSubmitting] = useState(false);
 
   const signalsStored = pipeline?.scraping.signalsStored ?? 0;
 
@@ -189,20 +184,6 @@ export function GeneratingStep({
     onComplete();
   };
 
-  const handleEmailRequest = async () => {
-    if (!formId || emailSubmitting || emailRequested) return;
-    setEmailSubmitting(true);
-    try {
-      await requestEmailWhenReady(formId);
-      setEmailRequested(true);
-      toast.success("We'll email you when your dashboard is ready.");
-    } catch {
-      toast.error("Unable to schedule the email. Please try again.");
-    } finally {
-      setEmailSubmitting(false);
-    }
-  };
-
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center">
       <button
@@ -251,19 +232,9 @@ export function GeneratingStep({
       </div>
 
       {submitStatus === "success" && formId && !canContinue ? (
-        <Button
-          className="mt-6"
-          onClick={handleEmailRequest}
-          type="button"
-          variant="ghost"
-          disabled={emailSubmitting || emailRequested}
-        >
-          {emailRequested
-            ? "Email queued"
-            : emailSubmitting
-              ? "Saving email…"
-              : "Email me when ready"}
-        </Button>
+        <p className="mt-6 text-sm text-foreground-light">
+          We'll email you when your dashboard is ready.
+        </p>
       ) : null}
     </div>
   );

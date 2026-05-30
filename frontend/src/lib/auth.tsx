@@ -6,10 +6,12 @@ import {
     useState,
     type ReactNode,
 } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useFounderPipelineStore } from "@/features/onboarding/founder-form/session-store";
 
 const STORAGE_KEY = "consumer-iq-auth";
 const TOKEN_KEY = "consumer-iq-token";
+const CONSUMER_IQ_ONBOARDED_KEY = "consumeriq:onboarded";
 const SESSION_CACHE_KEYS = [
     "ciq_persona_data",
     "ciq_persona_task_id",
@@ -91,6 +93,13 @@ function clearSessionCache() {
     for (const key of SESSION_CACHE_KEYS) {
         localStorage.removeItem(key);
     }
+    localStorage.removeItem(CONSUMER_IQ_ONBOARDED_KEY);
+}
+
+function clearUserScopedState(queryClient: QueryClient) {
+    clearSessionCache();
+    useFounderPipelineStore.getState().resetAll();
+    queryClient.clear();
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -100,8 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const setAuthenticatedUser = useCallback(
         (next: AuthUser, token: string) => {
             if (user?.email !== next.email) {
-                clearSessionCache();
-                queryClient.clear();
+                clearUserScopedState(queryClient);
             }
             setUser(next);
             persistUser(next, token);
@@ -190,15 +198,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setUser(null);
         persistUser(null);
-        clearSessionCache();
-        queryClient.clear();
+        clearUserScopedState(queryClient);
     }, [queryClient]);
 
     const clearLocalSession = useCallback(() => {
         setUser(null);
         persistUser(null);
-        clearSessionCache();
-        queryClient.clear();
+        clearUserScopedState(queryClient);
     }, [queryClient]);
 
     const value = useMemo<AuthContextValue>(

@@ -26,6 +26,7 @@ type FounderPipelineStore = {
   clearDraft: () => void;
   markCompleted: () => void;
   clearSession: () => void;
+  resetAll: () => void;
 };
 
 export const useFounderPipelineStore = create<FounderPipelineStore>()(
@@ -52,6 +53,12 @@ export const useFounderPipelineStore = create<FounderPipelineStore>()(
             : null,
         })),
       clearSession: () => set({ activeSession: null }),
+      resetAll: () =>
+        set({
+          activeSession: null,
+          draftFormState: null,
+          draftStep: 1,
+        }),
     }),
     {
       name: "consumeriq:founder-pipeline",
