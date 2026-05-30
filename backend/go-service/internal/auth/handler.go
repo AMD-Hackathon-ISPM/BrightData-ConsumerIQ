@@ -143,6 +143,30 @@ func (h *Handler) Validate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *Handler) Session(w http.ResponseWriter, r *http.Request) {
+	token := extractToken(r)
+	if token == "" {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	data, err := ValidateSession(r.Context(), h.rdb, token)
+	if err != nil {
+		log.Printf("session validate: %v", err)
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if data == nil {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"user_id": data.UserID,
+		"email":   data.Email,
+	})
+}
+
 func extractToken(r *http.Request) string {
 	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		return strings.TrimPrefix(h, "Bearer ")

@@ -142,6 +142,7 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.rememberDashboardSession(r, formID, userID, token, p)
 	h.enqueueFormReceived(formID, userID, p)
 
 	writeJSON(w, http.StatusCreated, map[string]any{
@@ -150,6 +151,32 @@ func (h *Handler) Submit(w http.ResponseWriter, r *http.Request) {
 		"token":   token,
 		"user_id": userID,
 	})
+}
+
+func (h *Handler) rememberDashboardSession(
+	r *http.Request,
+	formID string,
+	userID int64,
+	token string,
+	p FounderFormPayload,
+) {
+	if h.rdb == nil || formID == "" || token == "" || p.WorkEmail == "" {
+		return
+	}
+	payload, err := json.Marshal(map[string]any{
+		"form_id":   formID,
+		"user_id":   userID,
+		"email":     p.WorkEmail,
+		"full_name": p.FullName,
+		"token":     token,
+	})
+	if err != nil {
+		log.Printf("remember dashboard session marshal: %v", err)
+		return
+	}
+	if err := h.rdb.Set(r.Context(), "form_session:"+formID, payload, 7*24*time.Hour).Err(); err != nil {
+		log.Printf("remember dashboard session: %v", err)
+	}
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {

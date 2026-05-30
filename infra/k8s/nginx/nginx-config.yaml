@@ -46,6 +46,7 @@ data:
       # Must come before the catch-all /go-api/ block so NGINX matches it first.
       location = /go-api/founder-form/submit {
         proxy_pass         http://go_backend;
+        proxy_set_header   Authorization   $http_authorization;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;

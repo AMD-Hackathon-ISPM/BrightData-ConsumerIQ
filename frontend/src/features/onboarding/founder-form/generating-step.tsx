@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SpiralLoader } from "@/components/ui/spiral-loader";
 import { Shimmer } from "@/components/ai-elements/shimmer";
+import { Button } from "@/components/ui/button";
 import { startPersonaDecode, PERSONA_TASK_KEY } from "./api";
 import { getAuthToken } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ function pipelineTarget(p: PipelineStatus | null): number {
 
 type GeneratingStepProps = {
   onComplete: () => void;
+  onLeave?: () => void;
   submitStatus: "idle" | "submitting" | "success" | "error";
   formId: string | null;
   formState: FounderFormState;
@@ -62,6 +64,7 @@ type GeneratingStepProps = {
 
 export function GeneratingStep({
   onComplete,
+  onLeave,
   submitStatus,
   formId,
   formState,
@@ -138,6 +141,12 @@ export function GeneratingStep({
 
   useEffect(() => {
     if (submitStatus !== "success" || personaStarted.current) return;
+    try {
+      if (localStorage.getItem(PERSONA_TASK_KEY)) {
+        personaStarted.current = true;
+        return;
+      }
+    } catch {}
     personaStarted.current = true;
     try {
       localStorage.removeItem("ciq_persona_data");
@@ -221,6 +230,17 @@ export function GeneratingStep({
           </p>
         )}
       </div>
+
+      {submitStatus === "success" && formId && !canContinue ? (
+        <Button
+          className="mt-6"
+          onClick={onLeave}
+          type="button"
+          variant="ghost"
+        >
+          Email me when ready
+        </Button>
+      ) : null}
     </div>
   );
 }

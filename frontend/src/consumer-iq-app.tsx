@@ -5,6 +5,7 @@ import { DashboardAppSidebar } from "@/components/layouts/DashboardAppSidebar";
 import { Button } from "@/components/ui/button";
 import { ConsumerIQDashboard } from "@/features/dashboard/dashboard-feature";
 import type { DashboardSection } from "@/features/dashboard/constants";
+import { useFounderPipelineStore } from "@/features/onboarding/founder-form/session-store";
 import { ConsumerIQOnboarding } from "@/features/onboarding/onboarding-feature";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,9 @@ const FounderChat = lazy(() =>
 
 export function ConsumerIQExperience() {
   const { user } = useAuth();
+  const clearPipelineSession = useFounderPipelineStore(
+    (state) => state.clearSession
+  );
   const [isOnboarded, setIsOnboarded] = useState(() => {
     try {
       return (
@@ -43,8 +47,9 @@ export function ConsumerIQExperience() {
 
   const handleOnboardingComplete = useCallback(() => {
     persistOnboarded();
+    clearPipelineSession();
     setIsOnboarded(true);
-  }, [persistOnboarded]);
+  }, [clearPipelineSession, persistOnboarded]);
 
   const handleToggleChat = useCallback(() => {
     setIsChatOpen((open) => {

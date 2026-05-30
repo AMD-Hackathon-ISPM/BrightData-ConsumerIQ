@@ -10,6 +10,7 @@ import {
 import { AnimatedPage } from "@/components/animated-page";
 import { Button } from "@/components/ui/button";
 import { submitFounderForm } from "./founder-form/api";
+import { useFounderPipelineStore } from "./founder-form/session-store";
 import { useAuth } from "@/lib/auth";
 import type {
   FounderFormPayload,
@@ -21,37 +22,45 @@ export function ConsumerIQOnboarding({
 }: {
   onComplete: () => void;
 }) {
-  const { user, loginWithToken } = useAuth();
-  const [step, setStep] = useState(1);
+  const { user, loginWithToken, clearLocalSession } = useAuth();
+  const activeSession = useFounderPipelineStore((state) => state.activeSession);
+  const saveSubmittedSession = useFounderPipelineStore(
+    (state) => state.saveSubmittedSession
+  );
+  const [step, setStep] = useState(() => (activeSession ? 5 : 1));
   const [submitStatus, setSubmitStatus] = useState<
     "idle" | "submitting" | "success" | "error"
-  >("idle");
-  const [submittedFormId, setSubmittedFormId] = useState<string | null>(null);
+  >(() => (activeSession ? "success" : "idle"));
+  const [submittedFormId, setSubmittedFormId] = useState<string | null>(
+    () => activeSession?.formId ?? null
+  );
   const [formState, setFormState] = useState<FounderFormState>({
-    fullName: user?.fullName ?? "",
-    workEmail: user?.email ?? "",
-    password: user ? "AUTHENTICATED_USER" : "",
+    ...(activeSession?.formState ?? {
+      fullName: user?.fullName ?? "",
+      workEmail: user?.email ?? "",
+      password: user ? "AUTHENTICATED_USER" : "",
 
-    workspaceName: "",
-    industry: "",
-    region: "",
-    country: "",
-    countryCode: "",
-    targetGen: [],
-    targetGender: "",
-    targetMarketDetail: "",
-    salesChannel: "",
+      workspaceName: "",
+      industry: "",
+      region: "",
+      country: "",
+      countryCode: "",
+      targetGen: [],
+      targetGender: "",
+      targetMarketDetail: "",
+      salesChannel: "",
 
-    problemToSolve: "",
-    productName: "",
-    productDescription: "",
-    uniqueSellingPoint: "",
-    mainFeatures: "",
-    competitiveAdvantage: "",
-    priceRangeMin: 0,
-    priceRangeMax: 0,
+      problemToSolve: "",
+      productName: "",
+      productDescription: "",
+      uniqueSellingPoint: "",
+      mainFeatures: "",
+      competitiveAdvantage: "",
+      priceRangeMin: 0,
+      priceRangeMax: 0,
 
-    researchGoals: [],
+      researchGoals: [],
+    }),
   });
 
   const updateField = useCallback(
@@ -81,6 +90,13 @@ export function ConsumerIQOnboarding({
     try {
       const response = await submitFounderForm(payload);
       setSubmittedFormId(response.id);
+      saveSubmittedSession({
+        formId: response.id,
+        formState: payload,
+        email: formState.workEmail,
+        fullName: formState.fullName,
+        token: response.token,
+      });
       loginWithToken(
         { fullName: formState.fullName, email: formState.workEmail },
         response.token
@@ -94,7 +110,11 @@ export function ConsumerIQOnboarding({
       setSubmitStatus("error");
       toast.error("Unable to submit the founder form");
     }
-  }, [formState, loginWithToken, onComplete, submitStatus]);
+  }, [formState, loginWithToken, onComplete, saveSubmittedSession, submitStatus]);
+
+  const handleLeaveForEmail = useCallback(() => {
+    clearLocalSession();
+  }, [clearLocalSession]);
 
   const isBusinessSetupValid =
     formState.workspaceName.trim().length > 0 &&
@@ -223,6 +243,7 @@ export function ConsumerIQOnboarding({
           ) : (
             <GeneratingStep
               onComplete={handleComplete}
+              onLeave={handleLeaveForEmail}
               submitStatus={submitStatus}
               formId={submittedFormId}
               formState={formState}

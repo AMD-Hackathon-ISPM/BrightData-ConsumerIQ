@@ -1,16 +1,43 @@
 import gc
 import json
 import os
+import smtplib
 import time
+from datetime import datetime, timezone
+from email.message import EmailMessage
+from html import escape
 from typing import Any
+from urllib.parse import urlencode
 import psycopg2
+import requests
 from celery import Celery
 from kombu import Queue
 from backend.models.embeddings import createEmbedder, embedTexts
 from backend.models.llm import createLlm
 from backend.models.translator import translateTextsIfNeeded
 
+
+def _intEnv(name: str, default: int) -> int:
+    value = os.getenv(name, '').strip()
+    if not value:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
 REDIS_URL = os.getenv('REDIS_URL', 'redis://redis.consumeriq.svc.cluster.local:6379/0')
+APP_PUBLIC_URL = os.getenv('APP_PUBLIC_URL', 'http://localhost:30080').rstrip('/')
+MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY', '').strip()
+MAILGUN_DOMAIN = os.getenv('MAILGUN_DOMAIN', '').strip()
+MAILGUN_API_BASE_URL = os.getenv('MAILGUN_API_BASE_URL', 'https://api.mailgun.net/v3').rstrip('/')
+SMTP_HOST = os.getenv('SMTP_HOST') or os.getenv('MAILGUN_SMTP_HOST') or ''
+SMTP_PORT = _intEnv('SMTP_PORT', _intEnv('MAILGUN_SMTP_PORT', 587))
+SMTP_USERNAME = os.getenv('SMTP_USERNAME') or os.getenv('MAILGUN_SMTP_USERNAME', '')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD') or os.getenv('MAILGUN_SMTP_PASSWORD', '')
+SMTP_FROM = os.getenv('SMTP_FROM') or os.getenv('MAILGUN_FROM') or SMTP_USERNAME
+SMTP_USE_TLS = (os.getenv('SMTP_USE_TLS') or os.getenv('MAILGUN_SMTP_USE_TLS', 'true')).lower() != 'false'
+DASHBOARD_SESSION_TTL_SECONDS = _intEnv('DASHBOARD_SESSION_TTL_SECONDS', 7 * 24 * 60 * 60)
 
 CATEGORY_MARKETPLACES: dict[str, list[str]] = {
     'fashion': ['amazon', 'tokopedia'],
@@ -1129,6 +1156,184 @@ def _updateInferenceStage(form_id: str, stage: str) -> None:
         print(f'[pipeline] Failed to update inference_stage={stage}: {exc}')
 
 
+def _dashboardReadyLink(token: str, form_id: str) -> str:
+    query = urlencode({'session': token, 'formId': form_id})
+    return f'{APP_PUBLIC_URL}/?{query}'
+
+
+def _refreshDashboardSessionToken(rdb: Any, token: str, meta: dict[str, Any]) -> None:
+    try:
+        session = {
+            'user_id': meta.get('user_id'),
+            'email': meta.get('email'),
+            'created_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+        }
+        rdb.set(
+            f'session:{token}',
+            json.dumps(session),
+            ex=DASHBOARD_SESSION_TTL_SECONDS,
+        )
+    except Exception as exc:
+        print(f'[email] Failed to refresh dashboard session token: {exc}')
+
+
+def _dashboardReadyEmailHtml(link: str, label: str) -> str:
+    safe_link = escape(link, quote=True)
+    safe_label = escape(label)
+    return f'''<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:0;background:#f6f5ef;font-family:Arial,Helvetica,sans-serif;color:#28251f;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+      Your ConsumerIQ dashboard is ready.
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#f6f5ef;margin:0;padding:0;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;border-collapse:collapse;background:#fffdf7;border:1px solid #e4dfcf;border-radius:12px;overflow:hidden;">
+            <tr>
+              <td style="padding:28px 28px 18px 28px;border-bottom:1px solid #ece6d8;">
+                <div style="font-size:13px;line-height:18px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#98971a;">ConsumerIQ</div>
+                <h1 style="margin:12px 0 0 0;font-size:28px;line-height:34px;font-weight:700;color:#28251f;">Your dashboard is ready</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:26px 28px 8px 28px;">
+                <p style="margin:0 0 18px 0;font-size:15px;line-height:24px;color:#4b473d;">
+                  The scraping and analytics pipeline has finished. Your latest market intelligence dashboard is ready to review.
+                </p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 22px 0;background:#f7f3e8;border:1px solid #e7dec8;border-radius:8px;">
+                  <tr>
+                    <td style="padding:14px 16px;">
+                      <div style="font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#7c6f64;">Research scope</div>
+                      <div style="margin-top:4px;font-size:16px;line-height:24px;font-weight:700;color:#28251f;">{safe_label}</div>
+                    </td>
+                  </tr>
+                </table>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 24px 0;">
+                  <tr>
+                    <td bgcolor="#98971a" style="border-radius:8px;">
+                      <a href="{safe_link}" style="display:inline-block;padding:13px 18px;font-size:15px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Open dashboard</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 18px 0;font-size:13px;line-height:20px;color:#6f6a60;">
+                  This secure link opens your dashboard session directly, so you do not need to log in again.
+                </p>
+                <p style="margin:0;font-size:12px;line-height:18px;color:#8b8578;word-break:break-all;">
+                  If the button does not work, copy and paste this link into your browser:<br>
+                  <a href="{safe_link}" style="color:#98971a;text-decoration:underline;">{safe_link}</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 28px 28px 28px;">
+                <div style="height:1px;background:#ece6d8;margin-bottom:18px;"></div>
+                <p style="margin:0;font-size:12px;line-height:18px;color:#8b8578;">ConsumerIQ market intelligence notification</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>'''
+
+
+def _sendMailgunApiEmail(recipient: str, subject: str, text: str, html: str) -> None:
+    url = f'{MAILGUN_API_BASE_URL}/{MAILGUN_DOMAIN}/messages'
+    response = requests.post(
+        url,
+        auth=('api', MAILGUN_API_KEY),
+        data={
+            'from': SMTP_FROM,
+            'to': recipient,
+            'subject': subject,
+            'text': text,
+            'html': html,
+        },
+        timeout=20,
+    )
+    response.raise_for_status()
+
+
+def _sendSmtpEmail(recipient: str, subject: str, text: str, html: str) -> None:
+    message = EmailMessage()
+    message['Subject'] = subject
+    message['From'] = SMTP_FROM
+    message['To'] = recipient
+    message.set_content(text)
+    message.add_alternative(html, subtype='html')
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+        if SMTP_USE_TLS:
+            smtp.starttls()
+        smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
+        smtp.send_message(message)
+
+
+def _sendDashboardReadyEmail(form_id: str, category: str, country: str) -> None:
+    if not form_id:
+        return
+    mailgun_api_ready = bool(MAILGUN_API_KEY and MAILGUN_DOMAIN and SMTP_FROM)
+    smtp_ready = bool(SMTP_HOST and SMTP_FROM and SMTP_USERNAME and SMTP_PASSWORD)
+    if not mailgun_api_ready and not smtp_ready:
+        print('[email] Mailgun API/SMTP not configured; dashboard-ready email skipped.')
+        return
+
+    try:
+        from backend.agent.session import getRedisClient
+        rdb = getRedisClient()
+        sent_key = f'dashboard_email_sent:{form_id}'
+        if not rdb.set(sent_key, '1', nx=True, ex=DASHBOARD_SESSION_TTL_SECONDS):
+            return
+
+        raw = rdb.get(f'form_session:{form_id}')
+        if not raw:
+            print(f'[email] Missing form_session metadata for form_id={form_id}')
+            rdb.delete(sent_key)
+            return
+
+        meta = json.loads(raw)
+        recipient = str(meta.get('email') or '').strip()
+        token = str(meta.get('token') or '').strip()
+        if not recipient or not token:
+            print(f'[email] Missing recipient or token for form_id={form_id}')
+            rdb.delete(sent_key)
+            return
+
+        _refreshDashboardSessionToken(rdb, token, meta)
+        link = _dashboardReadyLink(token, form_id)
+        label = category
+        if country:
+            label = f'{category} ({country})'
+
+        subject = 'Your ConsumerIQ dashboard is ready'
+        text = '\n'.join(
+            [
+                'Your ConsumerIQ dashboard is ready.',
+                '',
+                f'Research: {label}',
+                f'Open dashboard: {link}',
+                '',
+                'This secure link opens your dashboard session directly.',
+            ]
+        )
+        html = _dashboardReadyEmailHtml(link, label)
+        if mailgun_api_ready:
+            _sendMailgunApiEmail(recipient, subject, text, html)
+        else:
+            _sendSmtpEmail(recipient, subject, text, html)
+
+        print(f'[email] Dashboard-ready email sent to {recipient} for form_id={form_id}')
+    except Exception as exc:
+        try:
+            from backend.agent.session import getRedisClient
+            getRedisClient().delete(f'dashboard_email_sent:{form_id}')
+        except Exception:
+            pass
+        print(f'[email] Dashboard-ready email failed for form_id={form_id}: {exc}')
+
+
 _DASHBOARD_REQUIRED_SECTIONS = (
     'marketOverview',
     'demandPulse',
@@ -1200,6 +1405,7 @@ def processLlmInsights(self, categoryName: str, country: str = '', form_id: str 
         }
 
     _updateInferenceStage(form_id, 'completed')
+    _sendDashboardReadyEmail(form_id, categoryName, country)
 
     if (
         _COGNEE_ENABLED

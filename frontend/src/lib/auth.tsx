@@ -41,6 +41,7 @@ export interface AuthContextValue {
         input: RegisterInput,
     ) => Promise<{ ok: boolean; error?: string }>;
     logout: () => void;
+    clearLocalSession: () => void;
     loginWithToken: (user: AuthUser, token: string) => void;
 }
 
@@ -193,9 +194,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.clear();
     }, [queryClient]);
 
+    const clearLocalSession = useCallback(() => {
+        setUser(null);
+        persistUser(null);
+        clearSessionCache();
+        queryClient.clear();
+    }, [queryClient]);
+
     const value = useMemo<AuthContextValue>(
-        () => ({ user, login, register, logout, loginWithToken }),
-        [user, login, register, logout, loginWithToken],
+        () => ({
+            user,
+            login,
+            register,
+            logout,
+            clearLocalSession,
+            loginWithToken,
+        }),
+        [user, login, register, logout, clearLocalSession, loginWithToken],
     );
 
     return (

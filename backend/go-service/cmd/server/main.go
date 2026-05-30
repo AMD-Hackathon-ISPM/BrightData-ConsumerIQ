@@ -42,6 +42,7 @@ func main() {
 	mux.HandleFunc("POST /auth/register", authH.Register)
 	mux.HandleFunc("POST /auth/login", authH.Login)
 	mux.HandleFunc("POST /auth/logout", authH.Logout)
+	mux.HandleFunc("GET /auth/session", authH.Session)
 
 	mux.HandleFunc("POST /go-api/founder-form/submit", formsH.Submit)
 
