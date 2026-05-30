@@ -34,7 +34,7 @@ This is **not** the local-dev setup ([README.md](README.md)) — different clust
 
 ### Domain + DNS
 
-Any registrar; an A record pointing at your VPS public IP. Wait for propagation (`dig consumeriq.example.com +short` returns the IP) before starting TLS.
+Any registrar; an A record pointing at your VPS public IP. Wait for propagation (`dig daffatrg.dev +short` returns the IP) before starting TLS.
 
 ### Local tooling
 
@@ -132,10 +132,10 @@ git clone https://github.com/YOUR-ORG/consumeriq.git    # or scp your local work
 cd consumeriq
 ```
 
-In a separate browser tab, set the DNS A record `consumeriq.example.com → <VPS public IP>`. Wait for propagation:
+In a separate browser tab, set the DNS A record `daffatrg.dev → <VPS public IP>`. Wait for propagation:
 
 ```bash
-dig consumeriq.example.com +short
+dig daffatrg.dev +short
 # Should print the VPS IP
 ```
 
@@ -235,7 +235,7 @@ DATABASE_URL=postgresql://consumeriq:consumeriq@postgres.consumeriq.svc.cluster.
 REDIS_URL=redis://redis.consumeriq.svc.cluster.local:6379/0
 
 # Public URL (used in dashboard-ready emails + admin endpoints)
-APP_PUBLIC_URL=https://consumeriq.example.com
+APP_PUBLIC_URL=https://daffatrg.dev
 
 # Cloud LLM provider 1 — workhorse (Layer 0, Layer 1, Layer 2, Persona, Cognee)
 OPENAI_BASE_URL=https://api.aimlapi.com/v1
@@ -284,7 +284,7 @@ ADMIN_API_TOKEN=<run on VPS: openssl rand -hex 32>
 
 # Email (optional but recommended)
 MAILERSEND_API_KEY=<mailersend-key>
-MAILERSEND_FROM_EMAIL=hello@consumeriq.example.com
+MAILERSEND_FROM_EMAIL=hello@daffatrg.dev
 MAILERSEND_FROM_NAME=ConsumerIQ
 
 # Cognee — optional persistent graph memory
@@ -397,7 +397,7 @@ metadata:
   name: letsencrypt-prod
 spec:
   acme:
-    email: you@example.com
+    email: daffa@daffatrg.dev
     server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
       name: letsencrypt-prod-key
@@ -416,10 +416,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [consumeriq.example.com]
+    - hosts: [daffatrg.dev]
       secretName: consumeriq-tls
   rules:
-    - host: consumeriq.example.com
+    - host: daffatrg.dev
       http:
         paths:
           - path: /
@@ -439,7 +439,7 @@ kubectl get certificate -n consumeriq -w
 # Status should go from False → True within 1–3 minutes
 ```
 
-After `True`, `https://consumeriq.example.com` is live with a Let's Encrypt cert.
+After `True`, `https://daffatrg.dev` is live with a Let's Encrypt cert.
 
 ---
 
@@ -464,7 +464,7 @@ kubectl exec -n consumeriq postgres-0 -- psql -U consumeriq -d consumeriq -f /tm
 
 ```bash
 # 1. Public HTTPS works
-curl -sf https://consumeriq.example.com/ -o /dev/null -w '%{http_code}\n'
+curl -sf https://daffatrg.dev/ -o /dev/null -w '%{http_code}\n'
 # Expect 200
 
 # 2. Submit a form via the UI (open the SPA in a browser, fill the founder form)
@@ -656,3 +656,61 @@ sudo du -sh /var/lib/rancher/k3s/storage/*
 - **Hybrid GPU mode** — running local Llama on a GPU VPS (Lambda, RunPod, Hetzner GEX) — see [README.md §Local Setup](README.md) for the k3d-equivalent pattern; the same Endpoints-on-Docker-network trick works on k3s with `--gpus all` Docker containers attached to the host bridge.
 
 None of these block a demo or a limited-production single-tenant deployment.
+
+---
+
+## 19. Deploy-day runbook (single-page checklist)
+
+Use this as your one-screen reference on the day you deploy. Each line links back to the full section above. Everything assumes you're SSH'd in as the sudo user on the VPS.
+
+```
+[ ]  1. ssh in, sudo apt update && upgrade                            (§2)
+[ ]  2. ufw allow 22 / 80 / 443, deny everything else                 (§2)
+[ ]  3. curl get.docker.com | sh, add user to docker group           (§2)
+[ ]  4. curl get.k3s.io | sh INSTALL_K3S_EXEC=--disable=traefik      (§2)
+[ ]  5. cp k3s.yaml to ~/.kube/config, kubectl get nodes             (§2)
+[ ]  6. docker run -d --name local-registry registry:2 on :127.0.0.1:5001  (§2)
+[ ]  7. /etc/rancher/k3s/registries.yaml → mirror localhost:5001, restart k3s  (§2)
+[ ]  8. git clone repo, set DNS A record daffatrg.dev → VPS IP, wait for dig  (§3)
+[ ]  9. VERIFY cloud-routing patch is in:                            (§4)
+       grep "_runCloudLayer1Insights\|LLM_LOCAL_ENABLED" backend/redis/worker.py
+       (must match. If not, ask maintainer for the patch. Stop here. Don't proceed.)
+[ ] 10. docker build + push: backend, go, frontend, embeddings       (§5)
+[ ] 11. sed-rewrite manifests: k3d-consumeriq-registry:5000 → localhost:5001  (§5)
+[ ] 12. trim infra/k8s/inference/kustomization.yaml to embeddings-only  (§6)
+[ ] 13. write infra/k8s/backend/.env (LLM_LOCAL_ENABLED=false, all keys)  (§7)
+[ ] 14. generate ADMIN_API_TOKEN + JWT_SECRET via openssl rand -hex 32  (§7)
+[ ] 15. kubectl create namespace consumeriq                          (§8)
+[ ] 16. kubectl create secret generic consumeriq-api-keys --from-env-file=.env  (§8)
+[ ] 17. kubectl apply -k infra/k8s/postgres + redis, wait for ready  (§9)
+[ ] 18. kubectl apply -k inference + backend + frontend + nginx      (§10)
+[ ] 19. kubectl get pods -n consumeriq — all Running 1/1             (§10)
+[ ] 20. kubectl apply ingress-nginx + cert-manager                   (§11)
+[ ] 21. kubectl apply ClusterIssuer + Ingress (daffatrg.dev)         (§11)
+[ ] 22. kubectl get certificate -n consumeriq -w until READY=True    (§11)
+[ ] 23. curl -sf https://daffatrg.dev → 200                          (§13)
+[ ] 24. Submit a test form via the UI                                (§13)
+[ ] 25. Tail worker-scraping logs → see scrape complete              (§13)
+[ ] 26. Tail worker-inference logs → see synthesizing → completed    (§13)
+[ ] 27. Dashboard renders all 4 sections (not fallback fixture data) (§13)
+[ ] 28. Click into Persona Decode — TAM/SAM/SOM renders, not empty  (§13)
+[ ] 29. Send a chat message → reasoning panel + reply within ~10s    (§13)
+[ ] 30. Set postgres backup cron in root crontab                     (§14)
+[ ] 31. Hardening checklist done                                     (§15)
+```
+
+The single most-likely failure point is **step 9** — the cloud-routing patch. If you skip it, steps 24–27 will fail with the pipeline stuck at `analyzing`. The grep check is the cheapest possible guard.
+
+The second most-likely is **step 22** — TLS cert not issuing because DNS hasn't actually propagated yet. Validate with `dig daffatrg.dev +short @1.1.1.1` (uses Cloudflare's resolver, not your local DNS cache) before applying the Ingress.
+
+### Common "Demo in 30 minutes, something's off" rescues
+
+| Symptom | Fast path |
+|---|---|
+| Browser shows nginx default page, not the app | `kubectl get ingress -n consumeriq` — check the host matches what you typed in the address bar |
+| TLS error (browser warning) | `kubectl describe certificate -n consumeriq consumeriq-tls`. If status False, the ACME challenge hasn't completed — verify ufw lets port 80 in and DNS is correct |
+| Dashboard shows CeraVe / Los Angeles fixtures | Pipeline didn't reach `completed`. Check `kubectl logs -n consumeriq deploy/consumeriq-worker-inference --tail=100`. Most likely `OPENAI_API_KEY` mismatch (§17) |
+| Chat says "Unable to fetch insights" | Backend's Featherless key wrong or model name wrong. Verify with `kubectl exec -n consumeriq deploy/consumeriq-worker-inference -- env \| grep CHAT_` |
+| Pipeline runs but TAM/SAM/SOM is blank | Old persona blob in localStorage from before the prompt update. Have the user delete their localStorage `ciq_persona_data` and re-submit the form |
+| Chat history vanished after refresh | API can't read user_id. Check `kubectl logs -n consumeriq deploy/consumeriq-api \| grep "chat/history"` — should see authenticated GET, not 401 |
+| Everything slow / spinning | `free -h` on the VPS. If RAM > 80% used, scale a worker down: `kubectl scale -n consumeriq deploy/consumeriq-worker-scraping --replicas=0` for the demo, restore after |
