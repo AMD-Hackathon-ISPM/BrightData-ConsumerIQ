@@ -51,7 +51,7 @@ The frontend polls `/api/form-pipeline/{formId}` every 3 s. Six granular stages 
 - Docker Desktop running with WSL2 backend
 - NVIDIA GPU with CUDA 12.1-compatible drivers installed on host
 - `k3d` and `kubectl` installed (`choco install k3d kubernetes-cli`)
-- Download this file to be extracted to models/ [models file download](https://drive.google.com/drive/folders/1uTFi37YJvApLgKdzWjRJrrzONLNLb-7h?usp=sharing)
+- Download this file to be extracted to models [models file download](https://drive.google.com/drive/folders/1uTFi37YJvApLgKdzWjRJrrzONLNLb-7h?usp=sharing)
 
 > **GPU note:** Docker Desktop on Windows uses WSL2 GPU paravirtualization (`/dev/dxg`), not native CUDA device files. The NVIDIA k8s device plugin cannot see this, so inference and translator run as plain Docker containers outside k3d (on the same Docker network) with `--gpus all`. k8s routes to them via static Endpoints.
 
