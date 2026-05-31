@@ -426,7 +426,7 @@ spec:
               service:
                 name: consumeriq-nginx
                 port:
-                  number: 80
+                  number: 8080
 EOF
 ```
 
@@ -609,6 +609,26 @@ kubectl describe certificate -n consumeriq consumeriq-tls
 kubectl logs -n cert-manager -l app=cert-manager -f
 sudo ufw status | grep 80   # must be ALLOW
 ```
+On Oracle Cloud, also verify the **VCN Security List** has ingress rules for TCP 80 + 443 from `0.0.0.0/0` — ufw alone isn't sufficient. OCI Console → Networking → VCN → Subnet → Default Security List → Add Ingress Rules.
+
+### `https://yourdomain` returns 503 Service Temporarily Unavailable
+TLS works (HSTS header present, no cert error) but ingress-nginx can't reach the backend. Almost always an Ingress port mismatch — the Ingress points to a port the Service doesn't expose. Verify:
+```bash
+kubectl get svc consumeriq-nginx -n consumeriq -o jsonpath='{.spec.ports[0].port}'
+# Should print: 8080
+
+kubectl get ingress consumeriq -n consumeriq -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.port.number}'
+# Must match the above (8080)
+```
+
+If they don't match, patch the Ingress:
+```bash
+kubectl patch ingress consumeriq -n consumeriq --type=json -p='[
+  {"op":"replace","path":"/spec/rules/0/http/paths/0/backend/service/port/number","value":8080}
+]'
+```
+
+Other 503 causes (less likely): backend pods not Ready (check `kubectl get pods -n consumeriq`), or the consumeriq-nginx pod's NGINX config has a typo pointing at a non-existent upstream.
 
 ### Pipeline stuck at `analyzing` or `cross_referencing`
 The cloud-routing patch isn't applied — Layer 1 still calls local Llama. Confirm:
@@ -686,7 +706,7 @@ Use this as your one-screen reference on the day you deploy. Each line links bac
 [ ] 20. kubectl apply ingress-nginx + cert-manager                   (§11)
 [ ] 21. kubectl apply ClusterIssuer + Ingress (daffatrg.dev)         (§11)
 [ ] 22. kubectl get certificate -n consumeriq -w until READY=True    (§11)
-[ ] 23. curl -sf https://daffatrg.dev → 200                          (§13)
+[ ] 23. curl -I https://daffatrg.dev → 200 (NOT 503; see §17)        (§13)
 [ ] 24. Submit a test form via the UI                                (§13)
 [ ] 25. Tail worker-scraping logs → see scrape complete              (§13)
 [ ] 26. Tail worker-inference logs → see synthesizing → completed    (§13)
